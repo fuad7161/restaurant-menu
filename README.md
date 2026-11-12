@@ -116,3 +116,4 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 
 Online payment, split bill, tips, printing, subscription billing, image compression, login rate limiting, HTTPS (put a reverse proxy such as Caddy in front for production). Screens refresh by polling every 3 to 4 seconds.
 # restaurant-menu
+# restaurant-menu
