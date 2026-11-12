@@ -1,0 +1,234 @@
+{{define "ghead"}}<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#6d28d9">
+<title>{{.R.Name}}</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+<script src="/static/app.js" defer></script>
+</head>
+<body class="guest">
+<header class="gtop">
+  <div><strong>{{.R.Name}}</strong>
+  <span class="muted">{{t .Lang "table"}} {{.Tbl.Label}}{{if .S}} · {{t .Lang "group"}} {{.S.Label}}{{end}}</span></div>
+  <a class="lang" href="/t/{{.Tok}}/lang?l={{if eq .Lang "bn"}}en{{else}}bn{{end}}">{{if eq .Lang "bn"}}English{{else}}বাংলা{{end}}</a>
+</header>
+<main>{{end}}
+
+{{define "gfoot"}}</main></body></html>{{end}}
+
+{{define "guest_enter"}}{{template "ghead" .}}
+<section class="card hello">
+  <h1>{{t .Lang "welcome"}}</h1>
+  <form method="post" action="/t/{{.Tok}}/enter">
+    <label>{{t .Lang "your_name"}}
+      <input name="name" required maxlength="30" autocomplete="given-name" autofocus></label>
+    {{if .Groups}}
+      <p>{{t .Lang "table_has_order"}}</p>
+      {{range $i, $g := .Groups}}
+      <label class="choice"><input type="radio" name="choice" value="join:{{$g.ID}}"{{if eq $i 0}} checked{{end}}>
+        {{t $.Lang "join_group"}} <b>{{$g.First}}</b> ({{t $.Lang "group"}} {{$g.Label}})</label>
+      {{end}}
+      <label class="choice"><input type="radio" name="choice" value="new"> {{t .Lang "start_separate"}}</label>
+      <button class="btn big">{{t .Lang "continue"}}</button>
+    {{else}}
+      <input type="hidden" name="choice" value="new">
+      <button class="btn big">{{t .Lang "start_order"}}</button>
+    {{end}}
+  </form>
+</section>
+{{template "gfoot" .}}{{end}}
+
+{{define "guest_wait"}}{{template "ghead" .}}
+<section class="card hello">{{template "g_wait" .}}</section>
+{{template "gfoot" .}}{{end}}
+
+{{define "g_wait"}}<div id="wait"{{if not .Declined}} hx-get="/t/{{.Tok}}/wait" hx-trigger="every 3s" hx-swap="outerHTML"{{end}}>
+{{if .Declined}}
+  <p class="warn">{{t .Lang "join_declined"}}</p>
+  <a class="btn big" href="/t/{{.Tok}}">{{t .Lang "start_separate"}}</a>
+{{else}}
+  <div class="spinner"></div>
+  <p>{{t .Lang "waiting_approval"}}</p>
+  <form method="post" action="/t/{{.Tok}}/leave"><button class="btn ghost">{{t .Lang "start_separate"}}</button></form>
+{{end}}
+</div>{{end}}
+
+{{define "guest_menu"}}{{template "ghead" .}}
+{{if not .R.IsOpen}}<p class="warn">{{t .Lang "closed_now"}}</p>{{end}}
+{{if ne .S.Status "open"}}<p class="warn">{{t .Lang "not_ordering"}}</p>{{end}}
+<nav class="cats">{{range .Cats}}{{if .Items}}<a href="#c{{.ID}}">{{pick $.Lang .NameBn .NameEn}}</a>{{end}}{{end}}</nav>
+{{range .Cats}}{{if .Items}}
+<section id="c{{.ID}}">
+  <h2>{{pick $.Lang .NameBn .NameEn}}</h2>
+  {{range .Items}}
+  <article class="item{{if not .Available}} soldout{{end}}">
+    {{if .Photo}}<img src="/uploads/{{.Photo}}" alt="" loading="lazy">{{end}}
+    <div class="ibody">
+      <h3>{{pick $.Lang .NameBn .NameEn}}</h3>
+      <p class="price">{{money .Price}} <span class="muted">· ~{{.Prep}} {{t $.Lang "min"}}</span></p>
+      {{if .Available}}<div id="add-{{.ID}}">{{template "g_add" (dict "Lang" $.Lang "Tok" $.Tok "It" .)}}</div>
+      {{else}}<span class="badge">{{t $.Lang "sold_out"}}</span>{{end}}
+    </div>
+  </article>
+  {{end}}
+</section>
+{{end}}{{end}}
+{{template "g_bar" .}}
+{{template "gfoot" .}}{{end}}
+
+{{define "g_add"}}<form hx-post="/t/{{.Tok}}/cart/add" hx-target="#add-{{.It.ID}}" hx-swap="innerHTML">
+  <input type="hidden" name="item_id" value="{{.It.ID}}">
+  {{if .Dup}}
+    {{range .Sel}}<input type="hidden" name="opt" value="{{.}}">{{end}}
+    <input type="hidden" name="confirm" value="1">
+    <p class="warn">{{.Dup}}</p>
+    <button class="btn">{{t .Lang "yes_add"}}</button>
+    <button class="btn ghost" type="button" hx-get="/t/{{.Tok}}/add/{{.It.ID}}" hx-target="#add-{{.It.ID}}" hx-swap="innerHTML">{{t .Lang "no"}}</button>
+  {{else}}
+    {{if .It.Options}}<div class="opts">{{range .It.Options}}
+      <label><input type="checkbox" name="opt" value="{{.ID}}"> {{.Name}}{{if .Extra}} (+{{money .Extra}}){{end}}</label>{{end}}</div>{{end}}
+    <button class="btn">+ {{t .Lang "add"}}</button>
+    {{if .Added}}<span class="ok">✓ {{t .Lang "added"}}</span>{{end}}
+  {{end}}
+</form>{{end}}
+
+{{define "g_msg"}}<p class="warn">{{.}}</p>{{end}}
+
+{{define "g_bar"}}<div id="bar" class="bar" hx-get="/t/{{.Tok}}/bar?tab={{.Tab}}" hx-trigger="every 4s" hx-swap="outerHTML"{{if .OOB}} hx-swap-oob="true"{{end}}>
+  {{range .Joins}}
+  <div class="join"><span><b>{{.Name}}</b> {{t $.Lang "wants_join"}}</span>
+    <button class="btn sm" hx-post="/t/{{$.Tok}}/join/{{.ID}}/allow?tab={{$.Tab}}" hx-target="#bar" hx-swap="outerHTML">{{t $.Lang "allow"}}</button>
+    <button class="btn sm ghost" hx-post="/t/{{$.Tok}}/join/{{.ID}}/decline?tab={{$.Tab}}" hx-target="#bar" hx-swap="outerHTML">{{t $.Lang "decline"}}</button>
+  </div>
+  {{end}}
+  <nav aria-label="{{t .Lang "menu"}}">
+    <a href="/t/{{.Tok}}"{{if eq .Tab "menu"}} class="on" aria-current="page"{{end}}>{{t .Lang "menu"}}</a>
+    <a href="/t/{{.Tok}}/cart"{{if eq .Tab "cart"}} class="on" aria-current="page"{{end}}>{{t .Lang "cart"}}{{if .CartN}} <b>{{.CartN}}</b> <span class="sum">{{money .CartTotal}}</span>{{end}}</a>
+    <a href="/t/{{.Tok}}/orders"{{if eq .Tab "orders"}} class="on" aria-current="page"{{end}}>{{t .Lang "orders"}}{{if .OrderN}} <b>{{.OrderN}}</b>{{end}}</a>
+  </nav>
+</div>{{end}}
+
+{{define "guest_cart"}}{{template "ghead" .}}
+<h2>{{t .Lang "review_order"}}</h2>
+{{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+{{template "g_cartlist" .}}
+{{template "g_bar" .}}
+{{template "gfoot" .}}{{end}}
+
+{{define "g_cartlist"}}<div id="cartlist" hx-get="/t/{{.Tok}}/cart/list" hx-trigger="every 4s [noFocus()]" hx-swap="outerHTML">
+{{if not .Cart}}
+  <p class="muted">{{t .Lang "cart_empty"}}</p>
+  <a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a>
+{{else}}
+  {{range .Cart}}
+  <div class="row">
+    <div class="grow">
+      <b>{{pick $.Lang .NameBn .NameEn}}</b>{{if .Options}} <span class="muted">· {{.Options}}</span>{{end}}
+      <div class="muted">{{t $.Lang "added_by"}} {{.Guest}} · {{money .Unit}} {{t $.Lang "each"}}</div>
+      <input name="note" value="{{.Note}}" placeholder="{{t $.Lang "note_ph"}}" maxlength="120"
+             hx-post="/t/{{$.Tok}}/cart/{{.ID}}/note" hx-trigger="change" hx-swap="none">
+    </div>
+    <div class="qty">
+      <button hx-post="/t/{{$.Tok}}/cart/{{.ID}}/qty" hx-vals='{"d":"-1"}' hx-target="#cartlist" hx-swap="outerHTML" aria-label="less">−</button>
+      <span>{{.Qty}}</span>
+      <button hx-post="/t/{{$.Tok}}/cart/{{.ID}}/qty" hx-vals='{"d":"1"}' hx-target="#cartlist" hx-swap="outerHTML" aria-label="more">+</button>
+    </div>
+  </div>
+  {{end}}
+  <div class="total grand"><span>{{t .Lang "subtotal"}}</span><b>{{money .CartTotal}}</b></div>
+  <form method="post" action="/t/{{.Tok}}/order"><button class="btn big">{{t .Lang "place_order"}}</button></form>
+{{end}}
+</div>{{end}}
+
+{{define "guest_orders"}}{{template "ghead" .}}
+{{template "g_live" .}}
+{{if not .Paid}}{{template "g_bar" .}}{{end}}
+{{template "gfoot" .}}{{end}}
+
+{{define "g_live"}}<div id="live"{{if not .Paid}} hx-get="/t/{{.Tok}}/orders/live" hx-trigger="every 4s [noFocus()]" hx-swap="outerHTML"{{end}}>
+{{if .Flash}}<p class="okmsg">{{.Flash}}</p>{{end}}
+{{if .Paid}}<div class="paidbox"><h1>✓ {{t .Lang "paid"}}</h1><p>{{t .Lang "thanks"}}</p></div>{{end}}
+{{if not .Orders}}<p class="muted">{{t .Lang "no_orders"}}</p><a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a>{{end}}
+
+{{range $o := .Orders}}
+<section class="order st-{{$o.Status}}">
+  <header><b>{{t $.Lang "order"}} #{{$o.N}}</b>{{if $o.Addon}} <span class="badge">{{t $.Lang "addon"}}</span>{{end}}
+    <span class="status">{{t $.Lang (print "st_" $o.Status)}}</span></header>
+  {{if $o.Step}}
+  <ol class="steps">
+    <li class="{{if ge $o.Step 1}}done{{end}}">{{t $.Lang "st_placed"}}</li>
+    <li class="{{if ge $o.Step 2}}done{{end}}">{{t $.Lang "st_cooking"}}</li>
+    <li class="{{if ge $o.Step 3}}done{{end}}">{{t $.Lang "st_ready"}}</li>
+    <li class="{{if ge $o.Step 4}}done{{end}}">{{t $.Lang "st_served"}}</li>
+  </ol>
+  {{end}}
+  {{if eq $o.Status "placed"}}<p class="muted">{{t $.Lang "wait_accept"}}</p>{{end}}
+  {{if $o.ETA}}<p class="eta">⏱ {{$o.ETA}}</p>{{end}}
+  {{if $o.Reason}}<p class="warn">{{$o.Reason}}</p>{{end}}
+  {{range $o.Items}}
+  <div class="row{{if eq .Status "cancelled"}} cancelled{{end}}">
+    <div class="grow">{{.Qty}} × {{pick $.Lang .NameBn .NameEn}}{{if .Options}} <span class="muted">· {{.Options}}</span>{{end}}
+      {{if .Note}}<div class="muted">“{{.Note}}”</div>{{end}}
+      {{if eq .Status "cancel_requested"}}<div class="muted">{{t $.Lang "change_requested"}}</div>{{end}}
+      {{if eq .Last "declined"}}<div class="warn">{{t $.Lang "change_declined"}}</div>{{end}}
+      {{if eq .Last "approved"}}<div class="ok">{{t $.Lang "change_approved"}}</div>{{end}}
+    </div>
+    <div class="amt">{{money .Line}}</div>
+    {{if .CanChange}}
+    <div class="acts">
+      {{if gt .Qty 1}}<button class="btn sm ghost" hx-post="/t/{{$.Tok}}/items/{{.ID}}/change" hx-vals='{"action":"minus"}' hx-target="#live" hx-swap="outerHTML">{{if .Direct}}{{t $.Lang "remove_one"}}{{else}}{{t $.Lang "ask_remove_one"}}{{end}}</button>{{end}}
+      <button class="btn sm ghost" hx-post="/t/{{$.Tok}}/items/{{.ID}}/change" hx-vals='{"action":"cancel"}' hx-confirm="{{t $.Lang "confirm_cancel"}}" hx-target="#live" hx-swap="outerHTML">{{if .Direct}}{{t $.Lang "cancel_item"}}{{else}}{{t $.Lang "ask_cancel"}}{{end}}</button>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</section>
+{{end}}
+
+{{if .Bill.Lines}}
+<section class="bill">
+  <h2>{{t .Lang "bill"}}</h2>
+  {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $.Lang .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
+  <div class="total line"><span>{{t .Lang "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  {{if .Bill.Service}}<div class="total"><span>{{t .Lang "service_charge"}} ({{.R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>{{end}}
+  {{if .Bill.VAT}}<div class="total"><span>{{t .Lang "vat"}} ({{.R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>{{end}}
+  <div class="total grand"><span>{{t .Lang "total"}}</span><b>{{money .Bill.Total}}</b></div>
+  {{if eq .S.Status "open"}}
+    <button class="btn big" hx-post="/t/{{.Tok}}/bill" hx-target="#live" hx-swap="outerHTML">{{t .Lang "request_bill"}}</button>
+  {{else if eq .S.Status "bill_requested"}}
+    <p class="okmsg">{{t .Lang "bill_requested"}}</p>
+    <button class="btn ghost" hx-post="/t/{{.Tok}}/bill/cancel" hx-target="#live" hx-swap="outerHTML">{{t .Lang "keep_ordering"}}</button>
+  {{end}}
+</section>
+{{end}}
+
+{{if not .Paid}}
+<section class="calls">
+  <button class="btn ghost" hx-post="/t/{{.Tok}}/call" hx-vals='{"reason":"waiter"}' hx-target="#live" hx-swap="outerHTML">🔔 {{t .Lang "call_waiter"}}</button>
+  <button class="btn ghost" hx-post="/t/{{.Tok}}/call" hx-vals='{"reason":"water"}' hx-target="#live" hx-swap="outerHTML">{{t .Lang "water"}}</button>
+  <button class="btn ghost" hx-post="/t/{{.Tok}}/call" hx-vals='{"reason":"tissue"}' hx-target="#live" hx-swap="outerHTML">{{t .Lang "tissue"}}</button>
+</section>
+{{else}}
+  {{if .Reviewed}}
+    <p class="okmsg">{{t .Lang "thanks_review"}}</p>
+  {{else}}
+  <section class="card">
+    <h2>{{t .Lang "rate_visit"}}</h2>
+    <form method="post" action="/t/{{.Tok}}/review" class="review">
+      <div class="rate"><span>{{t .Lang "overall"}}</span>
+        <span class="stars">{{range seq 5}}<label><input type="radio" name="rating" value="{{.}}" required>{{.}}★</label>{{end}}</span></div>
+      {{range .Bill.Lines}}
+      <div class="rate"><span>{{pick $.Lang .NameBn .NameEn}}</span>
+        <select name="dish_{{.MenuItemID}}"><option value="">–</option>{{range seq 5}}<option value="{{.}}">{{.}}★</option>{{end}}</select></div>
+      {{end}}
+      <textarea name="comment" rows="3" maxlength="500" placeholder="{{t .Lang "comment_ph"}}"></textarea>
+      <button class="btn big">{{t .Lang "send_review"}}</button>
+    </form>
+  </section>
+  {{end}}
+  <form method="post" action="/t/{{.Tok}}/leave"><button class="btn ghost">{{t .Lang "new_order"}}</button></form>
+{{end}}
+</div>{{end}}

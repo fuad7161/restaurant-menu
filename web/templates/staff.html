@@ -1,0 +1,218 @@
+{{define "phead"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#6d28d9">
+<title>Bosho</title>
+<link rel="stylesheet" href="/static/app.css">
+<script src="/static/htmx.min.js" defer></script>
+<script src="/static/app.js" defer></script>
+</head>{{end}}
+
+{{define "home"}}{{template "phead"}}
+<body class="plain">
+<main class="center">
+  <h1 class="logo">Bosho <span>বসো</span></h1>
+  <p class="lead">Guests scan the QR on the table, order from their phone, and watch the food get ready. No app, no waiting for a waiter.</p>
+  <p><a class="btn big" href="/signup">Set up your restaurant, free</a></p>
+  <p><a href="/login">Staff login</a></p>
+</main>
+</body></html>{{end}}
+
+{{define "login"}}{{template "phead"}}
+<body class="plain">
+<main class="center">
+  <h1 class="logo">Bosho</h1>
+  <form method="post" action="/login" class="card form">
+    <h2>Staff login</h2>
+    {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+    <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
+    <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+    <button class="btn big">Log in</button>
+    <p class="muted">New restaurant? <a href="/signup">Sign up free</a></p>
+  </form>
+</main>
+</body></html>{{end}}
+
+{{define "signup"}}{{template "phead"}}
+<body class="plain">
+<main class="center">
+  <h1 class="logo">Bosho</h1>
+  <form method="post" action="/signup" class="card form">
+    <h2>Set up your restaurant</h2>
+    {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+    <label>Restaurant name <input name="restaurant" value="{{.Restaurant}}" required maxlength="60"></label>
+    <label>Your name <input name="name" value="{{.Name}}" required maxlength="40"></label>
+    <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
+    <label>Password (8 or more characters) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn big">Create account</button>
+    <p class="muted">Already have an account? <a href="/login">Log in</a></p>
+  </form>
+</main>
+</body></html>{{end}}
+
+{{define "shead"}}{{template "phead"}}
+<body class="staff">
+<header class="stop">
+  <strong>{{.Staff.R.Name}}</strong>
+  <nav>
+    <a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">Kitchen</a>
+    <a class="{{if eq .Page "counter"}}on{{end}}" href="/staff/counter">Counter</a>
+    <a class="{{if eq .Page "tables"}}on{{end}}" href="/staff/tables">Take order</a>
+    <a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">Sold out</a>
+    {{if .Staff.IsOwner}}
+    <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">Dashboard</a>
+    <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">Menu</a>
+    <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">Tables &amp; QR</a>
+    <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">Staff</a>
+    <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">Settings</a>
+    {{end}}
+  </nav>
+  <form method="post" action="/logout"><button class="link">Log out ({{.Staff.Name}})</button></form>
+</header>
+<main>{{end}}
+
+{{define "sfoot"}}</main></body></html>{{end}}
+
+{{define "kitchen"}}{{template "shead" .}}
+<div class="pagehead"><h1>Kitchen</h1>
+  <button class="btn ghost sm" id="soundbtn" onclick="enableSound(this)">🔔 Turn on sound</button></div>
+{{if not .Staff.R.IsOpen}}<p class="warn">The restaurant is marked closed. Guests cannot order. Change it in Settings.</p>{{end}}
+{{template "k_board" .}}
+{{template "sfoot" .}}{{end}}
+
+{{define "k_board"}}<div id="board" data-alert="{{.Alert}}" hx-get="/staff/kitchen/board" hx-trigger="every 3s [noFocus()]" hx-swap="outerHTML">
+{{if or .Calls .Changes}}
+<section class="strip">
+  {{range .Calls}}
+  <div class="call">🔔 <b>Table {{.Table}} · {{.Group}}</b> asks for {{.Reason}} <span class="muted">{{ago .At}}</span>
+    <button class="btn sm" hx-post="/staff/calls/{{.ID}}/done" hx-target="#board" hx-swap="outerHTML">Done</button></div>
+  {{end}}
+  {{range .Changes}}
+  <div class="call change">✎ <b>Table {{.Table}} · {{.Group}}</b>
+    {{if .ReqQty}}wants {{.Name}} reduced from {{.Qty}} to {{.ReqQty}}{{else}}wants to cancel {{.Qty}} × {{.Name}}{{end}}
+    <button class="btn sm" hx-post="/staff/items/{{.ID}}/approve" hx-target="#board" hx-swap="outerHTML">Approve</button>
+    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/decline" hx-target="#board" hx-swap="outerHTML">Decline</button></div>
+  {{end}}
+</section>
+{{end}}
+<div class="cols">
+  <section><h2>New <span class="count">{{len .New}}</span></h2>
+    {{range .New}}{{template "k_card" .}}{{else}}<p class="muted">No new orders.</p>{{end}}</section>
+  <section><h2>Cooking <span class="count">{{len .Cooking}}</span></h2>
+    {{range .Cooking}}{{template "k_card" .}}{{else}}<p class="muted">Nothing cooking.</p>{{end}}</section>
+  <section><h2>Ready to serve <span class="count">{{len .Ready}}</span></h2>
+    {{range .Ready}}{{template "k_card" .}}{{else}}<p class="muted">Nothing waiting.</p>{{end}}</section>
+</div>
+</div>{{end}}
+
+{{define "k_card"}}<article class="kcard k-{{.Status}}">
+  <header><b>Table {{.Table}} · Group {{.Group}}</b>{{if .Addon}} <span class="badge">add-on</span>{{end}}
+    <div class="muted">#{{.ID}} · {{.PlacedBy}} · {{ago .PlacedAt}}</div></header>
+  <ul>{{range .Items}}{{if ne .Status "cancelled"}}
+    <li><b>{{.Qty}} ×</b> {{pick "en" .NameBn .NameEn}}{{if .Options}} <span class="muted">({{.Options}})</span>{{end}}
+      {{if .Note}}<div class="note">“{{.Note}}”</div>{{end}}</li>{{end}}{{end}}</ul>
+  {{if eq .Status "placed"}}
+    <form class="inline" hx-post="/staff/orders/{{.ID}}/accept" hx-target="#board" hx-swap="outerHTML">
+      <input type="number" name="minutes" value="{{.Minutes}}" min="1" max="240" aria-label="minutes"> min
+      <button class="btn">Accept</button>
+      <button class="btn ghost" type="button" hx-post="/staff/orders/{{.ID}}/reject" hx-prompt="Reason for the guest (for example: biryani finished)" hx-target="#board" hx-swap="outerHTML">Reject</button>
+    </form>
+  {{else if eq .Status "cooking"}}
+    <p class="muted">{{.ETA}}</p>
+    <button class="btn" hx-post="/staff/orders/{{.ID}}/ready" hx-target="#board" hx-swap="outerHTML">Mark ready</button>
+    <button class="btn ghost sm" hx-post="/staff/orders/{{.ID}}/reject" hx-prompt="Reason for the guest" hx-target="#board" hx-swap="outerHTML">Reject</button>
+  {{else}}
+    <button class="btn" hx-post="/staff/orders/{{.ID}}/served" hx-target="#board" hx-swap="outerHTML">Mark served</button>
+  {{end}}
+</article>{{end}}
+
+{{define "stock"}}{{template "shead" .}}
+<h1>Sold out today</h1>
+<p class="muted">Switch off anything the kitchen cannot make right now. Guests see it greyed out.</p>
+{{range .Cats}}{{if .Items}}
+<h2>{{pick "en" .NameBn .NameEn}}</h2>
+<div class="list">{{range .Items}}{{template "stock_row" .}}{{end}}</div>
+{{end}}{{end}}
+{{template "sfoot" .}}{{end}}
+
+{{define "stock_row"}}<div class="lrow" id="stock-{{.ID}}">
+  <span class="grow{{if not .Available}} struck{{end}}">{{pick "en" .NameBn .NameEn}}</span>
+  <button class="btn sm{{if .Available}} ghost{{end}}" hx-post="/staff/stock/{{.ID}}/toggle" hx-target="#stock-{{.ID}}" hx-swap="outerHTML">{{if .Available}}Mark sold out{{else}}Sold out · make available{{end}}</button>
+</div>{{end}}
+
+{{define "counter"}}{{template "shead" .}}
+<h1>Counter</h1>
+{{template "c_list" .}}
+{{template "sfoot" .}}{{end}}
+
+{{define "c_list"}}<div id="bills" data-alert="{{.Alert}}" hx-get="/staff/counter/list" hx-trigger="every 4s" hx-swap="outerHTML">
+{{if not .Bills}}<p class="muted">No open bills.</p>{{end}}
+<div class="list">
+{{range .Bills}}
+  <a class="lrow{{if eq .Status "bill_requested"}} asking{{end}}" href="/staff/sessions/{{.ID}}">
+    <span class="grow"><b>Table {{.Table}} · Group {{.Group}}</b> <span class="muted">{{.Guests}} · opened {{ago .OpenedAt}}</span></span>
+    {{if eq .Status "bill_requested"}}<span class="badge hot">wants the bill</span>{{end}}
+    <b>{{money .Total}}</b>
+  </a>
+{{end}}
+</div>
+</div>{{end}}
+
+{{define "session"}}{{template "shead" .}}
+<p><a href="/staff/counter">← Counter</a></p>
+<h1>Table {{.B.Table}} · Group {{.B.Group}} <span class="badge">{{.B.Status}}</span></h1>
+{{range $o := .Orders}}
+<section class="card">
+  <header><b>Order #{{$o.ID}}</b> <span class="muted">{{$o.Status}} · {{$o.PlacedBy}} · {{ago $o.PlacedAt}}</span>{{if $o.Reason}} <span class="warn">{{$o.Reason}}</span>{{end}}</header>
+  {{range $o.Items}}
+  <div class="lrow{{if eq .Status "cancelled"}} struck{{end}}">
+    <span class="grow">{{.Qty}} × {{pick "en" .NameBn .NameEn}}{{if .Options}} ({{.Options}}){{end}}</span>
+    <span>{{money .Line}}</span>
+    {{if and (ne .Status "cancelled") (ne $o.Status "rejected") (ne $o.Status "cancelled") (ne $.B.Status "paid") (ne $.B.Status "closed")}}
+    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/void" hx-prompt="Why is this item removed from the bill?" hx-swap="none">Remove</button>{{end}}
+  </div>
+  {{end}}
+</section>
+{{end}}
+<section class="card bill">
+  <div class="total"><span>Subtotal</span><span>{{money .Bill.Subtotal}}</span></div>
+  <div class="total"><span>Service charge ({{.Staff.R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>
+  <div class="total"><span>VAT ({{.Staff.R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>
+  <div class="total grand"><span>Total</span><b>{{money .Bill.Total}}</b></div>
+</section>
+{{if or (eq .B.Status "open") (eq .B.Status "bill_requested")}}
+<form method="post" action="/staff/sessions/{{.B.ID}}/paid" class="card form">
+  <h2>Take payment</h2>
+  <div class="methods">
+    <label><input type="radio" name="method" value="cash" checked> Cash</label>
+    <label><input type="radio" name="method" value="bkash"> bKash</label>
+    <label><input type="radio" name="method" value="nagad"> Nagad</label>
+    <label><input type="radio" name="method" value="card"> Card</label>
+  </div>
+  <button class="btn big">Mark {{money .Bill.Total}} as paid</button>
+</form>
+<form method="post" action="/staff/sessions/{{.B.ID}}/close" onsubmit="return confirm('Close this group without payment? Unserved orders are cancelled.')">
+  <button class="btn ghost">Close without payment</button>
+</form>
+{{end}}
+{{template "sfoot" .}}{{end}}
+
+{{define "staff_tables"}}{{template "shead" .}}
+<h1>Take an order for a table</h1>
+<p class="muted">For guests who do not scan. You order from the same menu and it joins the same kitchen queue, already accepted.</p>
+<div class="list">
+{{range .Tables}}{{if .Active}}
+  <div class="lrow wrap">
+    <b class="grow">Table {{.Label}}</b>
+    {{$tid := .ID}}
+    {{range .Groups}}
+    <form method="post" action="/staff/tables/{{$tid}}/open"><input type="hidden" name="session" value="{{.ID}}">
+      <button class="btn sm">Group {{.Label}} · {{.First}}</button></form>
+    {{end}}
+    <form method="post" action="/staff/tables/{{.ID}}/open"><button class="btn sm ghost">+ New group</button></form>
+  </div>
+{{end}}{{end}}
+</div>
+{{template "sfoot" .}}{{end}}

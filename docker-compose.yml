@@ -1,0 +1,65 @@
+# Starts the whole stack: the app, PostgreSQL for data, MinIO for dish photos.
+#   cp .env.example .env    (then edit the passwords)
+#   docker compose up --build
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started   # the app retries until MinIO answers
+    environment:
+      ADDR: ":8080"
+      BASE_URL: ${BASE_URL:-}
+      DEMO: ${DEMO:-0}
+      DATABASE_URL: postgres://${POSTGRES_USER:-bosho}:${POSTGRES_PASSWORD:-bosho}@postgres:5432/${POSTGRES_DB:-bosho}?sslmode=disable
+      S3_ENDPOINT: minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-bosho}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-bosho-secret}
+      S3_BUCKET: ${S3_BUCKET:-bosho-photos}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bosho}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bosho}
+      POSTGRES_DB: ${POSTGRES_DB:-bosho}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # Reachable from the host only, for psql and local development.
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    # MinIO no longer publishes images on Docker Hub; this is Chainguard's build of the same server.
+    image: cgr.dev/chainguard/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-bosho}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-bosho-secret}
+    volumes:
+      - minio-data:/data
+    # API on 9000, web console on 9001; host only.
+    ports:
+      - "127.0.0.1:${MINIO_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
+
+volumes:
+  postgres-data:
+  minio-data:

@@ -1,0 +1,170 @@
+{{define "dashboard"}}{{template "shead" .}}
+<h1>Today</h1>
+{{if or (eq .Tables 0) (eq .Items 0)}}
+<section class="card">
+  <h2>Get started</h2>
+  <ol>
+    <li><a href="/owner/menu">Add your menu</a>: categories first, then dishes.</li>
+    <li><a href="/owner/tables">Add your tables</a> and print their QR codes.</li>
+    <li><a href="/owner/settings">Set VAT and service charge</a>.</li>
+    <li>Open the <a href="/staff/kitchen">Kitchen screen</a> on a tablet and turn on sound.</li>
+  </ol>
+</section>
+{{end}}
+<div class="stats">
+  <div class="stat"><span>Sales today</span><b>{{money .Sales}}</b></div>
+  <div class="stat"><span>Bills paid today</span><b>{{.BillsPaid}}</b></div>
+  <div class="stat"><span>Open bills now</span><b>{{.OpenBills}}</b></div>
+  <div class="stat"><span>Average rating</span><b>{{if .Avg.Valid}}{{printf "%.1f" .Avg.Float64}} ★{{else}}–{{end}}</b></div>
+</div>
+<div class="two">
+  <section class="card">
+    <h2>Today by payment method</h2>
+    {{range .Methods}}<div class="total"><span>{{.Method}} ({{.Count}})</span><b>{{money .Amount}}</b></div>{{else}}<p class="muted">No payments yet today.</p>{{end}}
+    <p class="muted">Match the cash line against the cash drawer at closing.</p>
+  </section>
+  <section class="card">
+    <h2>Best sellers, last 30 days</h2>
+    {{range .Top}}<div class="total"><span>{{.Name}}</span><b>{{.Qty}}</b></div>{{else}}<p class="muted">No orders yet.</p>{{end}}
+  </section>
+</div>
+<section class="card">
+  <h2>Latest reviews</h2>
+  {{range .Reviews}}<div class="lrow"><b>{{.Rating}} ★</b><span class="grow">{{if .Comment}}{{.Comment}}{{else}}<span class="muted">no comment</span>{{end}}</span><span class="muted">Table {{.Table}} · {{ago .At}}</span></div>
+  {{else}}<p class="muted">No reviews yet.</p>{{end}}
+</section>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_menu"}}{{template "shead" .}}
+<h1>Menu</h1>
+<form method="post" action="/owner/categories" class="card form rowform">
+  <h2>Add a category</h2>
+  <label>Name in Bangla <input name="name_bn" maxlength="60" placeholder="বিরিয়ানি"></label>
+  <label>Name in English <input name="name_en" maxlength="60" placeholder="Biryani"></label>
+  <button class="btn">Add category</button>
+</form>
+{{if .Cats}}
+<form method="post" action="/owner/items" enctype="multipart/form-data" class="card form rowform">
+  <h2>Add a dish</h2>
+  <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}">{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
+  <label>Name in Bangla <input name="name_bn" maxlength="80"></label>
+  <label>Name in English <input name="name_en" maxlength="80"></label>
+  <label>Price (taka) <input name="price" type="number" step="0.01" min="0" required></label>
+  <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="15"></label>
+  <label>Photo (JPEG, PNG or WebP, up to 5 MB) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+  <button class="btn">Add dish</button>
+</form>
+{{end}}
+{{range .Cats}}
+<section class="card">
+  <header class="pagehead"><h2>{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}</span></h2>
+    {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
+  {{range .Items}}
+  <a class="lrow" href="/owner/items/{{.ID}}">
+    {{if .Photo}}<img class="thumb" src="/uploads/{{.Photo}}" alt="">{{end}}
+    <span class="grow{{if not .Available}} struck{{end}}">{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}{{if .Options}} · {{len .Options}} options{{end}}</span></span>
+    <b>{{money .Price}}</b>
+  </a>
+  {{else}}<p class="muted">No dishes yet.</p>{{end}}
+</section>
+{{end}}
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_item"}}{{template "shead" .}}
+<p><a href="/owner/menu">← Menu</a></p>
+<h1>{{pick "en" .It.NameBn .It.NameEn}}</h1>
+<form method="post" action="/owner/items/{{.It.ID}}" enctype="multipart/form-data" class="card form">
+  <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}"{{if eq .ID $.It.CatID}} selected{{end}}>{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
+  <label>Name in Bangla <input name="name_bn" value="{{.It.NameBn}}" maxlength="80"></label>
+  <label>Name in English <input name="name_en" value="{{.It.NameEn}}" maxlength="80"></label>
+  <label>Price (taka) <input name="price" type="number" step="0.01" min="0" value="{{taka .It.Price}}" required></label>
+  <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="{{.It.Prep}}"></label>
+  {{if .It.Photo}}<img class="preview" src="/uploads/{{.It.Photo}}" alt="">{{end}}
+  <label>Replace photo <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+  <button class="btn big">Save</button>
+</form>
+<section class="card">
+  <h2>Options</h2>
+  <p class="muted">Extras a guest can tick, such as "Large" or "Extra meat". The extra price is added to the dish.</p>
+  {{range .It.Options}}
+  <div class="lrow"><span class="grow">{{.Name}}</span><span>+{{money .Extra}}</span>
+    <form method="post" action="/owner/options/{{.ID}}/delete"><button class="btn sm ghost">Remove</button></form></div>
+  {{end}}
+  <form method="post" action="/owner/items/{{.It.ID}}/options" class="form rowform">
+    <label>Option name <input name="name" required maxlength="40"></label>
+    <label>Extra price (taka) <input name="extra" type="number" step="0.01" min="0" value="0"></label>
+    <button class="btn">Add option</button>
+  </form>
+</section>
+<form method="post" action="/owner/items/{{.It.ID}}/delete" onsubmit="return confirm('Delete this dish from the menu?')">
+  <button class="btn ghost">Delete dish</button>
+</form>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_tables"}}{{template "shead" .}}
+<div class="pagehead"><h1>Tables &amp; QR codes</h1>
+  {{if .Tables}}<a class="btn" href="/owner/tables/print" target="_blank">Print all QR cards</a>{{end}}</div>
+<form method="post" action="/owner/tables" class="card form rowform">
+  <label>Table number or name <input name="label" required maxlength="12" placeholder="12"></label>
+  <button class="btn">Add table</button>
+</form>
+<div class="qrgrid">
+{{range .Tables}}
+  <div class="card qrcard{{if not .Active}} off{{end}}">
+    <b>Table {{.Label}}</b>
+    <img src="/owner/tables/{{.ID}}/qr.png" alt="QR for table {{.Label}}" loading="lazy">
+    <a class="muted small" href="/t/{{.Token}}" target="_blank">{{$.Base}}/t/{{.Token}}</a>
+    <form method="post" action="/owner/tables/{{.ID}}/toggle"><button class="btn sm ghost">{{if .Active}}Switch off{{else}}Switch on{{end}}</button></form>
+  </div>
+{{end}}
+</div>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_print"}}{{template "phead"}}
+<body class="print">
+<p class="noprint"><button class="btn" onclick="print()">Print</button> Cut along the borders and place one card in each table stand.</p>
+<div class="sheets">
+{{range .Tables}}{{if .Active}}
+  <div class="stand">
+    <div class="sname">{{$.Staff.R.Name}}</div>
+    <div class="scan">স্ক্যান করে অর্ডার করুন<br><span>Scan to order</span></div>
+    <img src="/owner/tables/{{.ID}}/qr.png" alt="">
+    <div class="tno">Table {{.Label}}</div>
+    <div class="power">bosho.app</div>
+  </div>
+{{end}}{{end}}
+</div>
+</body></html>{{end}}
+
+{{define "owner_staff"}}{{template "shead" .}}
+<h1>Staff</h1>
+{{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+<section class="card">
+  {{range .People}}
+  <div class="lrow"><span class="grow"><b>{{.Name}}</b> <span class="muted">{{.Phone}}</span></span><span class="badge">{{.Role}}</span>
+    {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" onsubmit="return confirm('Remove this person?')"><button class="btn sm ghost">Remove</button></form>{{end}}</div>
+  {{end}}
+</section>
+<form method="post" action="/owner/staff" class="card form rowform">
+  <h2>Add a staff member</h2>
+  <label>Name <input name="name" required maxlength="40"></label>
+  <label>Phone number (their login) <input name="phone" required inputmode="tel"></label>
+  <label>Password (8 or more characters) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+  <label>Role <select name="role"><option value="waiter">Waiter</option><option value="kitchen">Kitchen</option><option value="cashier">Cashier</option><option value="owner">Owner / manager</option></select></label>
+  <button class="btn">Add</button>
+</form>
+<p class="muted">Kitchen, waiter and cashier accounts can use the Kitchen, Counter, Take order and Sold out screens. Only owners see sales, menu, tables, staff and settings.</p>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_settings"}}{{template "shead" .}}
+<h1>Settings</h1>
+{{if .Saved}}<p class="okmsg">Saved.</p>{{end}}
+<form method="post" action="/owner/settings" class="card form">
+  <label>Restaurant name <input name="name" value="{{.Staff.R.Name}}" required maxlength="60"></label>
+  <label>VAT % <input name="vat" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.VAT}}"></label>
+  <label>Service charge % <input name="service" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.Service}}"></label>
+  <label class="choice"><input type="checkbox" name="is_open" value="1"{{if .Staff.R.IsOpen}} checked{{end}}> Open for orders</label>
+  <label class="choice"><input type="checkbox" name="require_accept" value="1"{{if .Staff.R.RequireAccept}} checked{{end}}> Staff must accept each guest order before the kitchen cooks it (recommended: stops fake orders)</label>
+  <button class="btn big">Save</button>
+</form>
+{{template "sfoot" .}}{{end}}
