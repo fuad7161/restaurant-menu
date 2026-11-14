@@ -18,6 +18,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if cfg.DatabaseURL == "" || cfg.S3Endpoint == "" {
+		log.Fatal("DATABASE_URL and S3_ENDPOINT must be set (copy .env.example to .env and fill it in)")
+	}
 
 	db, err := database.Open(cfg.DatabaseURL)
 	if err != nil {
@@ -28,7 +31,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	photos, err := storage.New(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3UseSSL)
+	photos, err := storage.New(cfg.S3Endpoint, cfg.S3AccessKey, cfg.S3SecretKey, cfg.S3Bucket, cfg.S3Region, cfg.S3UseSSL)
 	if err != nil {
 		log.Fatal("object storage: ", err)
 	}

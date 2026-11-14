@@ -1,4 +1,4 @@
-// Package storage keeps dish photos in MinIO (or any S3-compatible store).
+// Package storage keeps dish photos in an S3-compatible store such as Backblaze B2.
 package storage
 
 import (
@@ -29,10 +29,11 @@ type Photos struct {
 }
 
 // New connects to the object store and creates the bucket when it is missing.
-func New(endpoint, accessKey, secretKey, bucket string, useSSL bool) (*Photos, error) {
+func New(endpoint, accessKey, secretKey, bucket, region string, useSSL bool) (*Photos, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
+		Region: region,
 	})
 	if err != nil {
 		return nil, err

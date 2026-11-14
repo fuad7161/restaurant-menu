@@ -2,13 +2,20 @@
 
 QR table ordering for restaurants. A guest scans the QR on the table, orders from the phone browser, watches the order status, asks for the bill, and leaves a review.
 
-Go + htmx, PostgreSQL for data, MinIO for dish photos, all started with Docker Compose. The product plan is in `qr-table-ordering-plan.md`.
+Go + htmx. Data, photos and Redis are free online services, so only the app runs locally (or in Docker). The product plan is in `qr-table-ordering-plan.md`.
 
 ## Start
 
+1. Create the online services (all have free plans):
+   - **PostgreSQL**: [Supabase](https://supabase.com) -> New project -> **Connect** -> copy the **Session pooler** string and fill in the password.
+   - **Photos**: [Backblaze B2](https://www.backblaze.com/sign-up/cloud-storage) (10 GB free, no card) -> **Buckets** -> **Create a Bucket** (unique name, **Private**) and note its **Endpoint**, for example `s3.us-east-005.backblazeb2.com`. Then **Application Keys** -> **Add a New Application Key** with **Read and Write** on that bucket. Copy the **keyID** and **applicationKey** (shown only once).
+   - **Redis**: [Upstash](https://upstash.com) -> create database -> copy the `rediss://` URL. Not used by the app yet.
+2. Fill in `.env`:
+
 ```sh
-cp .env.example .env        # then change the passwords
-docker compose up --build   # or: make up
+cp .env.example .env        # then paste the URLs and keys
+make run                    # run with Go on this machine
+# or: make up               # run in Docker
 ```
 
 Open http://localhost:8081. With `DEMO=1` in `.env`, a sample restaurant is created the first time:
@@ -18,36 +25,25 @@ Open http://localhost:8081. With `DEMO=1` in `.env`, a sample restaurant is crea
 
 Set `DEMO=0` and use `/signup` for a real restaurant.
 
-Start with `make up` to use the QR codes from a phone on the same Wi-Fi. It finds the laptop's Wi-Fi IP on every start and puts it into the QR codes, as long as `BASE_URL` is empty in `.env`. Plain `docker compose up` does not do this.
+`make run` and `make up` find the laptop's Wi-Fi IP on every start and put it into the QR codes, as long as `BASE_URL` is empty in `.env`, so phones on the same Wi-Fi can scan them.
 
-## Services
-
-| Service | Image | Purpose | Host address |
-| --- | --- | --- | --- |
-| `app` | built from `Dockerfile` | The web server | `localhost:8081` |
-| `postgres` | `postgres:15` | All data | `127.0.0.1:5433` |
-| `minio` | `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` | Dish photos (S3 API) | API `127.0.0.1:9010`, console `127.0.0.1:9011` |
-| `redis` | `redis:7` | Cache (not used by the app yet) | `127.0.0.1:6380` |
-
-Data lives in the Docker volumes `postgres-data`, `minio-data` and `redis-data`, so it survives `docker compose down`. `docker compose down -v` deletes it.
-
-MinIO stopped publishing `minio/minio` on Docker Hub and Quay, so the Compose file uses a pinned community build of the same server.
-
-Host ports are offset from the usual shared-infra ports (5432, 6379, 9000, 9001) so this stack can run next to it. Any S3-compatible store works; only the `S3_*` settings change.
+Tables are created by the migrations on the first start. Any S3-compatible store works for photos (Cloudflare R2, AWS S3, a self-hosted MinIO); only the `S3_*` settings change.
 
 ## Settings
 
-Compose reads `.env` (see `.env.example`). The app itself reads these variables:
+`make run`, `make up` and Compose read `.env` (see `.env.example`). The app itself reads these variables:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `ADDR` | `:8081` | Listen address |
 | `BASE_URL` | request host | Public address printed into QR codes, for example `https://bosho.app` |
-| `DATABASE_URL` | local Postgres | PostgreSQL connection string |
-| `S3_ENDPOINT` | `localhost:9010` | MinIO or S3 host and port |
-| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `bosho`, `bosho-secret` | Object storage credentials |
-| `S3_BUCKET` | `bosho-photos` | Bucket for photos; created when missing |
-| `S3_USE_SSL` | off | `1` when the object store uses HTTPS |
+| `DATABASE_URL` | required | PostgreSQL connection string (Supabase session pooler, `sslmode=require`) |
+| `S3_ENDPOINT` | required | S3-compatible host, for example `s3.us-east-005.backblazeb2.com` |
+| `S3_ACCESS_KEY`, `S3_SECRET_KEY` | required | Object storage credentials |
+| `S3_BUCKET` | `bosho-photos` | Bucket for photos; create it yourself on B2 (a bucket-limited key cannot create one) |
+| `S3_REGION` | empty | Region from the B2 endpoint, for example `us-east-005` |
+| `S3_USE_SSL` | on | `0` only for a plain-HTTP store such as a local MinIO |
+| `REDIS_URL` | empty | Upstash `rediss://` URL; not used by the app yet |
 | `DEMO` | off | `1` seeds the sample restaurant |
 
 ## Project layout
@@ -58,7 +54,7 @@ internal/
   config/             settings from environment variables
   database/           PostgreSQL connection, query helpers, migration runner
     migrations/       SQL files, applied in name order at startup
-  storage/            photo upload and serving through MinIO
+  storage/            photo upload and serving through S3 (Backblaze B2)
   money/              taka and poisha parsing, formatting, percentages
   i18n/               Bangla and English texts for guest screens
   server/             HTTP handlers
@@ -86,11 +82,11 @@ Handlers keep their SQL next to the code that uses it; queries shared by several
 
 | Command | Does |
 | --- | --- |
-| `make up` / `make down` | Start or stop the whole stack |
+| `make run` | Run the app with Go against the online services |
+| `make up` / `make down` | Start or stop the app in Docker |
 | `make logs` | Follow the app log |
-| `make run` | Run the app on the host against the Docker Postgres and MinIO |
 | `make test` | `go vet` and unit tests |
-| `make psql` | Open a database shell |
+| `make psql` | Open a shell on the online database (needs `psql`) |
 
 To change the schema, add a new file such as `internal/database/migrations/0002_add_tips.sql`. It runs once at the next start. Never edit a migration that has already run.
 

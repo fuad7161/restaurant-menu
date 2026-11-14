@@ -12,24 +12,29 @@ type Config struct {
 	DatabaseURL string // PostgreSQL connection string
 	Demo        bool   // seed a sample restaurant when the database is empty
 
-	S3Endpoint  string // MinIO or S3 host:port
+	S3Endpoint  string // S3-compatible host[:port], for example s3.us-east-005.backblazeb2.com
 	S3AccessKey string
 	S3SecretKey string
 	S3Bucket    string
+	S3Region    string // region from the endpoint, for example "us-east-005" on Backblaze B2
 	S3UseSSL    bool
+
+	RedisURL string // for example rediss://default:<token>@<name>.upstash.io:6379 (not used by the app yet)
 }
 
 func Load() Config {
 	return Config{
 		Addr:        env("ADDR", ":8081"),
 		BaseURL:     strings.TrimRight(os.Getenv("BASE_URL"), "/"),
-		DatabaseURL: env("DATABASE_URL", "postgres://bosho:bosho@localhost:5433/bosho?sslmode=disable"),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 		Demo:        os.Getenv("DEMO") == "1",
-		S3Endpoint:  env("S3_ENDPOINT", "localhost:9010"),
-		S3AccessKey: env("S3_ACCESS_KEY", "bosho"),
-		S3SecretKey: env("S3_SECRET_KEY", "bosho-secret"),
+		S3Endpoint:  os.Getenv("S3_ENDPOINT"),
+		S3AccessKey: os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
 		S3Bucket:    env("S3_BUCKET", "bosho-photos"),
-		S3UseSSL:    os.Getenv("S3_USE_SSL") == "1",
+		S3Region:    os.Getenv("S3_REGION"),
+		S3UseSSL:    os.Getenv("S3_USE_SSL") != "0",
+		RedisURL:    os.Getenv("REDIS_URL"),
 	}
 }
 
