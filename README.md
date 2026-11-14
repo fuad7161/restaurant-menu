@@ -11,10 +11,10 @@ cp .env.example .env        # then change the passwords
 docker compose up --build   # or: make up
 ```
 
-Open http://localhost:8080. With `DEMO=1` in `.env`, a sample restaurant is created the first time:
+Open http://localhost:8081. With `DEMO=1` in `.env`, a sample restaurant is created the first time:
 
 - Owner login: phone `01700000000`, password `demo1234`
-- Guest link for table 1: http://localhost:8080/t/demo-table-1
+- Guest link for table 1: http://localhost:8081/t/demo-table-1
 
 Set `DEMO=0` and use `/signup` for a real restaurant.
 
@@ -24,13 +24,16 @@ Start with `make up` to use the QR codes from a phone on the same Wi-Fi. It find
 
 | Service | Image | Purpose | Host address |
 | --- | --- | --- | --- |
-| `app` | built from `Dockerfile` | The web server | `localhost:8080` |
-| `postgres` | `postgres:17-alpine` | All data | `127.0.0.1:5432` |
-| `minio` | `cgr.dev/chainguard/minio` | Dish photos (S3 API) | API `127.0.0.1:9000`, console `127.0.0.1:9001` |
+| `app` | built from `Dockerfile` | The web server | `localhost:8081` |
+| `postgres` | `postgres:15` | All data | `127.0.0.1:5433` |
+| `minio` | `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` | Dish photos (S3 API) | API `127.0.0.1:9010`, console `127.0.0.1:9011` |
+| `redis` | `redis:7` | Cache (not used by the app yet) | `127.0.0.1:6380` |
 
-Data lives in the Docker volumes `postgres-data` and `minio-data`, so it survives `docker compose down`. `docker compose down -v` deletes it.
+Data lives in the Docker volumes `postgres-data`, `minio-data` and `redis-data`, so it survives `docker compose down`. `docker compose down -v` deletes it.
 
-MinIO stopped publishing images on Docker Hub, so the Compose file uses Chainguard's build of the same server. Any S3-compatible store works; only the `S3_*` settings change.
+MinIO stopped publishing `minio/minio` on Docker Hub and Quay, so the Compose file uses a pinned community build of the same server.
+
+Host ports are offset from the usual shared-infra ports (5432, 6379, 9000, 9001) so this stack can run next to it. Any S3-compatible store works; only the `S3_*` settings change.
 
 ## Settings
 
@@ -38,10 +41,10 @@ Compose reads `.env` (see `.env.example`). The app itself reads these variables:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `ADDR` | `:8080` | Listen address |
+| `ADDR` | `:8081` | Listen address |
 | `BASE_URL` | request host | Public address printed into QR codes, for example `https://bosho.app` |
 | `DATABASE_URL` | local Postgres | PostgreSQL connection string |
-| `S3_ENDPOINT` | `localhost:9000` | MinIO or S3 host and port |
+| `S3_ENDPOINT` | `localhost:9010` | MinIO or S3 host and port |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | `bosho`, `bosho-secret` | Object storage credentials |
 | `S3_BUCKET` | `bosho-photos` | Bucket for photos; created when missing |
 | `S3_USE_SSL` | off | `1` when the object store uses HTTPS |

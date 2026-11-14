@@ -11,5 +11,5 @@ FROM alpine:3.22
 RUN adduser -D -u 10001 bosho
 USER bosho
 COPY --from=build /out/bosho /usr/local/bin/bosho
-EXPOSE 8080
+EXPOSE 8081
 ENTRYPOINT ["bosho"]
