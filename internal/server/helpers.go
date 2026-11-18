@@ -79,6 +79,21 @@ var templateFuncs = template.FuncMap{
 		}
 		return m
 	},
+	"dishart": dishArt,
+	// initial is the first letter of a name, for the round logo mark.
+	"initial": func(s string) string {
+		for _, r := range strings.TrimSpace(s) {
+			return strings.ToUpper(string(r))
+		}
+		return "ব"
+	},
+	"rev": func(n int) []int { // n, n-1, …, 1
+		s := make([]int, n)
+		for i := range s {
+			s[i] = n - i
+		}
+		return s
+	},
 	"seq": func(n int) []int {
 		s := make([]int, n)
 		for i := range s {
@@ -86,4 +101,33 @@ var templateFuncs = template.FuncMap{
 		}
 		return s
 	},
+}
+
+// dishArt picks a bundled illustration for a dish without a photo, by matching
+// words in the dish and category names (Bangla or English). Dish names are checked first.
+var dishArtWords = []struct {
+	art   string
+	words []string
+}{
+	{"biryani", []string{"biryani", "biriyani", "kacchi", "tehari", "pulao", "polao", "khichuri", "rice", "বিরিয়ানি", "কাচ্চি", "তেহারি", "পোলাও", "খিচুড়ি", "ভাত"}},
+	{"kebab", []string{"kebab", "kabab", "tikka", "grill", "bbq", "chaap", "chap", "naan", "কাবাব", "টিক্কা", "গ্রিল", "চাপ"}},
+	{"fish", []string{"fish", "ilish", "hilsa", "rui", "prawn", "shrimp", "chingri", "মাছ", "ইলিশ", "রুই", "চিংড়ি"}},
+	{"tea", []string{"tea", "chai", "coffee", "কফি"}},
+	{"drink", []string{"drink", "borhani", "lassi", "lacchi", "juice", "water", "shake", "soda", "cola", "pani", "পানীয়", "বোরহানি", "লাচ্ছি", "জুস", "পানি"}},
+	{"dessert", []string{"dessert", "sweet", "firni", "payesh", "doi", "mishti", "halwa", "ice cream", "kheer", "মিষ্টি", "ফিরনি", "পায়েস", "দই", "হালুয়া"}},
+	{"curry", []string{"curry", "bhuna", "rezala", "korma", "dal", "daal", "beef", "mutton", "chicken", "tarkari", "ভুনা", "রেজালা", "কোরমা", "ডাল", "গরু", "খাসি", "মুরগি", "তরকারি"}},
+}
+
+func dishArt(names ...string) string {
+	for _, n := range names {
+		n = strings.ToLower(n)
+		for _, a := range dishArtWords {
+			for _, w := range a.words {
+				if strings.Contains(n, w) {
+					return a.art
+				}
+			}
+		}
+	}
+	return "thali"
 }

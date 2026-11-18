@@ -38,7 +38,7 @@ func (a *App) counter(w http.ResponseWriter, r *http.Request, s *Staff) {
 }
 
 func (a *App) counterList(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "c_list", a.counterData(s))
+	a.renderPoll(w, r, "c_list", a.counterData(s))
 }
 
 func (a *App) sessionRow(s *Staff, id int64) (billRow, bool) {

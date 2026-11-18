@@ -52,7 +52,7 @@ func (a *App) gOrdersLive(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.render(w, "g_live", a.liveData(c, ""))
+	a.renderPoll(w, r, "g_live", a.liveData(c, ""))
 }
 
 func (a *App) gItemChange(w http.ResponseWriter, r *http.Request) {

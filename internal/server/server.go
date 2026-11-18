@@ -3,10 +3,12 @@ package server
 
 import (
 	"bytes"
+	"hash/fnv"
 	"html/template"
 	"io/fs"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 	_ "time/tzdata" // the container image has no time zone files
 
@@ -67,6 +69,30 @@ func (a *App) render(w http.ResponseWriter, name string, data any) {
 	if err := a.tpl.ExecuteTemplate(&buf, name, data); err != nil {
 		log.Println("template", name, err)
 		http.Error(w, "template error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
+}
+
+// renderPoll renders a fragment that the page refreshes every few seconds. The response carries
+// a hash of the HTML in X-Hash; app.js sends it back as X-Seen on the next poll. When nothing has
+// changed the reply is 204 No Content, which htmx does not swap: no repaint, no flicker, and only
+// a few bytes on the wire instead of the whole board.
+func (a *App) renderPoll(w http.ResponseWriter, r *http.Request, name string, data any) {
+	var buf bytes.Buffer
+	if err := a.tpl.ExecuteTemplate(&buf, name, data); err != nil {
+		log.Println("template", name, err)
+		http.Error(w, "template error", http.StatusInternalServerError)
+		return
+	}
+	h := fnv.New64a()
+	h.Write(buf.Bytes())
+	sum := strconv.FormatUint(h.Sum64(), 36)
+	w.Header().Set("X-Hash", sum)
+	w.Header().Set("Cache-Control", "no-store")
+	if r.Header.Get("X-Seen") == sum {
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

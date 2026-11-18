@@ -3,7 +3,7 @@
 {{if or (eq .Tables 0) (eq .Items 0)}}
 <section class="card">
   <h2>Get started</h2>
-  <ol>
+  <ol class="steplist">
     <li><a href="/owner/menu">Add your menu</a>: categories first, then dishes.</li>
     <li><a href="/owner/tables">Add your tables</a> and print their QR codes.</li>
     <li><a href="/owner/settings">Set VAT and service charge</a>.</li>
@@ -55,13 +55,13 @@
   <button class="btn">Add dish</button>
 </form>
 {{end}}
-{{range .Cats}}
+{{range .Cats}}{{$c := .}}
 <section class="card">
   <header class="pagehead"><h2>{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}</span></h2>
     {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
   {{range .Items}}
   <a class="lrow" href="/owner/items/{{.ID}}">
-    {{if .Photo}}<img class="thumb" src="/uploads/{{.Photo}}" alt="">{{end}}
+    {{if .Photo}}<img class="thumb" src="/uploads/{{.Photo}}" alt="">{{else}}<img class="thumb art" src="/static/img/{{dishart .NameEn .NameBn $c.NameEn $c.NameBn}}.svg" alt="">{{end}}
     <span class="grow{{if not .Available}} struck{{end}}">{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}{{if .Options}} · {{len .Options}} options{{end}}</span></span>
     <b>{{money .Price}}</b>
   </a>

@@ -59,7 +59,7 @@ func (a *App) kitchen(w http.ResponseWriter, r *http.Request, s *Staff) {
 }
 
 func (a *App) kitchenBoard(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "k_board", a.boardData(s))
+	a.renderPoll(w, r, "k_board", a.boardData(s))
 }
 
 func (a *App) orderAct(w http.ResponseWriter, r *http.Request, s *Staff) {

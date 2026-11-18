@@ -57,7 +57,7 @@ func (a *App) gBar(w http.ResponseWriter, r *http.Request) {
 	}
 	m := c.data()
 	a.barData(c, m, r.URL.Query().Get("tab"))
-	a.render(w, "g_bar", m)
+	a.renderPoll(w, r, "g_bar", m)
 }
 
 func (a *App) gJoinDecide(w http.ResponseWriter, r *http.Request) {
@@ -170,7 +170,7 @@ func (a *App) gCartList(w http.ResponseWriter, r *http.Request) {
 	}
 	m := c.data()
 	a.barData(c, m, "cart")
-	a.render(w, "g_cartlist", m)
+	a.renderPoll(w, r, "g_cartlist", m)
 }
 
 func (a *App) gCartQty(w http.ResponseWriter, r *http.Request) {

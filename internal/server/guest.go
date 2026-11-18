@@ -205,7 +205,7 @@ func (a *App) gWait(w http.ResponseWriter, r *http.Request) {
 	}
 	m := c.data()
 	m["Declined"] = c.G == nil
-	a.render(w, "g_wait", m)
+	a.renderPoll(w, r, "g_wait", m)
 }
 
 func (a *App) gLeave(w http.ResponseWriter, r *http.Request) {
