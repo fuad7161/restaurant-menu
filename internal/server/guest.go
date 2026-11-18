@@ -20,20 +20,20 @@ func (a *App) guestRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) { a.render(w, "home", nil) })
 	mux.HandleFunc("GET /t/{tok}", a.gLanding)
 	mux.HandleFunc("POST /t/{tok}/enter", a.gEnter)
-	mux.HandleFunc("GET /t/{tok}/wait", a.gWait)
+	mux.HandleFunc("GET /t/{tok}/wait", a.poll(a.gWait))
 	mux.HandleFunc("POST /t/{tok}/leave", a.gLeave)
 	mux.HandleFunc("GET /t/{tok}/lang", a.gLang)
-	mux.HandleFunc("GET /t/{tok}/bar", a.gBar)
+	mux.HandleFunc("GET /t/{tok}/bar", a.poll(a.gBar))
 	mux.HandleFunc("POST /t/{tok}/join/{gid}/{act}", a.gJoinDecide)
 	mux.HandleFunc("GET /t/{tok}/add/{id}", a.gAddControl)
 	mux.HandleFunc("POST /t/{tok}/cart/add", a.gCartAdd)
 	mux.HandleFunc("GET /t/{tok}/cart", a.gCart)
-	mux.HandleFunc("GET /t/{tok}/cart/list", a.gCartList)
+	mux.HandleFunc("GET /t/{tok}/cart/list", a.poll(a.gCartList))
 	mux.HandleFunc("POST /t/{tok}/cart/{id}/qty", a.gCartQty)
 	mux.HandleFunc("POST /t/{tok}/cart/{id}/note", a.gCartNote)
 	mux.HandleFunc("POST /t/{tok}/order", a.gPlaceOrder)
 	mux.HandleFunc("GET /t/{tok}/orders", a.gOrders)
-	mux.HandleFunc("GET /t/{tok}/orders/live", a.gOrdersLive)
+	mux.HandleFunc("GET /t/{tok}/orders/live", a.poll(a.gOrdersLive))
 	mux.HandleFunc("POST /t/{tok}/items/{id}/change", a.gItemChange)
 	mux.HandleFunc("POST /t/{tok}/call", a.gCall)
 	mux.HandleFunc("POST /t/{tok}/bill", a.gBill)
@@ -76,10 +76,15 @@ func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 		return nil, false
 	}
 	c.Dev = deviceToken(w, r)
-	// Expire abandoned sessions that never ordered anything.
-	a.db.Exec(`UPDATE table_sessions SET status='closed', closed_at=? WHERE table_id=? AND status='open' AND last_activity<?
+	// Expire abandoned sessions that never ordered anything. This is the one write a GET makes,
+	// so it tells the refreshing screens itself (POSTs are covered by bumpOnWrite).
+	if res, err := a.db.Exec(`UPDATE table_sessions SET status='closed', closed_at=? WHERE table_id=? AND status='open' AND last_activity<?
 		AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.session_id=table_sessions.id AND o.status NOT IN ('rejected','cancelled'))`,
-		now(), c.Tbl.ID, now()-sessionIdle)
+		now(), c.Tbl.ID, now()-sessionIdle); err == nil {
+		if n, _ := res.RowsAffected(); n > 0 {
+			a.changed()
+		}
+	}
 
 	var s Session
 	var g Guest

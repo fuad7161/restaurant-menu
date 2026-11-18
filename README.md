@@ -9,7 +9,7 @@ Go + htmx. Data, photos and Redis are free online services, so only the app runs
 1. Create the online services (all have free plans):
    - **PostgreSQL**: [Supabase](https://supabase.com) -> New project -> **Connect** -> copy the **Session pooler** string and fill in the password.
    - **Photos**: [Backblaze B2](https://www.backblaze.com/sign-up/cloud-storage) (10 GB free, no card) -> **Buckets** -> **Create a Bucket** (unique name, **Private**) and note its **Endpoint**, for example `s3.us-east-005.backblazeb2.com`. Then **Application Keys** -> **Add a New Application Key** with **Read and Write** on that bucket. Copy the **keyID** and **applicationKey** (shown only once).
-   - **Redis**: [Upstash](https://upstash.com) -> create database -> copy the `rediss://` URL. Not used by the app yet.
+   - **Redis**: [Upstash](https://upstash.com) -> create database -> copy the `rediss://` URL. Optional: it lets the screens that refresh themselves skip the database when nothing changed (see `internal/cache`).
 2. Fill in `.env`:
 
 ```sh
@@ -43,7 +43,7 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | `S3_BUCKET` | `bosho-photos` | Bucket for photos; create it yourself on B2 (a bucket-limited key cannot create one) |
 | `S3_REGION` | empty | Region from the B2 endpoint, for example `us-east-005` |
 | `S3_USE_SSL` | on | `0` only for a plain-HTTP store such as a local MinIO |
-| `REDIS_URL` | empty | Upstash `rediss://` URL; not used by the app yet |
+| `REDIS_URL` | empty | Upstash `rediss://` URL. Optional; without it every refresh queries PostgreSQL |
 | `DEMO` | off | `1` seeds the sample restaurant |
 
 ## Project layout
@@ -55,6 +55,7 @@ internal/
   database/           PostgreSQL connection, query helpers, migration runner
     migrations/       SQL files, applied in name order at startup
   storage/            photo upload and serving through S3 (Backblaze B2)
+  cache/              Redis change counter that lets unchanged screens skip the database
   money/              taka and poisha parsing, formatting, percentages
   i18n/               Bangla and English texts for guest screens
   server/             HTTP handlers

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"bosho/internal/cache"
 	"bosho/internal/config"
 	"bosho/internal/database"
 	"bosho/internal/server"
@@ -36,7 +37,18 @@ func main() {
 		log.Fatal("object storage: ", err)
 	}
 
-	app, err := server.New(cfg, db, photos)
+	// Redis is optional: without it (or if it is unreachable) everything still works, refreshes
+	// just always ask PostgreSQL. The pause must outlast a refresh token (server.pollSlot).
+	ver, err := cache.New(cfg.RedisURL, time.Minute)
+	if err != nil {
+		log.Println("redis unavailable, running without the refresh shortcut:", err)
+		ver = nil
+	} else if ver != nil {
+		log.Println("redis connected: unchanged screens skip the database")
+		defer ver.Close()
+	}
+
+	app, err := server.New(cfg, db, photos, ver)
 	if err != nil {
 		log.Fatal(err)
 	}

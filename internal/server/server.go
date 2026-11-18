@@ -9,9 +9,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 	_ "time/tzdata" // the container image has no time zone files
 
+	"bosho/internal/cache"
 	"bosho/internal/config"
 	"bosho/internal/database"
 	"bosho/internal/storage"
@@ -23,11 +25,13 @@ type App struct {
 	db     *database.DB
 	photos *storage.Photos
 	tpl    *template.Template
+	ver    versionStore   // Redis change counter; nothing configured = no shortcut
 	loc    *time.Location // restaurant-local time, used for "today" on the dashboard
 }
 
-func New(cfg config.Config, db *database.DB, photos *storage.Photos) (*App, error) {
-	tpl, err := template.New("").Funcs(templateFuncs).ParseFS(web.Templates, "templates/*.html")
+// New builds the app. ver may be nil (no Redis): refreshes then always query PostgreSQL.
+func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.Versions) (*App, error) {
+	tpl, err := newTemplates()
 	if err != nil {
 		return nil, err
 	}
@@ -35,11 +39,15 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos) (*App, erro
 	if err != nil {
 		loc = time.FixedZone("BDT", 6*3600)
 	}
-	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc}
+	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver}
 	if cfg.Demo {
 		a.seedDemo()
 	}
 	return a, nil
+}
+
+func newTemplates() (*template.Template, error) {
+	return template.New("").Funcs(templateFuncs).ParseFS(web.Templates, "templates/*.html")
 }
 
 // Handler returns the router with every route registered.
@@ -61,7 +69,7 @@ func (a *App) Handler() http.Handler {
 	a.guestRoutes(mux)
 	a.staffRoutes(mux)
 	a.ownerRoutes(mux)
-	return mux
+	return a.bumpOnWrite(mux)
 }
 
 func (a *App) render(w http.ResponseWriter, name string, data any) {
@@ -76,9 +84,9 @@ func (a *App) render(w http.ResponseWriter, name string, data any) {
 }
 
 // renderPoll renders a fragment that the page refreshes every few seconds. The response carries
-// a hash of the HTML in X-Hash; app.js sends it back as X-Seen on the next poll. When nothing has
-// changed the reply is 204 No Content, which htmx does not swap: no repaint, no flicker, and only
-// a few bytes on the wire instead of the whole board.
+// a token in X-Hash (see poll.go); app.js sends it back as X-Seen on the next poll. When the HTML
+// is unchanged the reply is 204 No Content, which htmx does not swap: no repaint, no flicker, and
+// only a few bytes on the wire instead of the whole board.
 func (a *App) renderPoll(w http.ResponseWriter, r *http.Request, name string, data any) {
 	var buf bytes.Buffer
 	if err := a.tpl.ExecuteTemplate(&buf, name, data); err != nil {
@@ -89,9 +97,13 @@ func (a *App) renderPoll(w http.ResponseWriter, r *http.Request, name string, da
 	h := fnv.New64a()
 	h.Write(buf.Bytes())
 	sum := strconv.FormatUint(h.Sum64(), 36)
-	w.Header().Set("X-Hash", sum)
+	st, ok := r.Context().Value(pollKey{}).(pollState)
+	if !ok {
+		st = pollState{version: "-", slot: pollSlotNow(), who: pollWho(r)}
+	}
+	w.Header().Set("X-Hash", st.version+"."+st.slot+"."+st.who+"."+sum)
 	w.Header().Set("Cache-Control", "no-store")
-	if r.Header.Get("X-Seen") == sum {
+	if seen := strings.Split(r.Header.Get("X-Seen"), "."); len(seen) == 4 && seen[3] == sum {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}

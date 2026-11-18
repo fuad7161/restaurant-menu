@@ -19,7 +19,7 @@ type Config struct {
 	S3Region    string // region from the endpoint, for example "us-east-005" on Backblaze B2
 	S3UseSSL    bool
 
-	RedisURL string // for example rediss://default:<token>@<name>.upstash.io:6379 (not used by the app yet)
+	RedisURL string // for example rediss://default:<token>@<name>.upstash.io:6379 (optional: lets refreshing screens skip the database when nothing changed)
 }
 
 func Load() Config {
