@@ -67,9 +67,10 @@ func deviceToken(w http.ResponseWriter, r *http.Request) string {
 
 func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	c := &gctx{Tok: r.PathValue("tok"), Lang: i18n.Lang(r)}
-	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept
+	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone
 		FROM tables t JOIN restaurants r ON r.id=t.restaurant_id WHERE t.qr_token=? AND t.is_active`, c.Tok).
-		Scan(&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept)
+		Scan(&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept,
+			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone)
 	if err != nil {
 		http.NotFound(w, r)
 		return nil, false

@@ -3,18 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#5e1115">
+<meta name="theme-color" content="{{themecolor .R.Color}}">
 <title>{{.R.Name}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
 <link rel="stylesheet" href="/static/app.css">
+<style>{{theme .R.Color}}</style>
 <script src="/static/htmx.min.js" defer></script>
 <script src="/static/app.js" defer></script>
 </head>
 <body class="guest">
 <header class="gtop"><div class="in">
-  <span class="mark" aria-hidden="true">{{initial .R.Name}}</span>
+  {{template "rmark" .R}}
   <div class="who"><strong>{{.R.Name}}</strong>
   <span class="tbl">{{t .Lang "table"}} <b>{{.Tbl.Label}}</b>{{if .S}} · {{t .Lang "group"}} <b>{{.S.Label}}</b>{{end}}</span></div>
   <a class="lang" href="/t/{{.Tok}}/lang?l={{if eq .Lang "bn"}}en{{else}}bn{{end}}">{{if eq .Lang "bn"}}English{{else}}বাংলা{{end}}</a>
@@ -23,11 +24,19 @@
 
 {{define "gfoot"}}</main></body></html>{{end}}
 
+{{/* rmark is the round restaurant mark: the uploaded logo, or the first letter of the name. Takes a Restaurant. */}}
+{{define "rmark"}}<span class="mark{{if .Logo}} logo{{end}}" aria-hidden="true">{{if .Logo}}<img src="/uploads/{{.Logo}}" alt="">{{else}}{{initial .Name}}{{end}}</span>{{end}}
+
 {{define "guest_enter"}}{{template "ghead" .}}
 <section class="card hello">
+  {{if .R.Logo}}
+  <img class="biglogo" src="/uploads/{{.R.Logo}}" alt="{{.R.Name}}">
+  {{else}}
   <div class="spread" aria-hidden="true">
     <img class="s2" src="/static/img/kebab.svg" alt=""><img class="s3" src="/static/img/drink.svg" alt=""><img class="s1" src="/static/img/biryani.svg" alt="">
   </div>
+  {{end}}
+  {{if .R.Tagline}}<p class="tagline">{{.R.Tagline}}</p>{{end}}
   <h1>{{t .Lang "welcome"}}</h1>
   <form method="post" action="/t/{{.Tok}}/enter">
     <label>{{t .Lang "your_name"}}
@@ -167,7 +176,8 @@
 
 {{define "g_live"}}<div id="live"{{if not .Paid}} hx-get="/t/{{.Tok}}/orders/live" hx-trigger="every 4s [noFocus()]" hx-swap="outerHTML"{{end}}>
 {{if .Flash}}<p class="okmsg">{{.Flash}}</p>{{end}}
-{{if .Paid}}<div class="paidbox"><h1>✓ {{t .Lang "paid"}}</h1><p>{{t .Lang "thanks"}}</p></div>{{end}}
+{{if .Paid}}<div class="paidbox"><h1>✓ {{t .Lang "paid"}}</h1><p>{{t .Lang "thanks"}}</p>
+  {{if or .R.Address .R.Phone}}<p class="contact">{{.R.Name}}{{if .R.Address}} · {{.R.Address}}{{end}}{{if .R.Phone}} · <a href="tel:{{.R.Phone}}">{{.R.Phone}}</a>{{end}}</p>{{end}}</div>{{end}}
 {{if not .Orders}}<div class="card empty"><img src="/static/img/curry.svg" alt=""><p class="muted">{{t .Lang "no_orders"}}</p><a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a></div>{{end}}
 
 {{range $o := .Orders}}

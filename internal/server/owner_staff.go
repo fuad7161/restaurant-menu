@@ -53,11 +53,7 @@ func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 		}
 		return f
 	}
-	name := clean(r.FormValue("name"), 60)
-	if name == "" {
-		name = s.R.Name
-	}
-	a.db.Exec(`UPDATE restaurants SET name=?,vat_percent=?,service_percent=?,is_open=?,require_accept=? WHERE id=?`,
-		name, pctOf("vat"), pctOf("service"), r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1", s.R.ID)
+	a.db.Exec(`UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=? WHERE id=?`,
+		pctOf("vat"), pctOf("service"), r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1", s.R.ID)
 	back(w, r, "/owner/settings?saved=1")
 }

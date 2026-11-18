@@ -30,6 +30,9 @@ func (a *App) ownerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /owner/staff/{id}/delete", o(a.staffDelete))
 	mux.HandleFunc("GET /owner/settings", o(a.settings))
 	mux.HandleFunc("POST /owner/settings", o(a.settingsSave))
+	mux.HandleFunc("GET /owner/profile", o(a.profile))
+	mux.HandleFunc("POST /owner/profile", o(a.profileSave))
+	mux.HandleFunc("POST /owner/profile/logo/delete", o(a.logoDelete))
 }
 
 type methodRow struct {

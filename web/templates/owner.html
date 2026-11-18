@@ -4,6 +4,7 @@
 <section class="card">
   <h2>Get started</h2>
   <ol class="steplist">
+    <li><a href="/owner/profile">Add your logo and brand colour</a> so guests recognise you.</li>
     <li><a href="/owner/menu">Add your menu</a>: categories first, then dishes.</li>
     <li><a href="/owner/tables">Add your tables</a> and print their QR codes.</li>
     <li><a href="/owner/settings">Set VAT and service charge</a>.</li>
@@ -120,13 +121,15 @@
 </div>
 {{template "sfoot" .}}{{end}}
 
-{{define "owner_print"}}{{template "phead"}}
+{{define "owner_print"}}{{template "phead" .}}
 <body class="print">
 <p class="noprint"><button class="btn" onclick="print()">Print</button> Cut along the borders and place one card in each table stand.</p>
 <div class="sheets">
 {{range .Tables}}{{if .Active}}
   <div class="stand">
+    {{if $.Staff.R.Logo}}<img class="slogo" src="/uploads/{{$.Staff.R.Logo}}" alt="">{{end}}
     <div class="sname">{{$.Staff.R.Name}}</div>
+    {{if $.Staff.R.Tagline}}<div class="stag">{{$.Staff.R.Tagline}}</div>{{end}}
     <div class="scan">স্ক্যান করে অর্ডার করুন<br><span>Scan to order</span></div>
     <img src="/owner/tables/{{.ID}}/qr.png" alt="">
     <div class="tno">Table {{.Label}}</div>
@@ -159,12 +162,103 @@
 {{define "owner_settings"}}{{template "shead" .}}
 <h1>Settings</h1>
 {{if .Saved}}<p class="okmsg">Saved.</p>{{end}}
+<p class="muted">Name, logo and colours are on the <a href="/owner/profile">Profile</a> page.</p>
 <form method="post" action="/owner/settings" class="card form">
-  <label>Restaurant name <input name="name" value="{{.Staff.R.Name}}" required maxlength="60"></label>
   <label>VAT % <input name="vat" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.VAT}}"></label>
   <label>Service charge % <input name="service" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.Service}}"></label>
   <label class="choice"><input type="checkbox" name="is_open" value="1"{{if .Staff.R.IsOpen}} checked{{end}}> Open for orders</label>
   <label class="choice"><input type="checkbox" name="require_accept" value="1"{{if .Staff.R.RequireAccept}} checked{{end}}> Staff must accept each guest order before the kitchen cooks it (recommended: stops fake orders)</label>
   <button class="btn big">Save</button>
 </form>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_profile"}}{{template "shead" .}}
+{{$r := .Staff.R}}
+<div class="pagehead"><h1>Restaurant profile</h1>
+  <a class="btn ghost sm" href="/owner/tables">See it on a table →</a></div>
+<p class="muted">Guests see this logo and colour on every screen after they scan the table QR, and so do your staff screens and the printed QR cards.</p>
+{{if .Saved}}<p class="okmsg">Saved. Guests see the new look on their next refresh.</p>{{end}}
+{{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+<div class="profile">
+  <div>
+    <form method="post" action="/owner/profile" enctype="multipart/form-data" class="card form" id="pform">
+      <h2>Logo</h2>
+      <div class="logoedit">
+        <span class="logobox" id="logobox">{{if $r.Logo}}<img src="/uploads/{{$r.Logo}}" alt="Current logo">{{else}}<span>{{initial $r.Name}}</span>{{end}}</span>
+        <label class="upload">Upload a logo
+          <input name="logo" type="file" accept="image/jpeg,image/png,image/webp" id="logofile">
+          <span class="muted">Square works best. JPEG, PNG or WebP, up to 5 MB.</span></label>
+      </div>
+      <h2>Details</h2>
+      <label>Restaurant name <input name="name" value="{{$r.Name}}" required maxlength="60" id="pname"></label>
+      <label>Tagline <span class="muted">(shown to guests under your logo)</span>
+        <input name="tagline" value="{{$r.Tagline}}" maxlength="80" placeholder="Old Dhaka kacchi since 1998" id="ptag"></label>
+      <div class="two">
+        <label>Address <input name="address" value="{{$r.Address}}" maxlength="120" placeholder="House 12, Road 5, Dhanmondi"></label>
+        <label>Phone <input name="phone" value="{{$r.Phone}}" maxlength="20" inputmode="tel" placeholder="01XXXXXXXXX"></label>
+      </div>
+      <h2>Brand colour</h2>
+      <p class="muted">Used for the header, buttons, prices and the page background tint.</p>
+      {{$custom := true}}{{range .Swatches}}{{if eq .Hex $r.Color}}{{$custom = false}}{{end}}{{end}}
+      <div class="swatches">
+        {{range .Swatches}}
+        <label class="sw" title="{{.Name}}"><input type="radio" name="color" value="{{.Hex}}"{{if eq .Hex $r.Color}} checked{{end}}>
+          <i style="background: {{.Hex}}"></i><span>{{.Name}}</span></label>
+        {{end}}
+        <label class="sw" title="Your own colour"><input type="radio" name="color" value="custom" id="pcustom"{{if $custom}} checked{{end}}>
+          <input type="color" name="custom_color" value="{{$r.Color}}" id="pcolor" aria-label="Pick your own colour"><span>Your own</span></label>
+      </div>
+      <p class="warn" id="tooLight" hidden>This colour is too light: white text on it would be hard to read. Pick a darker shade.</p>
+      <button class="btn big">Save profile</button>
+    </form>
+    {{if $r.Logo}}
+    <form method="post" action="/owner/profile/logo/delete" onsubmit="return confirm('Remove the logo? Guests will see the first letter of your name instead.')">
+      <button class="btn ghost sm">Remove logo</button></form>
+    {{end}}
+  </div>
+  <aside class="pvwrap" aria-label="Preview">
+    <div class="pvlabel">Live preview · guest phone</div>
+    <div class="pv" id="pv" style="--brand: {{$r.Color}}">
+      <div class="pvhead">
+        <span class="mark{{if $r.Logo}} logo{{end}}" id="pvmark">{{if $r.Logo}}<img src="/uploads/{{$r.Logo}}" alt="">{{else}}{{initial $r.Name}}{{end}}</span>
+        <div><b id="pvname">{{$r.Name}}</b><small>টেবিল <i>4</i></small></div>
+      </div>
+      <p class="pvtag" id="pvtag"{{if not $r.Tagline}} hidden{{end}}>{{$r.Tagline}}</p>
+      <div class="pvchips"><span class="on">বিরিয়ানি</span><span>কাবাব</span><span>পানীয়</span></div>
+      <div class="pvitem"><img src="/static/img/biryani.svg" alt=""><div><b>কাচ্চি বিরিয়ানি</b><em>৳320</em><span class="pvbtn">+ যোগ করুন</span></div></div>
+      <div class="pvitem"><img src="/static/img/kebab.svg" alt=""><div><b>শিক কাবাব</b><em>৳160</em><span class="pvbtn">+ যোগ করুন</span></div></div>
+      <div class="pvdock"><span class="on">মেনু</span><span>কার্ট</span><span>অর্ডার</span></div>
+    </div>
+  </aside>
+</div>
+<script>
+(function () {
+  var pv = document.getElementById('pv'), form = document.getElementById('pform');
+  var picker = document.getElementById('pcolor'), custom = document.getElementById('pcustom');
+  var warn = document.getElementById('tooLight');
+  function lum(hex) {
+    var v = parseInt(hex.slice(1), 16), c = [v >> 16 & 255, v >> 8 & 255, v & 255].map(function (x) {
+      x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  }
+  function color() {
+    var on = form.querySelector('input[name=color]:checked');
+    var hex = !on || on.value === 'custom' ? picker.value : on.value;
+    pv.style.setProperty('--brand', hex);
+    warn.hidden = lum(hex) <= 0.27;
+  }
+  form.addEventListener('change', color);
+  picker.addEventListener('input', function () { custom.checked = true; color(); });
+  document.getElementById('pname').addEventListener('input', function () { document.getElementById('pvname').textContent = this.value; });
+  document.getElementById('ptag').addEventListener('input', function () {
+    var t = document.getElementById('pvtag'); t.textContent = this.value; t.hidden = !this.value; });
+  document.getElementById('logofile').addEventListener('change', function () {
+    var f = this.files[0]; if (!f) return;
+    var url = URL.createObjectURL(f), html = '<img src="' + url + '" alt="">';
+    var m = document.getElementById('pvmark'); m.innerHTML = html; m.classList.add('logo');
+    document.getElementById('logobox').innerHTML = html;
+  });
+  color();
+})();
+</script>
 {{template "sfoot" .}}{{end}}

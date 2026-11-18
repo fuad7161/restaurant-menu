@@ -28,9 +28,10 @@ func (a *App) catDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	back(w, r, "/owner/menu")
 }
 
-// savePhoto stores an uploaded JPEG, PNG or WebP in object storage and returns its name ("" when no usable file was sent).
-func (a *App) savePhoto(r *http.Request) string {
-	f, _, err := r.FormFile("photo")
+// savePhoto stores an uploaded JPEG, PNG or WebP from the form field in object storage
+// and returns its name ("" when no usable file was sent).
+func (a *App) savePhoto(r *http.Request, field string) string {
+	f, _, err := r.FormFile(field)
 	if err != nil {
 		return ""
 	}
@@ -66,7 +67,7 @@ func (a *App) itemCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 	cat, bn, en, price, prep := itemForm(r)
 	if (bn != "" || en != "") && a.ownsCategory(s.R.ID, cat) {
 		a.db.Exec(`INSERT INTO menu_items(restaurant_id,category_id,name_bn,name_en,price,photo,prep_minutes) VALUES(?,?,?,?,?,?,?)`,
-			s.R.ID, cat, bn, en, price, a.savePhoto(r), prep)
+			s.R.ID, cat, bn, en, price, a.savePhoto(r, "photo"), prep)
 	}
 	back(w, r, "/owner/menu")
 }
@@ -88,7 +89,7 @@ func (a *App) itemUpdate(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if (bn != "" || en != "") && a.ownsCategory(s.R.ID, cat) {
 		a.db.Exec(`UPDATE menu_items SET category_id=?,name_bn=?,name_en=?,price=?,prep_minutes=? WHERE id=? AND restaurant_id=?`,
 			cat, bn, en, price, prep, id, s.R.ID)
-		if photo := a.savePhoto(r); photo != "" {
+		if photo := a.savePhoto(r, "photo"); photo != "" {
 			a.db.Exec(`UPDATE menu_items SET photo=? WHERE id=? AND restaurant_id=?`, photo, id, s.R.ID)
 		}
 	}

@@ -79,7 +79,9 @@ var templateFuncs = template.FuncMap{
 		}
 		return m
 	},
-	"dishart": dishArt,
+	"dishart":    dishArt,
+	"theme":      themeCSS,
+	"themecolor": themeColor,
 	// initial is the first letter of a name, for the round logo mark.
 	"initial": func(s string) string {
 		for _, r := range strings.TrimSpace(s) {

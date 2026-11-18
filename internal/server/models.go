@@ -6,6 +6,8 @@ type Restaurant struct {
 	VAT, Service  float64
 	IsOpen        bool
 	RequireAccept bool
+	// profile, edited by the owner on /owner/profile
+	Logo, Color, Tagline, Address, Phone string
 }
 
 type Table struct {
