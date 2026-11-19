@@ -40,30 +40,61 @@ func DecodeLogo(data []byte) (image.Image, error) {
 	return img, err
 }
 
-// Render returns a size×size PNG of a QR code for url with a round badge in the middle: logo
-// when it is not nil, otherwise letter in white on brand.
+// Render returns a size×size PNG of a QR code for url: data modules as round dots, the three corner
+// "eyes" as rounded squares, and a round badge in the middle with the logo, or letter in white on
+// brand when logo is nil.
+//
+// Dots and eyes stay black. Phones find a code by its eyes, and a coloured eye (even only its
+// centre) halved the scan rate on dim, tilted, noisy test photos, while black round dots scanned
+// as well as plain squares. The brand colour lives in the badge, which is safe to colour.
 func Render(url string, size int, logo image.Image, letter string, brand color.Color) ([]byte, error) {
 	q, err := qrcode.New(url, qrcode.Highest)
 	if err != nil {
 		return nil, err
 	}
-	modules := len(q.Bitmap()) // includes the 4-module quiet zone on each side
-	src := q.Image(size)
-	img := image.NewRGBA(src.Bounds())
-	draw.Draw(img, img.Bounds(), src, src.Bounds().Min, draw.Src)
+	bits := q.Bitmap() // includes the 4-module quiet zone on each side
+	n := len(bits)
+	img := image.NewRGBA(image.Rect(0, 0, size, size))
+	draw.Draw(img, img.Bounds(), image.White, image.Point{}, draw.Src)
 
-	b := img.Bounds()
-	symbol := float64(b.Dx()) * float64(modules-8) / float64(modules)
-	cx, cy := float64(b.Min.X+b.Dx())/2, float64(b.Min.Y+b.Dy())/2
-	outer := symbol * badgeShare / 2 // white ring, keeps the badge apart from the modules
+	m := float64(size) / float64(n) // module size in pixels
+	c := float64(size) / 2
+	outer := m * float64(n-8) * badgeShare / 2 // badge with its white ring
 	inner := outer * 0.86
 
-	fillCircle(img, cx, cy, outer, image.White)
+	ink := image.Black
+
+	inEye := func(x, y int) bool {
+		x, y = x-4, y-4 // symbol coordinates
+		last := n - 8 - 7
+		return (x < 7 && y < 7) || (x >= last && y < 7) || (x < 7 && y >= last)
+	}
+	for y := range n {
+		for x := range n {
+			if !bits[y][x] || inEye(x, y) {
+				continue
+			}
+			mx, my := (float64(x)+.5)*m, (float64(y)+.5)*m
+			if math.Hypot(mx-c, my-c) < outer+m*.3 { // hidden behind the badge anyway
+				continue
+			}
+			fill(img, roundRect{mx, my, m * .5, m * .5, m * .5}, ink) // neighbouring dots just touch
+		}
+	}
+	last := float64(n - 4 - 7)
+	for _, o := range [][2]float64{{4, 4}, {last, 4}, {4, last}} {
+		ex, ey := (o[0]+3.5)*m, (o[1]+3.5)*m
+		fill(img, roundRect{ex, ey, 3.5 * m, 3.5 * m, 1.7 * m}, ink)
+		fill(img, roundRect{ex, ey, 2.5 * m, 2.5 * m, 1.1 * m}, image.White)
+		fill(img, roundRect{ex, ey, 1.5 * m, 1.5 * m, .75 * m}, ink)
+	}
+
+	fill(img, roundRect{c, c, outer, outer, outer}, image.White)
 	if logo != nil {
-		drawLogo(img, cx, cy, inner, logo)
+		drawLogo(img, c, c, inner, logo)
 	} else {
-		fillCircle(img, cx, cy, inner, image.NewUniform(brand))
-		drawLetter(img, cx, cy, inner, letter)
+		fill(img, roundRect{c, c, inner, inner, inner}, image.NewUniform(brand))
+		drawLetter(img, c, c, inner, letter)
 	}
 
 	var out bytes.Buffer
@@ -73,22 +104,24 @@ func Render(url string, size int, logo image.Image, letter string, brand color.C
 	return out.Bytes(), nil
 }
 
-// circle is an anti-aliased disc mask.
-type circle struct{ cx, cy, r float64 }
+// roundRect is an anti-aliased rounded-rectangle mask: centre, half width and height, corner
+// radius. With the radius equal to the half sizes it is a circle.
+type roundRect struct{ cx, cy, hw, hh, r float64 }
 
-func (c circle) ColorModel() color.Model { return color.AlphaModel }
-func (c circle) Bounds() image.Rectangle {
-	return image.Rect(int(c.cx-c.r)-1, int(c.cy-c.r)-1, int(c.cx+c.r)+2, int(c.cy+c.r)+2)
+func (s roundRect) ColorModel() color.Model { return color.AlphaModel }
+func (s roundRect) Bounds() image.Rectangle {
+	return image.Rect(int(s.cx-s.hw)-1, int(s.cy-s.hh)-1, int(s.cx+s.hw)+2, int(s.cy+s.hh)+2)
 }
-func (c circle) At(x, y int) color.Color {
-	d := math.Hypot(float64(x)+0.5-c.cx, float64(y)+0.5-c.cy)
-	a := math.Max(0, math.Min(1, c.r-d+0.5))
-	return color.Alpha{A: uint8(a * 255)}
+func (s roundRect) At(x, y int) color.Color {
+	// signed distance to the edge, negative inside
+	qx := math.Abs(float64(x)+.5-s.cx) - (s.hw - s.r)
+	qy := math.Abs(float64(y)+.5-s.cy) - (s.hh - s.r)
+	d := math.Hypot(math.Max(qx, 0), math.Max(qy, 0)) + math.Min(math.Max(qx, qy), 0) - s.r
+	return color.Alpha{A: uint8(math.Max(0, math.Min(1, .5-d)) * 255)}
 }
 
-func fillCircle(dst draw.Image, cx, cy, r float64, src image.Image) {
-	m := circle{cx, cy, r}
-	draw.DrawMask(dst, m.Bounds(), src, image.Point{}, m, m.Bounds().Min, draw.Over)
+func fill(dst draw.Image, s roundRect, src image.Image) {
+	draw.DrawMask(dst, s.Bounds(), src, image.Point{}, s, s.Bounds().Min, draw.Over)
 }
 
 // drawLogo crops the logo to its centre square, scales it down to the badge and clips it round.
@@ -102,7 +135,7 @@ func drawLogo(dst *image.RGBA, cx, cy, r float64, logo image.Image) {
 	draw.Draw(small, small.Bounds(), image.White, image.Point{}, draw.Src)
 	xdraw.CatmullRom.Scale(small, small.Bounds(), logo, crop, xdraw.Over, nil)
 
-	m := circle{cx, cy, r}
+	m := roundRect{cx, cy, r, r, r}
 	at := image.Pt(int(math.Floor(cx-r)), int(math.Floor(cy-r)))
 	draw.DrawMask(dst, small.Bounds().Add(at), small, image.Point{}, m, at, draw.Over)
 }

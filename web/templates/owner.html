@@ -119,14 +119,19 @@
     <a class="muted small" href="/t/{{.Token}}" target="_blank">{{$.Base}}/t/{{.Token}}</a>
     {{if eq .ID $.Renewed}}<p class="okmsg">New QR made. The old one no longer works: print this card again.</p>{{end}}
     <div class="qracts">
-      {{if .Active}}<a class="btn sm" href="/owner/tables/print?id={{.ID}}" target="_blank">Print</a>{{end}}
-      <form method="post" action="/owner/tables/{{.ID}}/toggle">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn sm ghost">{{if .Active}}Switch off{{else}}Switch on{{end}}</button></form>
-      <form method="post" action="/owner/tables/{{.ID}}/newqr" onsubmit="return confirm('Make a new QR for table {{.Label}}? The printed card and any photo of it stop working at once. Guests seated now must scan the new card.')">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn sm ghost">New QR</button></form>
+      {{if .Active}}<a class="btn ghost icon" href="/owner/tables/print?id={{.ID}}" target="_blank" aria-label="Print QR card" data-tip="Print QR card">{{template "i_print"}}</a>{{end}}
+      <form method="post" action="/owner/tables/{{.ID}}/newqr" onsubmit="return confirm('Make a new QR for table {{.Label}}? The printed card and any photo of it stop working at once. Guests seated now must scan the new card.')">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn ghost icon" aria-label="Make a new QR" data-tip="Make a new QR">{{template "i_renew"}}</button></form>
+      <form method="post" action="/owner/tables/{{.ID}}/toggle">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}{{if .Active}}<button class="btn ghost icon" aria-label="Switch off this table" data-tip="Switch off this table">{{template "i_power"}}</button>{{else}}<button class="btn icon" aria-label="Switch on this table" data-tip="Switch on this table">{{template "i_power"}}</button>{{end}}</form>
     </div>
   </div>
 {{end}}
 </div>
 {{template "sfoot" .}}{{end}}
+
+{{/* Icons for the table card buttons (stroke icons, 24-unit grid, drawn in the text colour). */}}
+{{define "i_print"}}<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg>{{end}}
+{{define "i_renew"}}<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 3v5h5"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 21v-5h-5"/></svg>{{end}}
+{{define "i_power"}}<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9"/><path d="M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>{{end}}
 
 {{define "owner_print"}}{{template "phead" .}}
 <body class="print">
