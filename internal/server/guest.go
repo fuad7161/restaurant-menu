@@ -17,7 +17,12 @@ const (
 )
 
 func (a *App) guestRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) { a.render(w, "home", nil) })
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		if a.goInside(w, r) { // logged-in staff skip the welcome page
+			return
+		}
+		a.render(w, "home", nil)
+	})
 	mux.HandleFunc("GET /t/{tok}", a.gLanding)
 	mux.HandleFunc("POST /t/{tok}/enter", a.gEnter)
 	mux.HandleFunc("GET /t/{tok}/wait", a.poll(a.gWait))

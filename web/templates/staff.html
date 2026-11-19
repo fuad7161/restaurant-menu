@@ -72,6 +72,7 @@
     <div class="plates" aria-hidden="true"><img src="/static/img/biryani.svg" alt=""><img src="/static/img/tea.svg" alt=""></div></div>
   </aside>
   <form method="post" action="/login" class="card form authform">
+    {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
     <h1>Staff login</h1>
     {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
     <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>

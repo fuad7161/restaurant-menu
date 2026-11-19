@@ -2,6 +2,8 @@ package server
 
 import (
 	"net/http"
+	"net/url"
+	"strings"
 
 	"bosho/internal/database"
 
@@ -17,9 +19,19 @@ type Staff struct {
 func (s *Staff) IsOwner() bool { return s.Role == "owner" }
 
 func (a *App) staffRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) { a.render(w, "login", M{}) })
+	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+		if a.goInside(w, r) {
+			return
+		}
+		a.render(w, "login", M{"Next": safeNext(r.URL.Query().Get("next"))})
+	})
 	mux.HandleFunc("POST /login", a.login)
-	mux.HandleFunc("GET /signup", func(w http.ResponseWriter, r *http.Request) { a.render(w, "signup", M{}) })
+	mux.HandleFunc("GET /signup", func(w http.ResponseWriter, r *http.Request) {
+		if a.goInside(w, r) {
+			return
+		}
+		a.render(w, "signup", M{})
+	})
 	mux.HandleFunc("POST /signup", a.signup)
 	mux.HandleFunc("POST /logout", a.logout)
 
@@ -60,11 +72,17 @@ func (a *App) auth(ownerOnly bool, h func(http.ResponseWriter, *http.Request, *S
 	return func(w http.ResponseWriter, r *http.Request) {
 		s := a.currentStaff(r)
 		if s == nil {
+			// Send them to log in, and back to this page afterwards. A refreshing fragment or a
+			// form post comes back to the page it was on.
 			if r.Header.Get("HX-Request") != "" {
-				w.Header().Set("HX-Redirect", "/login")
+				w.Header().Set("HX-Redirect", loginURL(pageOf(r.Header.Get("HX-Current-URL"))))
 				return
 			}
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			next := r.URL.RequestURI()
+			if r.Method != http.MethodGet {
+				next = pageOf(r.Referer())
+			}
+			http.Redirect(w, r, loginURL(next), http.StatusSeeOther)
 			return
 		}
 		if ownerOnly && !s.IsOwner() {
@@ -80,6 +98,48 @@ func (a *App) startStaffSession(w http.ResponseWriter, staffID int64) {
 	a.db.Exec(`DELETE FROM staff_sessions WHERE expires_at<?`, now())
 	a.db.Exec(`INSERT INTO staff_sessions(token,staff_id,expires_at) VALUES(?,?,?)`, tok, staffID, now()+30*86400)
 	http.SetCookie(w, &http.Cookie{Name: "bosho_staff", Value: tok, Path: "/", MaxAge: 30 * 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+}
+
+// goInside sends an already logged-in staff member from the login, signup or home page to the
+// page they asked for (?next=) or their role's start page. It reports whether it redirected.
+func (a *App) goInside(w http.ResponseWriter, r *http.Request) bool {
+	s := a.currentStaff(r)
+	if s == nil {
+		return false
+	}
+	to := safeNext(r.URL.Query().Get("next"))
+	if to == "" {
+		to = staffHome(s.Role)
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
+	return true
+}
+
+func loginURL(next string) string {
+	if next = safeNext(next); next == "" {
+		return "/login"
+	}
+	return "/login?next=" + url.QueryEscape(next)
+}
+
+// pageOf turns a full URL from a header (Referer, HX-Current-URL) into a path on this site.
+func pageOf(full string) string {
+	u, err := url.Parse(full)
+	if err != nil {
+		return ""
+	}
+	return u.RequestURI()
+}
+
+// safeNext accepts only a path on this site, so ?next= cannot send someone to another website
+// after logging in ("//evil.com" and "/\\evil.com" are other sites to a browser).
+func safeNext(next string) string {
+	if !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") || strings.HasPrefix(next, "/\\") ||
+		strings.ContainsAny(next, "\r\n") || next == "/" || strings.HasPrefix(next, "/login") ||
+		strings.HasPrefix(next, "/signup") || strings.HasPrefix(next, "/logout") {
+		return ""
+	}
+	return next
 }
 
 func staffHome(role string) string {
@@ -98,11 +158,15 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	var hash, role string
 	err := a.db.QueryRow(`SELECT id,password_hash,role FROM staff_users WHERE phone=?`, phone).Scan(&id, &hash, &role)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(r.FormValue("password"))) != nil {
-		a.render(w, "login", M{"Err": "Wrong phone number or password.", "Phone": phone})
+		a.render(w, "login", M{"Err": "Wrong phone number or password.", "Phone": phone, "Next": safeNext(r.FormValue("next"))})
 		return
 	}
 	a.startStaffSession(w, id)
-	http.Redirect(w, r, staffHome(role), http.StatusSeeOther)
+	to := safeNext(r.FormValue("next"))
+	if to == "" {
+		to = staffHome(role)
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
 }
 
 func (a *App) signup(w http.ResponseWriter, r *http.Request) {
