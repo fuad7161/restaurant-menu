@@ -99,3 +99,13 @@ func (p *Photos) Serve(w http.ResponseWriter, r *http.Request, name string) {
 	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
 	http.ServeContent(w, r, "", info.LastModified, obj)
 }
+
+// Read returns a stored photo's bytes, for server-side use such as drawing the logo into QR codes.
+func (p *Photos) Read(ctx context.Context, name string) ([]byte, error) {
+	obj, err := p.client.GetObject(ctx, p.bucket, name, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, err
+	}
+	defer obj.Close()
+	return io.ReadAll(io.LimitReader(obj, MaxPhotoBytes+1))
+}

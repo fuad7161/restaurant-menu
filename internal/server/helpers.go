@@ -46,6 +46,14 @@ func queryID(r *http.Request, k string) int64 {
 	return n
 }
 
+// initial is the first letter of a name, shown in the round mark when there is no logo.
+func initial(s string) string {
+	for _, r := range strings.TrimSpace(s) {
+		return strings.ToUpper(string(r))
+	}
+	return "ব"
+}
+
 func ago(ts int64) string {
 	d := now() - ts
 	switch {
@@ -88,12 +96,7 @@ var templateFuncs = template.FuncMap{
 	"theme":      themeCSS,
 	"themecolor": themeColor,
 	// initial is the first letter of a name, for the round logo mark.
-	"initial": func(s string) string {
-		for _, r := range strings.TrimSpace(s) {
-			return strings.ToUpper(string(r))
-		}
-		return "ব"
-	},
+	"initial": initial,
 	"rev": func(n int) []int { // n, n-1, …, 1
 		s := make([]int, n)
 		for i := range s {

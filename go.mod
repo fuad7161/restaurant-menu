@@ -8,6 +8,7 @@ require (
 	github.com/redis/go-redis/v9 v9.7.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/crypto v0.45.0
+	golang.org/x/image v0.36.0
 )
 
 require (

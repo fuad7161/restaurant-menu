@@ -42,7 +42,8 @@ func (a *App) staffDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 }
 
 func (a *App) settings(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "owner_settings", M{"Staff": s, "Page": "settings", "Saved": r.URL.Query().Get("saved") != ""})
+	a.render(w, "owner_settings", M{"Staff": s, "Page": "settings", "Saved": r.URL.Query().Get("saved") != "",
+		"NetCount": len(splitNetworks(s.R.Networks))})
 }
 
 func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {

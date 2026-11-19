@@ -3,8 +3,6 @@ package server
 import (
 	"net/http"
 	"strings"
-
-	"github.com/skip2/go-qrcode"
 )
 
 // ownerTables lists the tables. Switched-off tables are hidden unless ?off=1 asks for them.
@@ -61,15 +59,33 @@ func (a *App) tableQR(w http.ResponseWriter, r *http.Request, s *Staff) {
 		http.NotFound(w, r)
 		return
 	}
-	png, err := qrcode.Encode(a.base(r)+"/t/"+tok, qrcode.Medium, 640)
+	png, err := a.qrImage(r, s.R, a.base(r)+"/t/"+tok)
 	if err != nil {
 		http.Error(w, "qr error", 500)
 		return
 	}
 	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-cache") // the same URL changes with a new QR, logo or colour
 	w.Write(png)
 }
 
+// tablePrint shows the QR cards ready to print: all active tables, or only ?id= (opened by a
+// card's Print button, which also opens the print dialog).
 func (a *App) tablePrint(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "owner_print", M{"Staff": s, "Tables": a.tablesWithGroups(s.R.ID)})
+	ts := a.tablesWithGroups(s.R.ID)
+	one := queryID(r, "id")
+	if one != 0 {
+		var only []tableRow
+		for _, t := range ts {
+			if t.ID == one {
+				only = append(only, t)
+			}
+		}
+		if len(only) == 0 {
+			http.NotFound(w, r)
+			return
+		}
+		ts = only
+	}
+	a.render(w, "owner_print", M{"Staff": s, "Tables": ts, "One": one != 0})
 }

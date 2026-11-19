@@ -105,8 +105,8 @@
 {{define "owner_tables"}}{{template "shead" .}}
 <div class="pagehead"><h1>Tables &amp; QR codes</h1>
   {{if .Tables}}<a class="btn" href="/owner/tables/print" target="_blank">Print all QR cards</a>{{end}}</div>
-{{if .ShowOff}}<p class="muted">Showing switched-off tables too. <a href="/owner/tables">Hide switched-off tables</a></p>
-{{else if .Hidden}}<p class="muted">{{.Hidden}} switched-off {{if eq .Hidden 1}}table is{{else}}tables are{{end}} hidden. <a href="/owner/tables?off=1">Show them</a></p>{{end}}
+{{if .ShowOff}}<p class="muted">Showing switched-off tables too. <a class="btn sm ghost" href="/owner/tables">Hide switched-off tables</a></p>
+{{else if .Hidden}}<p class="muted">{{.Hidden}} switched-off {{if eq .Hidden 1}}table is{{else}}tables are{{end}} hidden. <a class="btn sm ghost" href="/owner/tables?off=1">Show switched-off tables</a></p>{{end}}
 <form method="post" action="/owner/tables" class="card form rowform">
   <label>Table number or name <input name="label" required maxlength="12" placeholder="12"></label>
   <button class="btn">Add table</button>
@@ -119,6 +119,7 @@
     <a class="muted small" href="/t/{{.Token}}" target="_blank">{{$.Base}}/t/{{.Token}}</a>
     {{if eq .ID $.Renewed}}<p class="okmsg">New QR made. The old one no longer works: print this card again.</p>{{end}}
     <div class="qracts">
+      {{if .Active}}<a class="btn sm" href="/owner/tables/print?id={{.ID}}" target="_blank">Print</a>{{end}}
       <form method="post" action="/owner/tables/{{.ID}}/toggle">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn sm ghost">{{if .Active}}Switch off{{else}}Switch on{{end}}</button></form>
       <form method="post" action="/owner/tables/{{.ID}}/newqr" onsubmit="return confirm('Make a new QR for table {{.Label}}? The printed card and any photo of it stop working at once. Guests seated now must scan the new card.')">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn sm ghost">New QR</button></form>
     </div>
@@ -129,7 +130,8 @@
 
 {{define "owner_print"}}{{template "phead" .}}
 <body class="print">
-<p class="noprint"><button class="btn" onclick="print()">Print</button> Cut along the borders and place one card in each table stand.</p>
+<p class="noprint"><button class="btn" onclick="print()">Print</button> Cut along the borders and place {{if .One}}the card in the table stand{{else}}one card in each table stand{{end}}.</p>
+{{if .One}}<script>addEventListener("load", () => print())</script>{{end}}
 <div class="sheets">
 {{range .Tables}}{{if .Active}}
   <div class="stand">
@@ -168,8 +170,12 @@
 {{define "owner_settings"}}{{template "shead" .}}
 <h1>Settings</h1>
 {{if .Saved}}<p class="okmsg">Saved.</p>{{end}}
-<p class="muted">Name, logo and colours are on the <a href="/owner/profile">Profile</a> page.
-  Limit ordering to your Wi-Fi on the <a href="/owner/networks">Ordering network</a> page.</p>
+<section class="card">
+  <div class="lrow wrap"><span class="grow"><b>Ordering network</b><br><span class="muted">{{if .NetCount}}Guests can order only on your Wi-Fi ({{.NetCount}} {{if eq .NetCount 1}}network{{else}}networks{{end}}).{{else}}Guests can order from anywhere.{{end}}</span></span>
+  <a class="btn" href="/owner/networks">Ordering network</a></div>
+  <div class="lrow wrap"><span class="grow"><b>Profile</b><br><span class="muted">Name, logo and colours.</span></span>
+  <a class="btn ghost" href="/owner/profile">Profile</a></div>
+</section>
 <form method="post" action="/owner/settings" class="card form">
   <label>VAT % <input name="vat" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.VAT}}"></label>
   <label>Service charge % <input name="service" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.Service}}"></label>
