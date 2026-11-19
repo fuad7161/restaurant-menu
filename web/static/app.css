@@ -644,3 +644,89 @@ body.print { background: #fff; padding: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- card grids (counter, take order, sold out, menu, staff, reviews) ---------- */
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; margin: 14px 0; }
+.cgrid > .card { margin: 0; }
+.small1 { font-size: .82rem; }
+.empty { text-align: center; padding: 28px 18px; }
+.empty p { margin: 4px 0; }
+
+/* table / bill card */
+.tcard { display: flex; flex-direction: column; gap: 10px; text-decoration: none; color: var(--ink); border-top: 4px solid var(--line); }
+a.tcard { transition: transform .15s, box-shadow .15s; }
+a.tcard:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(94,17,21,.08), 0 14px 28px -12px rgba(94,17,21,.3); }
+.tcard.busy { border-top-color: var(--gold); }
+.tcard.asking { border-top-color: var(--gold); background: linear-gradient(180deg, var(--gold-soft), var(--card) 70%); }
+.tchead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tno { font: 1.45rem/1.1 var(--display); color: var(--brand-deep); }
+.tcguests { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.tcfoot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px dashed var(--line); }
+.amt { font: 1.3rem var(--display); color: var(--brand-deep); }
+.tcacts { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+.tcacts form, .tcacts .btn { width: 100%; margin: 0; }
+.badge.free { background: var(--ok-soft); color: var(--ok); }
+
+/* dish card */
+.dgrid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.dcard {
+  display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+  overflow: hidden; box-shadow: var(--shadow); text-decoration: none; color: var(--ink);
+}
+a.dcard { transition: transform .15s, box-shadow .15s; }
+a.dcard:hover { transform: translateY(-2px); box-shadow: 0 2px 4px rgba(94,17,21,.08), 0 14px 28px -12px rgba(94,17,21,.3); }
+.dpic { position: relative; aspect-ratio: 4 / 3; background: radial-gradient(circle at 50% 60%, #fff7e4 0, var(--gold-soft) 60%, #f5dfb5 100%); display: grid; place-items: center; }
+.dpic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.dpic img.art { width: 62%; height: auto; object-fit: contain; }
+.dprice { position: absolute; right: 10px; bottom: 10px; background: var(--card); color: var(--brand-deep); font-weight: 700; padding: 4px 10px; border-radius: 99px; box-shadow: 0 2px 8px -2px rgba(0,0,0,.25); font-size: .92rem; }
+.dflag { position: absolute; left: 10px; top: 10px; background: var(--ink); color: #fff; font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 4px 9px; border-radius: 99px; }
+.dbody { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px 14px; flex: 1; }
+.dbody b { font-weight: 600; line-height: 1.3; }
+.dbody .btn { margin-top: auto; align-self: stretch; }
+.dbody .muted + .btn { margin-top: 10px; }
+.dmeta { margin-top: auto; padding-top: 6px; font-size: .8rem; color: var(--muted); }
+.dcard.soldout .dpic img { filter: grayscale(1); opacity: .6; }
+.dcard.soldout .dbody b { color: var(--muted); }
+.dadd { align-items: center; justify-content: center; gap: 4px; min-height: 220px; border: 2px dashed var(--line); background: var(--bg); box-shadow: none; text-align: center; color: var(--brand); }
+.dadd:hover { border-color: var(--brand); }
+.dplus { font-size: 2.4rem; line-height: 1; font-weight: 300; }
+
+/* menu page */
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 8px; margin: 0 0 4px; }
+.chips::-webkit-scrollbar { display: none; }
+.chips a { flex: none; text-decoration: none; color: var(--ink); background: var(--card); border: 1px solid var(--line); padding: 7px 14px; border-radius: 99px; font-weight: 500; font-size: .9rem; }
+.chips a:hover { border-color: var(--brand); color: var(--brand); }
+.chips a span { color: var(--muted); font-size: .8rem; margin-left: 4px; }
+.addpanel { padding: 0; }
+.addpanel summary { cursor: pointer; padding: 14px 18px; font-weight: 600; color: var(--brand-deep); list-style: none; }
+.addpanel summary::-webkit-details-marker { display: none; }
+.addpanel summary::before { content: "+"; display: inline-block; width: 1.2em; font-weight: 400; transition: transform .15s; }
+.addpanel[open] summary::before { transform: rotate(45deg); }
+.addpanel form { padding: 0 18px 8px; }
+.mcat { margin-top: 26px; scroll-margin-top: 80px; }
+.mcat h2 { margin: 0; }
+.mcat h2 .muted { font: .85rem var(--body); margin-left: 6px; }
+
+/* staff card */
+.pcard { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.avatar { width: 46px; height: 46px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-deep); font: 1.3rem/1 var(--display); }
+.pbody { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+.pbody b { font-weight: 600; }
+.pcard form { margin: 0; }
+.badge.role-owner { background: var(--brand); color: var(--brand-ink); }
+.badge.role-kitchen { background: var(--gold-soft); color: var(--warn); }
+.badge.role-cashier { background: var(--ok-soft); color: var(--ok); }
+
+/* review card */
+.rcard { display: flex; flex-direction: column; gap: 6px; }
+.rcard p { margin: 0; }
+.stars { color: var(--line); letter-spacing: 2px; font-size: 1.05rem; }
+.stars .on { color: var(--gold); }
+@media (max-width: 520px) {
+  .dgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .dbody { padding: 10px 11px 12px; }
+  .dbody b { font-size: .92rem; }
+  .dprice { right: 8px; bottom: 8px; font-size: .82rem; padding: 3px 8px; }
+  .dadd { min-height: 0; }
+  .dplus { font-size: 1.9rem; }
+}

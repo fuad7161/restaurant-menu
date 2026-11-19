@@ -9,7 +9,9 @@ import (
 )
 
 func (a *App) ownerMenu(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "owner_menu", M{"Staff": s, "Page": "menu", "Cats": a.menu(s.R.ID)})
+	// ?add=cat or ?add=dish opens that form; ?cat= preselects the dish's category.
+	a.render(w, "owner_menu", M{"Staff": s, "Page": "menu", "Cats": a.menu(s.R.ID),
+		"Add": r.URL.Query().Get("add"), "AddCat": queryID(r, "cat")})
 }
 
 func (a *App) catCreate(w http.ResponseWriter, r *http.Request, s *Staff) {

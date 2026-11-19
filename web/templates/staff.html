@@ -219,13 +219,18 @@
 <p class="muted">Switch off anything the kitchen cannot make right now. Guests see it greyed out.</p>
 {{range .Cats}}{{if .Items}}
 <h2>{{pick "en" .NameBn .NameEn}}</h2>
-<div class="list">{{range .Items}}{{template "stock_row" .}}{{end}}</div>
+<div class="cgrid dgrid">{{range .Items}}{{template "stock_row" .}}{{end}}</div>
 {{end}}{{end}}
 {{template "sfoot" .}}{{end}}
 
-{{define "stock_row"}}<div class="lrow" id="stock-{{.ID}}">
-  <span class="grow{{if not .Available}} struck{{end}}">{{pick "en" .NameBn .NameEn}}</span>
-  <button class="btn sm{{if .Available}} ghost{{end}}" hx-post="/staff/stock/{{.ID}}/toggle" hx-target="#stock-{{.ID}}" hx-swap="outerHTML">{{if .Available}}Mark sold out{{else}}Sold out · make available{{end}}</button>
+{{define "stock_row"}}<div class="dcard{{if not .Available}} soldout{{end}}" id="stock-{{.ID}}">
+  <div class="dpic">{{if .Photo}}<img src="/uploads/{{.Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn}}.svg" alt="">{{end}}
+    {{if not .Available}}<span class="dflag">Sold out</span>{{end}}</div>
+  <div class="dbody">
+    <b>{{pick "en" .NameBn .NameEn}}</b>
+    <span class="muted small1">{{.NameBn}}</span>
+    <button class="btn sm{{if .Available}} ghost{{end}}" hx-post="/staff/stock/{{.ID}}/toggle" hx-target="#stock-{{.ID}}" hx-swap="outerHTML">{{if .Available}}Mark sold out{{else}}Make available{{end}}</button>
+  </div>
 </div>{{end}}
 
 {{define "counter"}}{{template "shead" .}}
@@ -234,13 +239,14 @@
 {{template "sfoot" .}}{{end}}
 
 {{define "c_list"}}<div id="bills" data-alert="{{.Alert}}" hx-get="/staff/counter/list" hx-trigger="every 4s" hx-swap="outerHTML">
-{{if not .Bills}}<p class="muted">No open bills.</p>{{end}}
-<div class="list">
+{{if not .Bills}}<div class="empty card"><p>No open bills right now.</p><p class="muted">Bills appear here as soon as a group orders.</p></div>{{end}}
+<div class="cgrid">
 {{range .Bills}}
-  <a class="lrow{{if eq .Status "bill_requested"}} asking{{end}}" data-key="b{{.ID}}-{{.Status}}" href="/staff/sessions/{{.ID}}">
-    <span class="grow"><b>Table {{.Table}} · Group {{.Group}}</b> <span class="muted">{{.Guests}} · opened {{ago .OpenedAt}}</span></span>
-    {{if eq .Status "bill_requested"}}<span class="badge hot">wants the bill</span>{{end}}
-    <b>{{money .Total}}</b>
+  <a class="card tcard{{if eq .Status "bill_requested"}} asking{{end}}" data-key="b{{.ID}}-{{.Status}}" href="/staff/sessions/{{.ID}}">
+    <div class="tchead"><span class="tno">Table {{.Table}}</span><span class="badge">Group {{.Group}}</span></div>
+    {{if eq .Status "bill_requested"}}<span class="badge hot">Wants the bill</span>{{end}}
+    <p class="tcguests">{{if .Guests}}{{.Guests}}{{else}}<span class="muted">No guests listed</span>{{end}}</p>
+    <div class="tcfoot"><span class="muted">Opened {{ago .OpenedAt}}</span><b class="amt">{{money .Total}}</b></div>
   </a>
 {{end}}
 </div>
@@ -288,16 +294,19 @@
 {{define "staff_tables"}}{{template "shead" .}}
 <h1>Take an order for a table</h1>
 <p class="muted">For guests who do not scan. You order from the same menu and it joins the same kitchen queue, already accepted.</p>
-<div class="list">
+<div class="cgrid">
 {{range .Tables}}{{if .Active}}
-  <div class="lrow wrap">
-    <b class="grow">Table {{.Label}}</b>
+  <div class="card tcard{{if .Groups}} busy{{end}}">
+    <div class="tchead"><span class="tno">Table {{.Label}}</span>
+      {{if .Groups}}<span class="badge hot">{{len .Groups}} {{if eq (len .Groups) 1}}group{{else}}groups{{end}}</span>{{else}}<span class="badge free">Free</span>{{end}}</div>
     {{$tid := .ID}}
+    <div class="tcacts">
     {{range .Groups}}
-    <form method="post" action="/staff/tables/{{$tid}}/open"><input type="hidden" name="session" value="{{.ID}}">
-      <button class="btn sm">Group {{.Label}} · {{.First}}</button></form>
+      <form method="post" action="/staff/tables/{{$tid}}/open"><input type="hidden" name="session" value="{{.ID}}">
+        <button class="btn sm">Group {{.Label}}{{if .First}} · {{.First}}{{end}}</button></form>
     {{end}}
-    <form method="post" action="/staff/tables/{{.ID}}/open"><button class="btn sm ghost">+ New group</button></form>
+      <form method="post" action="/staff/tables/{{.ID}}/open"><button class="btn sm ghost">+ New group</button></form>
+    </div>
   </div>
 {{end}}{{end}}
 </div>

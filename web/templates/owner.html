@@ -29,44 +29,63 @@
     {{range .Top}}<div class="total"><span>{{.Name}}</span><b>{{.Qty}}</b></div>{{else}}<p class="muted">No orders yet.</p>{{end}}
   </section>
 </div>
-<section class="card">
-  <h2>Latest reviews</h2>
-  {{range .Reviews}}<div class="lrow"><b>{{.Rating}} ★</b><span class="grow">{{if .Comment}}{{.Comment}}{{else}}<span class="muted">no comment</span>{{end}}</span><span class="muted">Table {{.Table}} · {{ago .At}}</span></div>
-  {{else}}<p class="muted">No reviews yet.</p>{{end}}
-</section>
+<h2>Latest reviews</h2>
+{{if .Reviews}}<div class="cgrid">
+  {{range .Reviews}}<div class="card rcard">
+    {{$r := .Rating}}<div class="stars" role="img" aria-label="{{$r}} out of 5 stars">{{range $i := seq 5}}<span{{if le $i $r}} class="on"{{end}}>★</span>{{end}}</div>
+    <p>{{if .Comment}}{{.Comment}}{{else}}<span class="muted">No comment</span>{{end}}</p>
+    <span class="muted small1">Table {{.Table}} · {{ago .At}}</span>
+  </div>{{end}}
+</div>{{else}}<p class="muted">No reviews yet.</p>{{end}}
 {{template "sfoot" .}}{{end}}
 
 {{define "owner_menu"}}{{template "shead" .}}
 <h1>Menu</h1>
-<form method="post" action="/owner/categories" class="card form rowform">
-  <h2>Add a category</h2>
-  <label>Name in Bangla <input name="name_bn" maxlength="60" placeholder="বিরিয়ানি"></label>
-  <label>Name in English <input name="name_en" maxlength="60" placeholder="Biryani"></label>
-  <button class="btn">Add category</button>
-</form>
+{{if .Cats}}<nav class="chips" aria-label="Categories">{{range .Cats}}<a href="#cat-{{.ID}}">{{pick "en" .NameBn .NameEn}} <span>{{len .Items}}</span></a>{{end}}</nav>{{end}}
+
+<details class="card addpanel" id="addcat"{{if or (eq .Add "cat") (not .Cats)}} open{{end}}>
+  <summary>Add a category</summary>
+  <form method="post" action="/owner/categories" class="form rowform">
+    <label>Name in Bangla <input name="name_bn" maxlength="60" placeholder="বিরিয়ানি"></label>
+    <label>Name in English <input name="name_en" maxlength="60" placeholder="Biryani"></label>
+    <button class="btn">Add category</button>
+  </form>
+</details>
 {{if .Cats}}
-<form method="post" action="/owner/items" enctype="multipart/form-data" class="card form rowform">
-  <h2>Add a dish</h2>
-  <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}">{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
-  <label>Name in Bangla <input name="name_bn" maxlength="80"></label>
-  <label>Name in English <input name="name_en" maxlength="80"></label>
-  <label>Price (taka) <input name="price" type="number" step="0.01" min="0" required></label>
-  <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="15"></label>
-  <label>Photo (JPEG, PNG or WebP, up to 5 MB) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
-  <button class="btn">Add dish</button>
-</form>
+<details class="card addpanel" id="adddish"{{if eq .Add "dish"}} open{{end}}>
+  <summary>Add a dish</summary>
+  <form method="post" action="/owner/items" enctype="multipart/form-data" class="form rowform">
+    <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}"{{if eq .ID $.AddCat}} selected{{end}}>{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
+    <label>Name in Bangla <input name="name_bn" maxlength="80"></label>
+    <label>Name in English <input name="name_en" maxlength="80"></label>
+    <label>Price (taka) <input name="price" type="number" step="0.01" min="0" required></label>
+    <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="15"></label>
+    <label>Photo (JPEG, PNG or WebP, up to 5 MB) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+    <button class="btn">Add dish</button>
+  </form>
+</details>
 {{end}}
+
 {{range .Cats}}{{$c := .}}
-<section class="card">
-  <header class="pagehead"><h2>{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}</span></h2>
-    {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
-  {{range .Items}}
-  <a class="lrow" href="/owner/items/{{.ID}}">
-    {{if .Photo}}<img class="thumb" src="/uploads/{{.Photo}}" alt="">{{else}}<img class="thumb art" src="/static/img/{{dishart .NameEn .NameBn $c.NameEn $c.NameBn}}.svg" alt="">{{end}}
-    <span class="grow{{if not .Available}} struck{{end}}">{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}}{{if .Options}} · {{len .Options}} options{{end}}</span></span>
-    <b>{{money .Price}}</b>
-  </a>
-  {{else}}<p class="muted">No dishes yet.</p>{{end}}
+<section class="mcat" id="cat-{{.ID}}">
+  <header class="pagehead"><h2>{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}} · {{len .Items}} {{if eq (len .Items) 1}}dish{{else}}dishes{{end}}</span></h2>
+    {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete" onsubmit="return confirm('Delete this empty category?')"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
+  <div class="cgrid dgrid">
+    <a class="dcard dadd" href="?add=dish&amp;cat={{.ID}}#adddish">
+      <span class="dplus" aria-hidden="true">+</span><b>Add a dish</b><span class="muted small1">to {{pick "en" .NameBn .NameEn}}</span></a>
+    {{range .Items}}
+    <a class="dcard{{if not .Available}} soldout{{end}}" href="/owner/items/{{.ID}}">
+      <div class="dpic">{{if .Photo}}<img src="/uploads/{{.Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn $c.NameEn $c.NameBn}}.svg" alt="">{{end}}
+        {{if not .Available}}<span class="dflag">Sold out</span>{{end}}
+        <span class="dprice">{{money .Price}}</span></div>
+      <div class="dbody">
+        <b>{{pick "en" .NameBn .NameEn}}</b>
+        <span class="muted small1">{{.NameBn}}</span>
+        <span class="dmeta">{{.Prep}} min{{if .Options}} · {{len .Options}} {{if eq (len .Options) 1}}option{{else}}options{{end}}{{end}}</span>
+      </div>
+    </a>
+    {{end}}
+  </div>
 </section>
 {{end}}
 {{template "sfoot" .}}{{end}}
@@ -160,12 +179,17 @@
 {{define "owner_staff"}}{{template "shead" .}}
 <h1>Staff</h1>
 {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
-<section class="card">
+<div class="cgrid">
   {{range .People}}
-  <div class="lrow"><span class="grow"><b>{{.Name}}</b> <span class="muted">{{.Phone}}</span></span><span class="badge">{{.Role}}</span>
-    {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" onsubmit="return confirm('Remove this person?')"><button class="btn sm ghost">Remove</button></form>{{end}}</div>
+  <div class="card pcard">
+    <span class="avatar" aria-hidden="true">{{initial .Name}}</span>
+    <div class="pbody"><span><b>{{.Name}}</b>{{if eq .ID $.Staff.ID}} <span class="badge">You</span>{{end}}</span>
+      <span class="muted small1">{{.Phone}}</span>
+      <span class="badge role-{{.Role}}">{{.Role}}</span></div>
+    {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" onsubmit="return confirm('Remove {{.Name}}?')"><button class="btn sm ghost">Remove</button></form>{{end}}
+  </div>
   {{end}}
-</section>
+</div>
 <form method="post" action="/owner/staff" class="card form rowform">
   <h2>Add a staff member</h2>
   <label>Name <input name="name" required maxlength="40"></label>
