@@ -109,25 +109,55 @@
 
 {{define "shead"}}{{template "phead" .}}
 <body class="staff">
+{{/* Narrow screens: a top bar with a menu button that slides the sidebar in from the left.
+     Wide screens: the sidebar stays open on the left and the top bar is hidden. */}}
 <header class="stop">
+  <button class="menubtn" type="button" aria-label="Open menu" aria-controls="snav" aria-expanded="false" onclick="toggleNav(true)">{{template "si_menu"}}</button>
   <a class="brand" href="/staff/kitchen">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
+</header>
+<div class="scrim" onclick="toggleNav(false)"></div>
+<aside id="snav" class="side" aria-label="Main menu">
+  <div class="sidehead">
+    <a class="brand" href="/staff/kitchen">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
+    <button class="menubtn close" type="button" aria-label="Close menu" onclick="toggleNav(false)">{{template "si_close"}}</button>
+  </div>
   <nav>
-    <a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">Kitchen</a>
-    <a class="{{if eq .Page "counter"}}on{{end}}" href="/staff/counter">Counter</a>
-    <a class="{{if eq .Page "tables"}}on{{end}}" href="/staff/tables">Take order</a>
-    <a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">Sold out</a>
-    {{if .Staff.IsOwner}}<span class="sep"></span>
-    <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">Dashboard</a>
-    <a class="{{if eq .Page "profile"}}on{{end}}" href="/owner/profile">Profile</a>
-    <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">Menu</a>
-    <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">Tables &amp; QR</a>
-    <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">Staff</a>
-    <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">Settings</a>
+    <p class="navlabel">Service</p>
+    <a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">{{template "si_kitchen"}}Kitchen</a>
+    <a class="{{if eq .Page "counter"}}on{{end}}" href="/staff/counter">{{template "si_counter"}}Counter</a>
+    <a class="{{if eq .Page "tables"}}on{{end}}" href="/staff/tables">{{template "si_order"}}Take order</a>
+    <a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">{{template "si_stock"}}Sold out</a>
+    {{if .Staff.IsOwner}}
+    <p class="navlabel">Owner</p>
+    <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">{{template "si_chart"}}Dashboard</a>
+    <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">{{template "si_menu_book"}}Menu</a>
+    <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">{{template "si_qr"}}Tables &amp; QR</a>
+    <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">{{template "si_people"}}Staff</a>
+    <a class="{{if eq .Page "profile"}}on{{end}}" href="/owner/profile">{{template "si_store"}}Profile</a>
+    <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">{{template "si_gear"}}Settings</a>
     {{end}}
   </nav>
-  <form method="post" action="/logout"><button class="link">Log out ({{.Staff.Name}})</button></form>
-</header>
+  <form class="sidefoot" method="post" action="/logout">
+    <span class="who">{{.Staff.Name}}<small>{{.Staff.Role}}</small></span>
+    <button class="btn sm ghost">Log out</button>
+  </form>
+</aside>
 <main>{{end}}
+
+{{/* Sidebar icons: 24-unit stroke icons in the text colour. */}}
+{{define "si_open"}}<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{{end}}
+{{define "si_menu"}}{{template "si_open"}}<path d="M4 6h16M4 12h16M4 18h16"/></svg>{{end}}
+{{define "si_close"}}{{template "si_open"}}<path d="M6 6l12 12M18 6L6 18"/></svg>{{end}}
+{{define "si_kitchen"}}{{template "si_open"}}<path d="M6 14a6 6 0 0 1 12 0"/><path d="M3 14h18v2a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"/><path d="M12 8V5"/></svg>{{end}}
+{{define "si_counter"}}{{template "si_open"}}<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>{{end}}
+{{define "si_order"}}{{template "si_open"}}<path d="M8 4h8l1 3H7z"/><rect x="5" y="7" width="14" height="13" rx="2"/><path d="M9 12h6M9 16h4"/></svg>{{end}}
+{{define "si_stock"}}{{template "si_open"}}<circle cx="12" cy="12" r="8"/><path d="M6.5 6.5l11 11"/></svg>{{end}}
+{{define "si_chart"}}{{template "si_open"}}<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>{{end}}
+{{define "si_menu_book"}}{{template "si_open"}}<path d="M4 5a2 2 0 0 1 2-2h12v18H6a2 2 0 0 1-2-2z"/><path d="M8 7h6M8 11h6"/></svg>{{end}}
+{{define "si_qr"}}{{template "si_open"}}<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><path d="M14 14h3v3M21 14v.01M14 21h3M21 18v3h-3"/></svg>{{end}}
+{{define "si_people"}}{{template "si_open"}}<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>{{end}}
+{{define "si_store"}}{{template "si_open"}}<path d="M4 10v10h16V10"/><path d="M3 10l2-6h14l2 6a3 3 0 0 1-6 0 3 3 0 0 1-6 0 3 3 0 0 1-6 0z"/><path d="M10 20v-5h4v5"/></svg>{{end}}
+{{define "si_gear"}}{{template "si_open"}}<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>{{end}}
 
 {{define "sfoot"}}</main></body></html>{{end}}
 

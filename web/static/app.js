@@ -64,8 +64,18 @@ function markFresh(animate) {
 document.addEventListener('DOMContentLoaded', function () { markFresh(false); });
 document.addEventListener('htmx:afterSettle', function () { markFresh(true); });
 
-// On phones the staff tabs scroll sideways: bring the current one into view.
-document.addEventListener('DOMContentLoaded', function () {
-  var on = document.querySelector('.stop nav a.on');
-  if (on) on.parentNode.scrollLeft = on.offsetLeft - 12;
+// Staff sidebar on narrow screens: the menu button slides it in, the dimmed page or Escape closes it.
+function toggleNav(open) {
+  document.body.classList.toggle('navopen', open);
+  var btn = document.querySelector('.stop .menubtn');
+  if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) {
+    var first = document.querySelector('.side nav a.on') || document.querySelector('.side nav a');
+    if (first) first.focus();
+  } else if (btn && document.activeElement && document.activeElement.closest('.side')) {
+    btn.focus();
+  }
+}
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape' && document.body.classList.contains('navopen')) toggleNav(false);
 });
