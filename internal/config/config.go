@@ -19,6 +19,8 @@ type Config struct {
 	S3Region    string // region from the endpoint, for example "us-east-005" on Backblaze B2
 	S3UseSSL    bool
 
+	TrustProxy bool // read the guest address from X-Forwarded-For; set only when a reverse proxy sits in front
+
 	RedisURL string // for example rediss://default:<token>@<name>.upstash.io:6379 (optional: lets refreshing screens skip the database when nothing changed)
 }
 
@@ -35,6 +37,7 @@ func Load() Config {
 		S3Region:    os.Getenv("S3_REGION"),
 		S3UseSSL:    os.Getenv("S3_USE_SSL") != "0",
 		RedisURL:    os.Getenv("REDIS_URL"),
+		TrustProxy:  os.Getenv("TRUST_PROXY") == "1",
 	}
 }
 

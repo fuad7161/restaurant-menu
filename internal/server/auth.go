@@ -45,11 +45,11 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 		return nil
 	}
 	var s Staff
-	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone
+	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks
 		FROM staff_sessions ss JOIN staff_users u ON u.id=ss.staff_id JOIN restaurants r ON r.id=u.restaurant_id
 		WHERE ss.token=? AND ss.expires_at>?`, c.Value, now()).
 		Scan(&s.ID, &s.Name, &s.Phone, &s.Role, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
-			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone)
+			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone, &s.R.Networks)
 	if err != nil {
 		return nil
 	}

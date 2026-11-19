@@ -41,6 +41,11 @@ func pathID(r *http.Request, k string) int64 {
 	return n
 }
 
+func queryID(r *http.Request, k string) int64 {
+	n, _ := strconv.ParseInt(r.URL.Query().Get(k), 10, 64)
+	return n
+}
+
 func ago(ts int64) string {
 	d := now() - ts
 	switch {

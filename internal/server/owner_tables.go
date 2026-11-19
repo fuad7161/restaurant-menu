@@ -2,12 +2,37 @@ package server
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/skip2/go-qrcode"
 )
 
+// ownerTables lists the tables. Switched-off tables are hidden unless ?off=1 asks for them.
 func (a *App) ownerTables(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.render(w, "owner_tables", M{"Staff": s, "Page": "qr", "Tables": a.tablesWithGroups(s.R.ID), "Base": a.base(r)})
+	showOff := r.URL.Query().Get("off") == "1"
+	var shown []tableRow
+	hidden := 0
+	for _, t := range a.tablesWithGroups(s.R.ID) {
+		if !t.Active && !showOff {
+			hidden++
+			continue
+		}
+		shown = append(shown, t)
+	}
+	a.render(w, "owner_tables", M{"Staff": s, "Page": "qr", "Tables": shown, "Hidden": hidden, "ShowOff": showOff,
+		"Base": a.base(r), "Renewed": queryID(r, "renewed")})
+}
+
+// tablesBack returns to the tables page, keeping switched-off tables visible if they were.
+func tablesBack(w http.ResponseWriter, r *http.Request, extra string) {
+	to := "/owner/tables"
+	if r.FormValue("off") == "1" {
+		extra = "off=1&" + extra
+	}
+	if extra = strings.TrimSuffix(extra, "&"); extra != "" {
+		to += "?" + extra
+	}
+	back(w, r, to)
 }
 
 func (a *App) tableCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
@@ -20,7 +45,14 @@ func (a *App) tableCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) tableToggle(w http.ResponseWriter, r *http.Request, s *Staff) {
 	a.db.Exec(`UPDATE tables SET is_active=NOT is_active WHERE id=? AND restaurant_id=?`, pathID(r, "id"), s.R.ID)
-	back(w, r, "/owner/tables")
+	tablesBack(w, r, "")
+}
+
+// tableNewQR gives the table a fresh random token. The old QR (and any photo of it) stops working
+// at once; guests seated at the table keep their group but must scan the new card.
+func (a *App) tableNewQR(w http.ResponseWriter, r *http.Request, s *Staff) {
+	a.db.Exec(`UPDATE tables SET qr_token=? WHERE id=? AND restaurant_id=?`, randToken(8), pathID(r, "id"), s.R.ID)
+	tablesBack(w, r, "renewed="+r.PathValue("id"))
 }
 
 func (a *App) tableQR(w http.ResponseWriter, r *http.Request, s *Staff) {

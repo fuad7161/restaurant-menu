@@ -67,12 +67,25 @@ func deviceToken(w http.ResponseWriter, r *http.Request) string {
 
 func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	c := &gctx{Tok: r.PathValue("tok"), Lang: i18n.Lang(r)}
-	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone
+	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks
 		FROM tables t JOIN restaurants r ON r.id=t.restaurant_id WHERE t.qr_token=? AND t.is_active`, c.Tok).
 		Scan(&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept,
-			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone)
+			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone, &c.R.Networks)
 	if err != nil {
 		http.NotFound(w, r)
+		return nil, false
+	}
+	if !a.guestNetworkOK(r, c.R.ID, c.R.Networks) {
+		if r.Header.Get("HX-Request") != "" {
+			w.Header().Set("HX-Redirect", c.url(""))
+			return nil, false
+		}
+		m := c.data()
+		if ip, ok := a.clientIP(r); ok {
+			m["IP"] = ip.String()
+		}
+		w.WriteHeader(http.StatusForbidden)
+		a.render(w, "guest_offsite", m)
 		return nil, false
 	}
 	c.Dev = deviceToken(w, r)

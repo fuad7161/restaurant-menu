@@ -45,6 +45,7 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | `S3_USE_SSL` | on | `0` only for a plain-HTTP store such as a local MinIO |
 | `REDIS_URL` | empty | Upstash `rediss://` URL. Optional; without it every refresh queries PostgreSQL |
 | `DEMO` | off | `1` seeds the sample restaurant |
+| `TRUST_PROXY` | off | `1` when a reverse proxy (Cloudflare, Fly, Render, nginx) sits in front: guest addresses are then read from `X-Forwarded-For`. Needed for **Ordering network**; leave off otherwise, or anyone could fake their address |
 
 ## Project layout
 

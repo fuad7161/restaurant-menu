@@ -27,6 +27,15 @@
 {{/* rmark is the round restaurant mark: the uploaded logo, or the first letter of the name. Takes a Restaurant. */}}
 {{define "rmark"}}<span class="mark{{if .Logo}} logo{{end}}" aria-hidden="true">{{if .Logo}}<img src="/uploads/{{.Logo}}" alt="">{{else}}{{initial .Name}}{{end}}</span>{{end}}
 
+{{define "guest_offsite"}}{{template "ghead" .}}
+<section class="card hello">
+  <h1>{{t .Lang "offsite_title"}}</h1>
+  <p>{{t .Lang "offsite_body"}}</p>
+  <p><a class="btn big" href="/t/{{.Tok}}">{{t .Lang "try_again"}}</a></p>
+  {{if .IP}}<p class="muted small">{{.IP}}</p>{{end}}
+</section>
+{{template "gfoot" .}}{{end}}
+
 {{define "guest_enter"}}{{template "ghead" .}}
 <section class="card hello">
   {{if .R.Logo}}

@@ -8,6 +8,7 @@ type Restaurant struct {
 	RequireAccept bool
 	// profile, edited by the owner on /owner/profile
 	Logo, Color, Tagline, Address, Phone string
+	Networks                             string // order_networks: IP ranges guests may order from, one per line; empty = anywhere
 }
 
 type Table struct {

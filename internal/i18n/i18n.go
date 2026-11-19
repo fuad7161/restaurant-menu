@@ -24,6 +24,9 @@ func T(lang, key string) string {
 // key: {English, Bangla}
 var texts = map[string][2]string{
 	"table":            {"Table", "টেবিল"},
+	"offsite_title":    {"Connect to the restaurant Wi-Fi", "রেস্টুরেন্টের ওয়াই-ফাইতে যুক্ত হোন"},
+	"offsite_body":     {"Orders can be placed only from inside the restaurant. Join the restaurant Wi-Fi (ask the staff for the password), then try again.", "শুধু রেস্টুরেন্টের ভেতর থেকে অর্ডার করা যায়। রেস্টুরেন্টের ওয়াই-ফাইতে যুক্ত হোন (পাসওয়ার্ড স্টাফের কাছে চেয়ে নিন), তারপর আবার চেষ্টা করুন।"},
+	"try_again":        {"Try again", "আবার চেষ্টা করুন"},
 	"group":            {"Group", "গ্রুপ"},
 	"closed_now":       {"The restaurant is not taking orders right now.", "রেস্টুরেন্ট এখন অর্ডার নিচ্ছে না।"},
 	"min":              {"min", "মিনিট"},
