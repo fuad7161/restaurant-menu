@@ -472,6 +472,18 @@ a.lrow:hover { background: var(--gold-soft); }
 .qrcard > b { font: 1.2rem var(--display); color: var(--brand-deep); }
 .qrcard img { width: 100%; display: block; border-radius: 12px; }
 .qrcard.off { opacity: .45; }
+/* The "New table" card sits first in the grid and matches the QR cards: same width, same row
+   height (grid stretch), a dashed square where a QR would be, and the button where the icons are. */
+.qrcard .qracts { margin-top: auto; }
+.addcard .addbox {
+  width: 100%; aspect-ratio: 1; border: 2px dashed var(--line); border-radius: 12px; cursor: text;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  color: var(--brand); background: var(--bg); font-weight: 500; font-size: .9rem; text-align: center; padding: 12px;
+}
+.addcard:focus-within .addbox { border-color: var(--brand); }
+.addcard input { width: 100%; text-align: center; margin: 4px 0 0; }
+.addcard .btn { width: 100%; margin-top: auto; }
+@media (max-width: 520px) { .addcard .addbox { aspect-ratio: auto; padding: 18px 12px; } }
 .qracts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 /* Round icon buttons; data-tip shows a small dark label above on hover or keyboard focus. */
 .btn.icon { width: 40px; height: 40px; padding: 0; flex: none; position: relative; }

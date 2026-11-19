@@ -107,11 +107,16 @@
   {{if .Tables}}<a class="btn" href="/owner/tables/print" target="_blank">Print all QR cards</a>{{end}}</div>
 {{if .ShowOff}}<p class="muted">Showing switched-off tables too. <a class="btn sm ghost" href="/owner/tables">Hide switched-off tables</a></p>
 {{else if .Hidden}}<p class="muted">{{.Hidden}} switched-off {{if eq .Hidden 1}}table is{{else}}tables are{{end}} hidden. <a class="btn sm ghost" href="/owner/tables?off=1">Show switched-off tables</a></p>{{end}}
-<form method="post" action="/owner/tables" class="card form rowform">
-  <label>Table number or name <input name="label" required maxlength="12" placeholder="12"></label>
-  <button class="btn">Add table</button>
-</form>
 <div class="qrgrid">
+  <form method="post" action="/owner/tables" class="card qrcard addcard">
+    <b>New table</b>
+    <label class="addbox">
+      <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      <span>Table number or name</span>
+      <input name="label" required maxlength="12" placeholder="e.g. 12" autocomplete="off">
+    </label>
+    <button class="btn">Add table</button>
+  </form>
 {{range .Tables}}
   <div class="card qrcard{{if not .Active}} off{{end}}">
     <b>Table {{.Label}}</b>
