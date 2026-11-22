@@ -1,14 +1,25 @@
-// Package i18n holds the guest-facing texts.
-// Guest screens are in Bangla and English. Staff screens are English only.
+// Package i18n holds the texts of the guest screens and the staff service screens.
+// Guest screens are in Bangla and English (Bangla by default). The staff service screens
+// (sidebar, kitchen, counter, take order, sold out) switch between English (the default) and
+// Bangla. The owner pages are English only.
 package i18n
 
 import "net/http"
 
+// Lang is the guest's language: the "lang" cookie, Bangla unless it says English.
 func Lang(r *http.Request) string {
 	if c, err := r.Cookie("lang"); err == nil && c.Value == "en" {
 		return "en"
 	}
 	return "bn"
+}
+
+// StaffLang is a staff member's language: the "staff_lang" cookie, English unless it says Bangla.
+func StaffLang(r *http.Request) string {
+	if c, err := r.Cookie("staff_lang"); err == nil && c.Value == "bn" {
+		return "bn"
+	}
+	return "en"
 }
 
 func T(lang, key string) string {
@@ -100,4 +111,166 @@ var texts = map[string][2]string{
 	"err_wait":         {"Please wait a few seconds before ordering again.", "আবার অর্ডার দেওয়ার আগে কয়েক সেকেন্ড অপেক্ষা করুন।"},
 	"added_by":         {"added by", "যোগ করেছেন"},
 	"each":             {"each", "প্রতিটি"},
+
+	"less": {"One less", "একটি কম"},
+	"more": {"One more", "একটি বেশি"},
+
+	// menu and dish sheet
+	"search_ph":       {"Search the menu", "মেনুতে খুঁজুন"},
+	"no_match":        {"No dishes match your search.", "এই নামে কোনো খাবার পাওয়া যায়নি।"},
+	"featured":        {"Recommended", "আমাদের পছন্দ"},
+	"price_note_both": {"Prices do not include VAT (%s%%) and service charge (%s%%).", "দামের সাথে ভ্যাট (%s%%) ও সার্ভিস চার্জ (%s%%) যোগ হবে।"},
+	"price_note_vat":  {"Prices do not include VAT (%s%%).", "দামের সাথে ভ্যাট (%s%%) যোগ হবে।"},
+	"price_note_svc":  {"Prices do not include service charge (%s%%).", "দামের সাথে সার্ভিস চার্জ (%s%%) যোগ হবে।"},
+	"choose":          {"Choose", "বেছে নিন"},
+	"details_of":      {"Details of %s", "%s-এর বিস্তারিত"},
+	"close":           {"Close", "বন্ধ করুন"},
+	"extras":          {"Extras", "অতিরিক্ত"},
+	"required":        {"Required", "আবশ্যক"},
+	"optional":        {"Optional", "ঐচ্ছিক"},
+	"choose_one":      {"choose 1", "১টি বেছে নিন"},
+	"choose_upto":     {"up to %d", "সর্বোচ্চ %dটি"},
+	"choose_atleast":  {"at least %d", "কমপক্ষে %dটি"},
+	"err_choose":      {"Please choose: %s", "অনুগ্রহ করে বেছে নিন: %s"},
+	"err_toomany":     {"Choose at most %d in %s.", "%[2]s থেকে সর্বোচ্চ %[1]dটি বেছে নিন।"},
+	"quantity":        {"Quantity", "পরিমাণ"},
+	"note_label":      {"Note for the kitchen (optional)", "রান্নাঘরের জন্য নোট (ঐচ্ছিক)"},
+	"added_toast":     {"Added %d × %s", "%d × %s যোগ হয়েছে"},
+	"removed_toast":   {"Removed %s", "%s বাদ দেওয়া হয়েছে"},
+	"undo":            {"Undo", "ফিরিয়ে আনুন"},
+	"tag_popular":     {"Popular", "জনপ্রিয়"},
+	"tag_chef":        {"Chef's pick", "শেফের পছন্দ"},
+	"tag_new":         {"New", "নতুন"},
+	"tag_veg":         {"Vegetarian", "নিরামিষ"},
+	"tag_spicy1":      {"Mild", "হালকা ঝাল"},
+	"tag_spicy2":      {"Spicy", "ঝাল"},
+	"tag_spicy3":      {"Very spicy", "খুব ঝাল"},
+	"hours":           {"Open %s – %s", "খোলা %s – %s"},
+	"last_order_at":   {"The kitchen takes last orders at %s.", "রান্নাঘর শেষ অর্ডার নেবে %s-এ।"},
+
+	// cart and placing the order
+	"est_total":        {"Estimated total", "আনুমানিক মোট"},
+	"ordering_as":      {"Ordering as", "অর্ডার করছেন"},
+	"change_name":      {"Change name", "নাম বদলান"},
+	"save":             {"Save", "সংরক্ষণ করুন"},
+	"confirm_send":     {"Send %d items to the kitchen?", "%dটি আইটেম রান্নাঘরে পাঠাবেন?"},
+	"confirm_send_one": {"Send 1 item to the kitchen?", "১টি আইটেম রান্নাঘরে পাঠাবেন?"},
+	"send":             {"Send", "পাঠান"},
+	"goes_well":        {"Goes well with", "এর সাথে ভালো লাগে"},
+	"order_sent":       {"Order #%d is sent to the kitchen.", "অর্ডার #%d রান্নাঘরে পাঠানো হয়েছে।"},
+
+	// order status and bill
+	"progress":      {"Cooking progress", "রান্নার অগ্রগতি"},
+	"ready_toast":   {"Your food is ready!", "আপনার খাবার প্রস্তুত!"},
+	"called_at":     {"Called at %s · staff notified", "%s-এ ডাকা হয়েছে · স্টাফকে জানানো হয়েছে"},
+	"call_water":    {"Water", "পানি"},
+	"call_tissue":   {"Tissue", "টিস্যু"},
+	"call_done":     {"Staff answered", "স্টাফ সাড়া দিয়েছেন"},
+	"receipt":       {"Download receipt", "রসিদ ডাউনলোড করুন"},
+	"receipt_title": {"Receipt", "রসিদ"},
+	"print_save":    {"Print or save as PDF", "প্রিন্ট বা PDF হিসেবে রাখুন"},
+	"paid_by":       {"Paid by", "পরিশোধের মাধ্যম"},
+	"back":          {"Back", "ফিরে যান"},
+	"m_cash":        {"Cash", "ক্যাশ"},
+	"m_bkash":       {"bKash", "বিকাশ"},
+	"m_nagad":       {"Nagad", "নগদ"},
+	"m_card":        {"Card", "কার্ড"},
+
+	// feedback, dialogs and the connection banner (guest and staff)
+	"offline":     {"No internet. Reconnecting…", "ইন্টারনেট নেই। আবার যুক্ত হচ্ছে…"},
+	"send_failed": {"Could not send. Check the internet and try again.", "পাঠানো যায়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।"},
+	"error":       {"Something went wrong. Please try again.", "কিছু একটা সমস্যা হয়েছে। আবার চেষ্টা করুন।"},
+	"dlg_yes":     {"Yes", "হ্যাঁ"},
+	"dlg_no":      {"No", "না"},
+	"dlg_ok":      {"OK", "ঠিক আছে"},
+	"dlg_cancel":  {"Cancel", "বাতিল"},
+
+	// staff service screens
+	"s_service":         {"Service", "সার্ভিস"},
+	"s_kitchen":         {"Kitchen", "রান্নাঘর"},
+	"s_counter":         {"Counter", "কাউন্টার"},
+	"s_take_order":      {"Take order", "অর্ডার নিন"},
+	"s_sold_out":        {"Sold out", "শেষ হয়ে গেছে"},
+	"s_owner":           {"Owner", "মালিক"},
+	"s_dashboard":       {"Dashboard", "ড্যাশবোর্ড"},
+	"s_menu":            {"Menu", "মেনু"},
+	"s_tables_qr":       {"Tables & QR", "টেবিল ও QR"},
+	"s_staff":           {"Staff", "স্টাফ"},
+	"s_profile":         {"Profile", "প্রোফাইল"},
+	"s_settings":        {"Settings", "সেটিংস"},
+	"s_logout":          {"Log out", "লগ আউট"},
+	"s_open_menu":       {"Open menu", "মেনু খুলুন"},
+	"s_close_menu":      {"Close menu", "মেনু বন্ধ করুন"},
+	"s_main_menu":       {"Main menu", "প্রধান মেনু"},
+	"s_lang_switch":     {"বাংলা", "English"},
+	"role_owner":        {"owner", "মালিক"},
+	"role_kitchen":      {"kitchen", "রান্নাঘর"},
+	"role_waiter":       {"waiter", "ওয়েটার"},
+	"role_cashier":      {"cashier", "ক্যাশিয়ার"},
+	"s_sound_on":        {"🔔 Turn on sound", "🔔 সাউন্ড চালু করুন"},
+	"s_sound_is_on":     {"🔔 Sound is on", "🔔 সাউন্ড চালু আছে"},
+	"s_closed_warn":     {"The restaurant is marked closed. Guests cannot order. Change it in Settings.", "রেস্টুরেন্ট বন্ধ দেখানো আছে। অতিথিরা অর্ডার করতে পারবেন না। সেটিংসে বদলান।"},
+	"s_wake_note":       {"Keep this screen on: set the tablet's screen timeout to “never” while it shows orders.", "স্ক্রিন চালু রাখুন: অর্ডার দেখানোর সময় ট্যাবলেটের স্ক্রিন টাইমআউট “কখনো না” করে দিন।"},
+	"s_table_group":     {"Table %s · Group %s", "টেবিল %s · গ্রুপ %s"},
+	"s_asks_for":        {"asks for", "চাইছেন"},
+	"s_reason_waiter":   {"a waiter", "ওয়েটার"},
+	"s_reason_water":    {"water", "পানি"},
+	"s_reason_tissue":   {"tissue", "টিস্যু"},
+	"s_done":            {"Done", "হয়ে গেছে"},
+	"s_wants_reduce":    {"wants %s reduced from %d to %d", "%s %d থেকে কমিয়ে %d করতে চান"},
+	"s_wants_cancel":    {"wants to cancel %d × %s", "%d × %s বাতিল করতে চান"},
+	"s_approve":         {"Approve", "মেনে নিন"},
+	"s_decline":         {"Decline", "না"},
+	"s_new":             {"New", "নতুন"},
+	"s_cooking":         {"Cooking", "রান্না হচ্ছে"},
+	"s_ready_serve":     {"Ready to serve", "পরিবেশনের জন্য প্রস্তুত"},
+	"s_no_new":          {"No new orders.", "নতুন অর্ডার নেই।"},
+	"s_no_cooking":      {"Nothing cooking.", "কিছু রান্না হচ্ছে না।"},
+	"s_no_ready":        {"Nothing waiting.", "কিছু অপেক্ষায় নেই।"},
+	"s_addon":           {"add-on", "অতিরিক্ত"},
+	"s_minutes":         {"minutes", "মিনিট"},
+	"s_accept":          {"Accept", "গ্রহণ করুন"},
+	"s_reject":          {"Reject", "বাতিল করুন"},
+	"s_reject_ask":      {"Reason for the guest (for example: biryani finished)", "অতিথিকে কারণ জানান (যেমন: বিরিয়ানি শেষ)"},
+	"s_due_in":          {"due in %d min", "%d মিনিটে হওয়ার কথা"},
+	"s_late_by":         {"late by %d min", "%d মিনিট দেরি"},
+	"s_waiting":         {"waiting %d min", "%d মিনিট ধরে অপেক্ষায়"},
+	"s_mark_ready":      {"Mark ready", "প্রস্তুত"},
+	"s_mark_served":     {"Mark served", "পরিবেশিত"},
+	"s_marked_ready":    {"Table %s: marked ready", "টেবিল %s: প্রস্তুত করা হয়েছে"},
+	"s_marked_served":   {"Table %s: marked served", "টেবিল %s: পরিবেশিত করা হয়েছে"},
+	"s_undone":          {"Undone", "ফিরিয়ে আনা হয়েছে"},
+	"s_undo_late":       {"Too late to undo.", "এখন আর ফেরানো যাবে না।"},
+	"s_stock_title":     {"Sold out today", "আজ যা শেষ"},
+	"s_stock_help":      {"Switch off anything the kitchen cannot make right now. Guests see it greyed out.", "রান্নাঘর এখন যা বানাতে পারবে না তা বন্ধ করুন। অতিথিরা সেটি ধূসর দেখবেন।"},
+	"s_mark_sold_out":   {"Mark sold out", "শেষ হয়ে গেছে"},
+	"s_make_available":  {"Make available", "আবার চালু করুন"},
+	"s_no_bills":        {"No open bills right now.", "এখন কোনো খোলা বিল নেই।"},
+	"s_no_bills_help":   {"Bills appear here as soon as a group orders.", "কোনো গ্রুপ অর্ডার দিলেই বিল এখানে দেখা যাবে।"},
+	"s_table":           {"Table %s", "টেবিল %s"},
+	"s_group":           {"Group %s", "গ্রুপ %s"},
+	"s_wants_bill":      {"Wants the bill", "বিল চাইছেন"},
+	"s_no_guests":       {"No guests listed", "কোনো অতিথির নাম নেই"},
+	"s_opened":          {"Opened %s", "খোলা হয়েছে %s"},
+	"s_back_counter":    {"← Counter", "← কাউন্টার"},
+	"s_order_no":        {"Order #%d", "অর্ডার #%d"},
+	"s_remove":          {"Remove", "বাদ দিন"},
+	"s_remove_ask":      {"Why is this item removed from the bill?", "এই আইটেম বিল থেকে কেন বাদ দিচ্ছেন?"},
+	"s_take_payment":    {"Take payment", "পেমেন্ট নিন"},
+	"s_mark_paid":       {"Mark %s as paid", "%s পরিশোধিত"},
+	"s_close_unpaid":    {"Close without payment", "পেমেন্ট ছাড়া বন্ধ করুন"},
+	"s_close_ask":       {"Close this group without payment? Unserved orders are cancelled.", "পেমেন্ট ছাড়া এই গ্রুপ বন্ধ করবেন? যে অর্ডার পরিবেশন হয়নি তা বাতিল হবে।"},
+	"s_tables_title":    {"Take an order for a table", "টেবিলের জন্য অর্ডার নিন"},
+	"s_tables_help":     {"For guests who do not scan. You order from the same menu and it joins the same kitchen queue, already accepted.", "যে অতিথিরা স্ক্যান করেন না তাঁদের জন্য। একই মেনু থেকে অর্ডার দিন; এটি গ্রহণ করা অবস্থায় রান্নাঘরের একই সারিতে যাবে।"},
+	"s_groups_n":        {"%d groups", "%dটি গ্রুপ"},
+	"s_group_one":       {"1 group", "১টি গ্রুপ"},
+	"s_free":            {"Free", "খালি"},
+	"s_new_group":       {"+ New group", "+ নতুন গ্রুপ"},
+	"s_just_now":        {"just now", "এইমাত্র"},
+	"s_min_ago":         {"%d min ago", "%d মিনিট আগে"},
+	"s_h_ago":           {"%dh %dm ago", "%d ঘণ্টা %d মিনিট আগে"},
+	"st_open":           {"Open", "খোলা"},
+	"st_bill_requested": {"Bill requested", "বিল চাওয়া হয়েছে"},
+	"st_paid":           {"Paid", "পরিশোধিত"},
+	"st_closed":         {"Closed", "বন্ধ"},
 }

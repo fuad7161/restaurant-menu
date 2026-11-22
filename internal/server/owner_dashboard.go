@@ -20,6 +20,8 @@ func (a *App) ownerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /owner/items/{id}/delete", o(a.itemDelete))
 	mux.HandleFunc("POST /owner/items/{id}/options", o(a.optCreate))
 	mux.HandleFunc("POST /owner/options/{id}/delete", o(a.optDelete))
+	mux.HandleFunc("POST /owner/items/{id}/groups", o(a.groupCreate))
+	mux.HandleFunc("POST /owner/groups/{id}/delete", o(a.groupDelete))
 	mux.HandleFunc("GET /owner/tables", o(a.ownerTables))
 	mux.HandleFunc("POST /owner/tables", o(a.tableCreate))
 	mux.HandleFunc("POST /owner/tables/{id}/toggle", o(a.tableToggle))

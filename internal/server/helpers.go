@@ -2,9 +2,11 @@ package server
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,6 +14,8 @@ import (
 
 	"bosho/internal/i18n"
 	"bosho/internal/money"
+	"bosho/internal/storage"
+	"bosho/web"
 )
 
 // M is the data handed to a template.
@@ -54,16 +58,72 @@ func initial(s string) string {
 	return "ব"
 }
 
-func ago(ts int64) string {
+func ago(ts int64) string { return agoIn("en", ts) }
+
+// agoIn is "5 min ago" in English or Bangla.
+func agoIn(lang string, ts int64) string {
 	d := now() - ts
 	switch {
 	case d < 60:
-		return "just now"
+		return i18n.T(lang, "s_just_now")
 	case d < 3600:
-		return fmt.Sprintf("%d min ago", d/60)
+		return fmt.Sprintf(i18n.T(lang, "s_min_ago"), d/60)
 	default:
-		return fmt.Sprintf("%dh %dm ago", d/3600, (d%3600)/60)
+		return fmt.Sprintf(i18n.T(lang, "s_h_ago"), d/3600, (d%3600)/60)
 	}
+}
+
+// pct prints a percentage without trailing zeros: 5, 7.5.
+func pct(f float64) string { return strconv.FormatFloat(f, 'f', -1, 64) }
+
+// assetVersions holds a short content hash of every static file. Links made with the asset
+// template function carry it as ?v=, so browsers may cache a file for a year and still fetch the
+// new one as soon as it changes.
+var assetVersions = func() map[string]string {
+	v := map[string]string{}
+	fs.WalkDir(web.Static, "static", func(path string, d fs.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			if b, err := fs.ReadFile(web.Static, path); err == nil {
+				h := sha256.Sum256(b)
+				v[strings.TrimPrefix(path, "static/")] = hex.EncodeToString(h[:5])
+			}
+		}
+		return nil
+	})
+	return v
+}()
+
+func asset(name string) string {
+	if v, ok := assetVersions[name]; ok {
+		return "/static/" + name + "?v=" + v
+	}
+	return "/static/" + name
+}
+
+// dishTags are the tags an owner can give a dish, in the order guests see them.
+var dishTags = []string{"chef", "new", "veg", "spicy1", "spicy2", "spicy3"}
+
+func hasTag(tags, t string) bool {
+	for _, x := range strings.Split(tags, ",") {
+		if x == t {
+			return true
+		}
+	}
+	return false
+}
+
+// itemTags lists the tag keys to show on a dish: Popular first, then the owner's tags.
+func itemTags(it Item) []string {
+	var out []string
+	if it.Popular {
+		out = append(out, "popular")
+	}
+	for _, t := range dishTags {
+		if hasTag(it.Tags, t) {
+			out = append(out, t)
+		}
+	}
+	return out
 }
 
 func back(w http.ResponseWriter, r *http.Request, to string) {
@@ -75,6 +135,23 @@ var templateFuncs = template.FuncMap{
 	"taka":  money.Taka,
 	"t":     i18n.T,
 	"ago":   ago,
+	"agoIn": agoIn,
+	"asset": asset,
+	"pct":   pct,
+	// small is the menu-card size of a dish photo; srcset offers both sizes when the photo has them.
+	"small": storage.SmallName,
+	"srcset": func(name string) string {
+		if !storage.HasSizes(name) {
+			return ""
+		}
+		return "/uploads/" + storage.SmallName(name) + " 480w, /uploads/" + name + " 1200w"
+	},
+	"lower":    strings.ToLower,
+	"itemTags": itemTags,
+	"hasTag":   hasTag,
+	"dishTags": func() []string { return dishTags },
+	// tf is t with fmt arguments: {{tf .Lang "s_table" .Label}}
+	"tf": func(lang, key string, args ...any) string { return fmt.Sprintf(i18n.T(lang, key), args...) },
 	// pick chooses the Bangla or English name, falling back to whichever exists.
 	"pick": func(lang, bn, en string) string {
 		if lang == "bn" && bn != "" {

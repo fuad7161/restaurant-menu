@@ -1,18 +1,19 @@
 {{define "phead"}}<!doctype html>
-<html lang="en">
+{{$c := ""}}{{$l := "en"}}{{if .}}{{with .Staff}}{{$c = .R.Color}}{{$l = .Lang}}{{end}}{{end}}
+<html lang="{{$l}}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-{{$c := ""}}{{if .}}{{with .Staff}}{{$c = .R.Color}}{{end}}{{end}}
 <meta name="theme-color" content="{{themecolor $c}}">
 <title>{{if .}}{{with .Staff}}{{.R.Name}} · {{end}}{{end}}Bosho</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Tiro+Bangla&display=swap">
-<link rel="stylesheet" href="/static/app.css">
+{{if .}}{{with .Staff}}<link rel="manifest" href="{{asset "manifest.webmanifest"}}">
+<link rel="apple-touch-icon" href="{{asset "img/icon-192.png"}}">
+<meta name="apple-mobile-web-app-capable" content="yes">{{end}}{{end}}
+<link rel="stylesheet" href="{{asset "fonts/fonts.css"}}">
+<link rel="stylesheet" href="{{asset "app.css"}}">
 {{if $c}}<style>{{theme $c}}</style>{{end}}
-<script src="/static/htmx.min.js" defer></script>
-<script src="/static/app.js" defer></script>
+<script src="{{asset "htmx.min.js"}}" defer></script>
+<script src="{{asset "app.js"}}" defer></script>
 </head>{{end}}
 
 {{define "home"}}{{template "phead"}}
@@ -107,39 +108,41 @@
 </main>
 </body></html>{{end}}
 
-{{define "shead"}}{{template "phead" .}}
-<body class="staff">
+{{define "shead"}}{{template "phead" .}}{{$L := .Staff.Lang}}
+<body class="staff"{{if or (eq .Page "kitchen") (eq .Page "counter")}} data-wake{{end}}>
+{{template "ui" $L}}
 {{/* Narrow screens: a top bar with a menu button that slides the sidebar in from the left.
      Wide screens: the sidebar stays open on the left and the top bar is hidden. */}}
 <header class="stop">
-  <button class="menubtn" type="button" aria-label="Open menu" aria-controls="snav" aria-expanded="false" onclick="toggleNav(true)">{{template "si_menu"}}</button>
+  <button class="menubtn" type="button" aria-label="{{t $L "s_open_menu"}}" aria-controls="snav" aria-expanded="false" onclick="toggleNav(true)">{{template "si_menu"}}</button>
   <a class="brand" href="/staff/kitchen">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
 </header>
 <div class="scrim" onclick="toggleNav(false)"></div>
-<aside id="snav" class="side" aria-label="Main menu">
+<aside id="snav" class="side" aria-label="{{t $L "s_main_menu"}}">
   <div class="sidehead">
     <a class="brand" href="/staff/kitchen">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
-    <button class="menubtn close" type="button" aria-label="Close menu" onclick="toggleNav(false)">{{template "si_close"}}</button>
+    <button class="menubtn close" type="button" aria-label="{{t $L "s_close_menu"}}" onclick="toggleNav(false)">{{template "si_close"}}</button>
   </div>
   <nav>
-    <p class="navlabel">Service</p>
-    <a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">{{template "si_kitchen"}}Kitchen</a>
-    <a class="{{if eq .Page "counter"}}on{{end}}" href="/staff/counter">{{template "si_counter"}}Counter</a>
-    <a class="{{if eq .Page "tables"}}on{{end}}" href="/staff/tables">{{template "si_order"}}Take order</a>
-    <a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">{{template "si_stock"}}Sold out</a>
+    <p class="navlabel">{{t $L "s_service"}}</p>
+    <a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">{{template "si_kitchen"}}{{t $L "s_kitchen"}}</a>
+    <a class="{{if eq .Page "counter"}}on{{end}}" href="/staff/counter">{{template "si_counter"}}{{t $L "s_counter"}}</a>
+    <a class="{{if eq .Page "tables"}}on{{end}}" href="/staff/tables">{{template "si_order"}}{{t $L "s_take_order"}}</a>
+    <a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">{{template "si_stock"}}{{t $L "s_sold_out"}}</a>
     {{if .Staff.IsOwner}}
-    <p class="navlabel">Owner</p>
-    <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">{{template "si_chart"}}Dashboard</a>
-    <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">{{template "si_menu_book"}}Menu</a>
-    <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">{{template "si_qr"}}Tables &amp; QR</a>
-    <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">{{template "si_people"}}Staff</a>
-    <a class="{{if eq .Page "profile"}}on{{end}}" href="/owner/profile">{{template "si_store"}}Profile</a>
-    <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">{{template "si_gear"}}Settings</a>
+    <p class="navlabel">{{t $L "s_owner"}}</p>
+    <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">{{template "si_chart"}}{{t $L "s_dashboard"}}</a>
+    <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">{{template "si_menu_book"}}{{t $L "s_menu"}}</a>
+    <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">{{template "si_qr"}}{{t $L "s_tables_qr"}}</a>
+    <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">{{template "si_people"}}{{t $L "s_staff"}}</a>
+    <a class="{{if eq .Page "profile"}}on{{end}}" href="/owner/profile">{{template "si_store"}}{{t $L "s_profile"}}</a>
+    <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">{{template "si_gear"}}{{t $L "s_settings"}}</a>
     {{end}}
   </nav>
+  <a class="langsw" href="/staff/lang?l={{if eq $L "bn"}}en{{else}}bn{{end}}" lang="{{if eq $L "bn"}}en{{else}}bn{{end}}">{{t $L "s_lang_switch"}}</a>
   <form class="sidefoot" method="post" action="/logout">
-    <span class="who">{{.Staff.Name}}<small>{{.Staff.Role}}</small></span>
-    <button class="btn sm ghost">Log out</button>
+    <span class="who">{{.Staff.Name}}<small>{{t $L (print "role_" .Staff.Role)}}</small></span>
+    <button class="btn sm ghost">{{t $L "s_logout"}}</button>
   </form>
 </aside>
 <main>{{end}}
@@ -161,151 +164,155 @@
 
 {{define "sfoot"}}</main></body></html>{{end}}
 
-{{define "kitchen"}}{{template "shead" .}}
-<div class="pagehead"><h1>Kitchen</h1>
-  <button class="btn ghost sm" id="soundbtn" onclick="enableSound(this)">🔔 Turn on sound</button></div>
-{{if not .Staff.R.IsOpen}}<p class="warn">The restaurant is marked closed. Guests cannot order. Change it in Settings.</p>{{end}}
+{{define "kitchen"}}{{template "shead" .}}{{$L := .Staff.Lang}}
+<div class="pagehead"><h1>{{t $L "s_kitchen"}}</h1>
+  <button class="btn ghost sm" id="soundbtn" data-on="{{t $L "s_sound_is_on"}}" onclick="enableSound(this)">{{t $L "s_sound_on"}}</button></div>
+<p class="warn wakenote" hidden>{{t $L "s_wake_note"}}</p>
+{{if not .Staff.R.IsOpen}}<p class="warn">{{t $L "s_closed_warn"}}</p>{{end}}
 {{template "k_board" .}}
 {{template "sfoot" .}}{{end}}
 
-{{define "k_board"}}<div id="board" data-alert="{{.Alert}}" hx-get="/staff/kitchen/board" hx-trigger="every 3s [noFocus()]" hx-swap="outerHTML">
+{{define "k_board"}}{{$L := .Staff.Lang}}<div id="board" class="board" data-alert="{{.Alert}}" hx-get="/staff/kitchen/board" hx-trigger="every 3s [noFocus()]" hx-swap="outerHTML">
 {{if or .Calls .Changes}}
 <section class="strip">
   {{range .Calls}}
-  <div class="call" data-key="call{{.ID}}">🔔 <b>Table {{.Table}} · {{.Group}}</b> asks for {{.Reason}} <span class="muted">{{ago .At}}</span>
-    <button class="btn sm" hx-post="/staff/calls/{{.ID}}/done" hx-target="#board" hx-swap="outerHTML">Done</button></div>
+  <div class="call" data-key="call{{.ID}}">🔔 <b>{{tf $L "s_table_group" .Table .Group}}</b> {{t $L "s_asks_for"}} {{t $L (print "s_reason_" .Reason)}} <span class="muted">{{agoIn $L .At}}</span>
+    <button class="btn sm" hx-post="/staff/calls/{{.ID}}/done" hx-target="#board" hx-swap="outerHTML">{{t $L "s_done"}}</button></div>
   {{end}}
-  {{range .Changes}}
-  <div class="call change" data-key="chg{{.ID}}">✎ <b>Table {{.Table}} · {{.Group}}</b>
-    {{if .ReqQty}}wants {{.Name}} reduced from {{.Qty}} to {{.ReqQty}}{{else}}wants to cancel {{.Qty}} × {{.Name}}{{end}}
-    <button class="btn sm" hx-post="/staff/items/{{.ID}}/approve" hx-target="#board" hx-swap="outerHTML">Approve</button>
-    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/decline" hx-target="#board" hx-swap="outerHTML">Decline</button></div>
+  {{range .Changes}}{{$n := pick $L .NameBn .NameEn}}
+  <div class="call change" data-key="chg{{.ID}}">✎ <b>{{tf $L "s_table_group" .Table .Group}}</b>
+    {{if .ReqQty}}{{tf $L "s_wants_reduce" $n .Qty .ReqQty}}{{else}}{{tf $L "s_wants_cancel" .Qty $n}}{{end}}
+    <button class="btn sm" hx-post="/staff/items/{{.ID}}/approve" hx-target="#board" hx-swap="outerHTML">{{t $L "s_approve"}}</button>
+    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/decline" hx-target="#board" hx-swap="outerHTML">{{t $L "s_decline"}}</button></div>
   {{end}}
 </section>
 {{end}}
 <div class="cols">
-  <section><h2>New <span class="count">{{len .New}}</span></h2>
-    {{range .New}}{{template "k_card" .}}{{else}}<p class="muted">No new orders.</p>{{end}}</section>
-  <section><h2>Cooking <span class="count">{{len .Cooking}}</span></h2>
-    {{range .Cooking}}{{template "k_card" .}}{{else}}<p class="muted">Nothing cooking.</p>{{end}}</section>
-  <section><h2>Ready to serve <span class="count">{{len .Ready}}</span></h2>
-    {{range .Ready}}{{template "k_card" .}}{{else}}<p class="muted">Nothing waiting.</p>{{end}}</section>
+  <section><h2>{{t $L "s_new"}} <span class="count">{{len .New}}</span></h2>
+    {{range .New}}{{template "k_card" (dict "O" . "L" $L)}}{{else}}<p class="muted">{{t $L "s_no_new"}}</p>{{end}}</section>
+  <section><h2>{{t $L "s_cooking"}} <span class="count">{{len .Cooking}}</span></h2>
+    {{range .Cooking}}{{template "k_card" (dict "O" . "L" $L)}}{{else}}<p class="muted">{{t $L "s_no_cooking"}}</p>{{end}}</section>
+  <section><h2>{{t $L "s_ready_serve"}} <span class="count">{{len .Ready}}</span></h2>
+    {{range .Ready}}{{template "k_card" (dict "O" . "L" $L)}}{{else}}<p class="muted">{{t $L "s_no_ready"}}</p>{{end}}</section>
 </div>
 </div>{{end}}
 
-{{define "k_card"}}<article class="kcard k-{{.Status}}" data-key="o{{.ID}}-{{.Status}}">
-  <header><b>Table {{.Table}} · Group {{.Group}}</b>{{if .Addon}} <span class="badge">add-on</span>{{end}}
-    <div class="muted">#{{.ID}} · {{.PlacedBy}} · {{ago .PlacedAt}}</div></header>
-  <ul>{{range .Items}}{{if ne .Status "cancelled"}}
-    <li><b>{{.Qty}} ×</b> {{pick "en" .NameBn .NameEn}}{{if .Options}} <span class="muted">({{.Options}})</span>{{end}}
+{{/* k_card is one kitchen ticket. Its top border turns amber, then red, as it waits (Settings). */}}
+{{define "k_card"}}{{$o := .O}}{{$L := .L}}<article class="kcard k-{{$o.Status}} age-{{$o.Age}}" data-key="o{{$o.ID}}-{{$o.Status}}">
+  <header><b>{{tf $L "s_table_group" $o.Table $o.Group}}</b>{{if $o.Addon}} <span class="badge">{{t $L "s_addon"}}</span>{{end}}
+    <div class="kmeta"><span class="kage">{{$o.ETA}}</span> · #{{$o.ID}} · {{$o.PlacedBy}} · {{agoIn $L $o.PlacedAt}}</div></header>
+  <ul>{{range $o.Items}}{{if ne .Status "cancelled"}}
+    <li><b class="kq">{{.Qty}} ×</b> {{pick $L .NameBn .NameEn}}{{if .Options}} <span class="muted">({{.Options}})</span>{{end}}
       {{if .Note}}<div class="note">“{{.Note}}”</div>{{end}}</li>{{end}}{{end}}</ul>
-  {{if eq .Status "placed"}}
-    <form class="inline" hx-post="/staff/orders/{{.ID}}/accept" hx-target="#board" hx-swap="outerHTML">
-      <input type="number" name="minutes" value="{{.Minutes}}" min="1" max="240" aria-label="minutes"> min
-      <button class="btn">Accept</button>
-      <button class="btn ghost" type="button" hx-post="/staff/orders/{{.ID}}/reject" hx-prompt="Reason for the guest (for example: biryani finished)" hx-target="#board" hx-swap="outerHTML">Reject</button>
+  {{if eq $o.Status "placed"}}
+    <form class="kacts" hx-post="/staff/orders/{{$o.ID}}/accept" hx-target="#board" hx-swap="outerHTML">
+      <label class="kmin"><input type="number" name="minutes" value="{{$o.Minutes}}" min="1" max="240"> {{t $L "s_minutes"}}</label>
+      <button class="btn">{{t $L "s_accept"}}</button>
+      <button class="btn ghost" type="button" hx-post="/staff/orders/{{$o.ID}}/reject" data-ask="{{t $L "s_reject_ask"}}" hx-target="#board" hx-swap="outerHTML">{{t $L "s_reject"}}</button>
     </form>
-  {{else if eq .Status "cooking"}}
-    <p class="muted">{{.ETA}}</p>
-    <button class="btn" hx-post="/staff/orders/{{.ID}}/ready" hx-target="#board" hx-swap="outerHTML">Mark ready</button>
-    <button class="btn ghost sm" hx-post="/staff/orders/{{.ID}}/reject" hx-prompt="Reason for the guest" hx-target="#board" hx-swap="outerHTML">Reject</button>
+  {{else if eq $o.Status "cooking"}}
+    <div class="kacts">
+      <button class="btn" hx-post="/staff/orders/{{$o.ID}}/ready" hx-target="#board" hx-swap="outerHTML">{{t $L "s_mark_ready"}}</button>
+      <button class="btn ghost" hx-post="/staff/orders/{{$o.ID}}/reject" data-ask="{{t $L "s_reject_ask"}}" hx-target="#board" hx-swap="outerHTML">{{t $L "s_reject"}}</button>
+    </div>
   {{else}}
-    <button class="btn" hx-post="/staff/orders/{{.ID}}/served" hx-target="#board" hx-swap="outerHTML">Mark served</button>
+    <div class="kacts"><button class="btn" hx-post="/staff/orders/{{$o.ID}}/served" hx-target="#board" hx-swap="outerHTML">{{t $L "s_mark_served"}}</button></div>
   {{end}}
 </article>{{end}}
 
-{{define "stock"}}{{template "shead" .}}
-<h1>Sold out today</h1>
-<p class="muted">Switch off anything the kitchen cannot make right now. Guests see it greyed out.</p>
+{{define "stock"}}{{template "shead" .}}{{$L := .Staff.Lang}}
+<h1>{{t $L "s_stock_title"}}</h1>
+<p class="muted">{{t $L "s_stock_help"}}</p>
 {{range .Cats}}{{if .Items}}
-<h2>{{pick "en" .NameBn .NameEn}}</h2>
-<div class="cgrid dgrid">{{range .Items}}{{template "stock_row" .}}{{end}}</div>
+<h2>{{pick $L .NameBn .NameEn}}</h2>
+<div class="cgrid dgrid">{{range .Items}}{{template "stock_row" (dict "It" . "L" $L)}}{{end}}</div>
 {{end}}{{end}}
 {{template "sfoot" .}}{{end}}
 
-{{define "stock_row"}}<div class="dcard{{if not .Available}} soldout{{end}}" id="stock-{{.ID}}">
-  <div class="dpic">{{if .Photo}}<img src="/uploads/{{.Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn}}.svg" alt="">{{end}}
-    {{if not .Available}}<span class="dflag">Sold out</span>{{end}}</div>
+{{define "stock_row"}}{{$L := .L}}{{with .It}}<div class="dcard{{if not .Available}} soldout{{end}}" id="stock-{{.ID}}">
+  <div class="dpic">{{if .Photo}}<img src="/uploads/{{small .Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn}}.svg" alt="">{{end}}
+    {{if not .Available}}<span class="dflag">{{t $L "s_sold_out"}}</span>{{end}}</div>
   <div class="dbody">
-    <b>{{pick "en" .NameBn .NameEn}}</b>
-    <span class="muted small1">{{.NameBn}}</span>
-    <button class="btn sm{{if .Available}} ghost{{end}}" hx-post="/staff/stock/{{.ID}}/toggle" hx-target="#stock-{{.ID}}" hx-swap="outerHTML">{{if .Available}}Mark sold out{{else}}Make available{{end}}</button>
+    <b>{{pick $L .NameBn .NameEn}}</b>
+    <span class="muted small1">{{if eq $L "bn"}}{{.NameEn}}{{else}}{{.NameBn}}{{end}}</span>
+    <button class="btn sm{{if .Available}} ghost{{end}}" hx-post="/staff/stock/{{.ID}}/toggle" hx-target="#stock-{{.ID}}" hx-swap="outerHTML">{{if .Available}}{{t $L "s_mark_sold_out"}}{{else}}{{t $L "s_make_available"}}{{end}}</button>
   </div>
-</div>{{end}}
+</div>{{end}}{{end}}
 
 {{define "counter"}}{{template "shead" .}}
-<h1>Counter</h1>
+<h1>{{t .Staff.Lang "s_counter"}}</h1>
+<p class="warn wakenote" hidden>{{t .Staff.Lang "s_wake_note"}}</p>
 {{template "c_list" .}}
 {{template "sfoot" .}}{{end}}
 
-{{define "c_list"}}<div id="bills" data-alert="{{.Alert}}" hx-get="/staff/counter/list" hx-trigger="every 4s" hx-swap="outerHTML">
-{{if not .Bills}}<div class="empty card"><p>No open bills right now.</p><p class="muted">Bills appear here as soon as a group orders.</p></div>{{end}}
+{{define "c_list"}}{{$L := .Staff.Lang}}<div id="bills" data-alert="{{.Alert}}" hx-get="/staff/counter/list" hx-trigger="every 4s" hx-swap="outerHTML">
+{{if not .Bills}}<div class="empty card"><p>{{t $L "s_no_bills"}}</p><p class="muted">{{t $L "s_no_bills_help"}}</p></div>{{end}}
 <div class="cgrid">
 {{range .Bills}}
   <a class="card tcard{{if eq .Status "bill_requested"}} asking{{end}}" data-key="b{{.ID}}-{{.Status}}" href="/staff/sessions/{{.ID}}">
-    <div class="tchead"><span class="tno">Table {{.Table}}</span><span class="badge">Group {{.Group}}</span></div>
-    {{if eq .Status "bill_requested"}}<span class="badge hot">Wants the bill</span>{{end}}
-    <p class="tcguests">{{if .Guests}}{{.Guests}}{{else}}<span class="muted">No guests listed</span>{{end}}</p>
-    <div class="tcfoot"><span class="muted">Opened {{ago .OpenedAt}}</span><b class="amt">{{money .Total}}</b></div>
+    <div class="tchead"><span class="tno">{{tf $L "s_table" .Table}}</span><span class="badge">{{tf $L "s_group" .Group}}</span></div>
+    {{if eq .Status "bill_requested"}}<span class="badge hot">{{t $L "s_wants_bill"}}</span>{{end}}
+    <p class="tcguests">{{if .Guests}}{{.Guests}}{{else}}<span class="muted">{{t $L "s_no_guests"}}</span>{{end}}</p>
+    <div class="tcfoot"><span class="muted">{{tf $L "s_opened" (agoIn $L .OpenedAt)}}</span><b class="amt">{{money .Total}}</b></div>
   </a>
 {{end}}
 </div>
 </div>{{end}}
 
-{{define "session"}}{{template "shead" .}}
-<p><a href="/staff/counter">← Counter</a></p>
-<h1>Table {{.B.Table}} · Group {{.B.Group}} <span class="badge">{{.B.Status}}</span></h1>
+{{define "session"}}{{template "shead" .}}{{$L := .Staff.Lang}}
+<p><a href="/staff/counter">{{t $L "s_back_counter"}}</a></p>
+<h1>{{tf $L "s_table_group" .B.Table .B.Group}} <span class="badge">{{t $L (print "st_" .B.Status)}}</span></h1>
 {{range $o := .Orders}}
 <section class="card">
-  <header><b>Order #{{$o.ID}}</b> <span class="muted">{{$o.Status}} · {{$o.PlacedBy}} · {{ago $o.PlacedAt}}</span>{{if $o.Reason}} <span class="warn">{{$o.Reason}}</span>{{end}}</header>
+  <header><b>{{tf $L "s_order_no" $o.ID}}</b> <span class="muted">{{t $L (print "st_" $o.Status)}} · {{$o.PlacedBy}} · {{agoIn $L $o.PlacedAt}}</span>{{if $o.Reason}} <span class="warn">{{$o.Reason}}</span>{{end}}</header>
   {{range $o.Items}}
   <div class="lrow{{if eq .Status "cancelled"}} struck{{end}}">
-    <span class="grow">{{.Qty}} × {{pick "en" .NameBn .NameEn}}{{if .Options}} ({{.Options}}){{end}}</span>
+    <span class="grow">{{.Qty}} × {{pick $L .NameBn .NameEn}}{{if .Options}} ({{.Options}}){{end}}</span>
     <span>{{money .Line}}</span>
     {{if and (ne .Status "cancelled") (ne $o.Status "rejected") (ne $o.Status "cancelled") (ne $.B.Status "paid") (ne $.B.Status "closed")}}
-    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/void" hx-prompt="Why is this item removed from the bill?" hx-swap="none">Remove</button>{{end}}
+    <button class="btn sm ghost" hx-post="/staff/items/{{.ID}}/void" data-ask="{{t $L "s_remove_ask"}}" hx-swap="none">{{t $L "s_remove"}}</button>{{end}}
   </div>
   {{end}}
 </section>
 {{end}}
 <section class="card bill">
-  <div class="total"><span>Subtotal</span><span>{{money .Bill.Subtotal}}</span></div>
-  <div class="total"><span>Service charge ({{.Staff.R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>
-  <div class="total"><span>VAT ({{.Staff.R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>
-  <div class="total grand"><span>Total</span><b>{{money .Bill.Total}}</b></div>
+  <div class="total"><span>{{t $L "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  <div class="total"><span>{{t $L "service_charge"}} ({{pct .Staff.R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>
+  <div class="total"><span>{{t $L "vat"}} ({{pct .Staff.R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>
+  <div class="total grand"><span>{{t $L "total"}}</span><b>{{money .Bill.Total}}</b></div>
 </section>
 {{if or (eq .B.Status "open") (eq .B.Status "bill_requested")}}
 <form method="post" action="/staff/sessions/{{.B.ID}}/paid" class="card form">
-  <h2>Take payment</h2>
+  <h2>{{t $L "s_take_payment"}}</h2>
   <div class="methods">
-    <label><input type="radio" name="method" value="cash" checked> Cash</label>
-    <label><input type="radio" name="method" value="bkash"> bKash</label>
-    <label><input type="radio" name="method" value="nagad"> Nagad</label>
-    <label><input type="radio" name="method" value="card"> Card</label>
+    <label><input type="radio" name="method" value="cash" checked> {{t $L "m_cash"}}</label>
+    <label><input type="radio" name="method" value="bkash"> {{t $L "m_bkash"}}</label>
+    <label><input type="radio" name="method" value="nagad"> {{t $L "m_nagad"}}</label>
+    <label><input type="radio" name="method" value="card"> {{t $L "m_card"}}</label>
   </div>
-  <button class="btn big">Mark {{money .Bill.Total}} as paid</button>
+  <button class="btn big">{{tf $L "s_mark_paid" (money .Bill.Total)}}</button>
 </form>
-<form method="post" action="/staff/sessions/{{.B.ID}}/close" onsubmit="return confirm('Close this group without payment? Unserved orders are cancelled.')">
-  <button class="btn ghost">Close without payment</button>
+<form method="post" action="/staff/sessions/{{.B.ID}}/close" data-confirm="{{t $L "s_close_ask"}}">
+  <button class="btn ghost">{{t $L "s_close_unpaid"}}</button>
 </form>
 {{end}}
 {{template "sfoot" .}}{{end}}
 
-{{define "staff_tables"}}{{template "shead" .}}
-<h1>Take an order for a table</h1>
-<p class="muted">For guests who do not scan. You order from the same menu and it joins the same kitchen queue, already accepted.</p>
+{{define "staff_tables"}}{{template "shead" .}}{{$L := .Staff.Lang}}
+<h1>{{t $L "s_tables_title"}}</h1>
+<p class="muted">{{t $L "s_tables_help"}}</p>
 <div class="cgrid">
 {{range .Tables}}{{if .Active}}
   <div class="card tcard{{if .Groups}} busy{{end}}">
-    <div class="tchead"><span class="tno">Table {{.Label}}</span>
-      {{if .Groups}}<span class="badge hot">{{len .Groups}} {{if eq (len .Groups) 1}}group{{else}}groups{{end}}</span>{{else}}<span class="badge free">Free</span>{{end}}</div>
+    <div class="tchead"><span class="tno">{{tf $L "s_table" .Label}}</span>
+      {{if .Groups}}<span class="badge hot">{{if eq (len .Groups) 1}}{{t $L "s_group_one"}}{{else}}{{tf $L "s_groups_n" (len .Groups)}}{{end}}</span>{{else}}<span class="badge free">{{t $L "s_free"}}</span>{{end}}</div>
     {{$tid := .ID}}
     <div class="tcacts">
     {{range .Groups}}
       <form method="post" action="/staff/tables/{{$tid}}/open"><input type="hidden" name="session" value="{{.ID}}">
-        <button class="btn sm">Group {{.Label}}{{if .First}} · {{.First}}{{end}}</button></form>
+        <button class="btn sm">{{tf $L "s_group" .Label}}{{if .First}} · {{.First}}{{end}}</button></form>
     {{end}}
-      <form method="post" action="/staff/tables/{{.ID}}/open"><button class="btn sm ghost">+ New group</button></form>
+      <form method="post" action="/staff/tables/{{.ID}}/open"><button class="btn sm ghost">{{t $L "s_new_group"}}</button></form>
     </div>
   </div>
 {{end}}{{end}}

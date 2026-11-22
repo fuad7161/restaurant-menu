@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -46,6 +47,11 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.
 	return a, nil
 }
 
+func init() {
+	// The staff screens' web app manifest (Go does not know this extension).
+	mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
+
 func newTemplates() (*template.Template, error) {
 	return template.New("").Funcs(templateFuncs).ParseFS(web.Templates, "templates/*.html")
 }
@@ -54,7 +60,17 @@ func newTemplates() (*template.Template, error) {
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	static, _ := fs.Sub(web.Static, "static")
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(static)))
+	files := http.StripPrefix("/static/", http.FileServerFS(static))
+	mux.HandleFunc("GET /static/", func(w http.ResponseWriter, r *http.Request) {
+		// Versioned links (see asset) and font files never change: cache them for a year.
+		// Anything else, such as images named in the CSS, for a day.
+		if r.URL.Query().Get("v") != "" || strings.HasPrefix(r.URL.Path, "/static/fonts/") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+		}
+		files.ServeHTTP(w, r)
+	})
 	mux.HandleFunc("GET /uploads/{name}", func(w http.ResponseWriter, r *http.Request) {
 		a.photos.Serve(w, r, r.PathValue("name"))
 	})

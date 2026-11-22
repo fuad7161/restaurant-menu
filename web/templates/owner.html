@@ -58,6 +58,8 @@
     <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}"{{if eq .ID $.AddCat}} selected{{end}}>{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
     <label>Name in Bangla <input name="name_bn" maxlength="80"></label>
     <label>Name in English <input name="name_en" maxlength="80"></label>
+    <label>Short description in Bangla <input name="desc_bn" maxlength="300" placeholder="খাসির মাংস, আলু ও সুগন্ধি চাল"></label>
+    <label>Short description in English <input name="desc_en" maxlength="300" placeholder="Mutton, potato and fragrant rice"></label>
     <label>Price (taka) <input name="price" type="number" step="0.01" min="0" required></label>
     <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="15"></label>
     <label>Photo (JPEG, PNG or WebP, up to 5 MB) <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
@@ -69,14 +71,14 @@
 {{range .Cats}}{{$c := .}}
 <section class="mcat" id="cat-{{.ID}}">
   <header class="pagehead"><h2>{{pick "en" .NameBn .NameEn}} <span class="muted">{{.NameBn}} · {{len .Items}} {{if eq (len .Items) 1}}dish{{else}}dishes{{end}}</span></h2>
-    {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete" onsubmit="return confirm('Delete this empty category?')"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
+    {{if not .Items}}<form method="post" action="/owner/categories/{{.ID}}/delete" data-confirm="Delete this empty category?"><button class="btn sm ghost">Delete category</button></form>{{end}}</header>
   <div class="cgrid dgrid">
     <a class="dcard dadd" href="?add=dish&amp;cat={{.ID}}#adddish">
       <span class="dplus" aria-hidden="true">+</span><b>Add a dish</b><span class="muted small1">to {{pick "en" .NameBn .NameEn}}</span></a>
     {{range .Items}}
     <a class="dcard{{if not .Available}} soldout{{end}}" href="/owner/items/{{.ID}}">
-      <div class="dpic">{{if .Photo}}<img src="/uploads/{{.Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn $c.NameEn $c.NameBn}}.svg" alt="">{{end}}
-        {{if not .Available}}<span class="dflag">Sold out</span>{{end}}
+      <div class="dpic">{{if .Photo}}<img src="/uploads/{{small .Photo}}" alt="" loading="lazy">{{else}}<img class="art" src="/static/img/{{dishart .NameEn .NameBn $c.NameEn $c.NameBn}}.svg" alt="">{{end}}
+        {{if not .Available}}<span class="dflag">Sold out</span>{{else if .Featured}}<span class="dflag">★ Featured</span>{{end}}
         <span class="dprice">{{money .Price}}</span></div>
       <div class="dbody">
         <b>{{pick "en" .NameBn .NameEn}}</b>
@@ -97,26 +99,71 @@
   <label>Category <select name="category_id">{{range .Cats}}<option value="{{.ID}}"{{if eq .ID $.It.CatID}} selected{{end}}>{{pick "en" .NameBn .NameEn}}</option>{{end}}</select></label>
   <label>Name in Bangla <input name="name_bn" value="{{.It.NameBn}}" maxlength="80"></label>
   <label>Name in English <input name="name_en" value="{{.It.NameEn}}" maxlength="80"></label>
+  <label>Short description in Bangla <textarea name="desc_bn" rows="2" maxlength="300">{{.It.DescBn}}</textarea></label>
+  <label>Short description in English <textarea name="desc_en" rows="2" maxlength="300">{{.It.DescEn}}</textarea></label>
+  <p class="muted">One or two lines: what it is, the portion, what it comes with. Guests see the start of it on the menu and all of it when they tap the dish.</p>
   <label>Price (taka) <input name="price" type="number" step="0.01" min="0" value="{{taka .It.Price}}" required></label>
   <label>Minutes to prepare <input name="prep_minutes" type="number" min="1" max="240" value="{{.It.Prep}}"></label>
-  {{if .It.Photo}}<img class="preview" src="/uploads/{{.It.Photo}}" alt="">{{end}}
+  <fieldset class="tagpick">
+    <legend>Tags guests see</legend>
+    <label class="choice"><input type="checkbox" name="tag_chef" value="1"{{if hasTag .It.Tags "chef"}} checked{{end}}> Chef's pick</label>
+    <label class="choice"><input type="checkbox" name="tag_new" value="1"{{if hasTag .It.Tags "new"}} checked{{end}}> New</label>
+    <label class="choice"><input type="checkbox" name="tag_veg" value="1"{{if hasTag .It.Tags "veg"}} checked{{end}}> Vegetarian</label>
+    <label>Spice level <select name="spice">
+      <option value="">Not spicy (no tag)</option>
+      <option value="spicy1"{{if hasTag .It.Tags "spicy1"}} selected{{end}}>Mild</option>
+      <option value="spicy2"{{if hasTag .It.Tags "spicy2"}} selected{{end}}>Spicy</option>
+      <option value="spicy3"{{if hasTag .It.Tags "spicy3"}} selected{{end}}>Very spicy</option></select></label>
+    <p class="muted">"Popular" is added by itself to your three best sellers of the last 30 days.</p>
+  </fieldset>
+  <label class="choice"><input type="checkbox" name="featured" value="1"{{if .It.Featured}} checked{{end}}> Featured: show it in the "Recommended" row at the top of the menu and first in its category</label>
+  {{if .It.Photo}}<img class="preview" src="/uploads/{{small .It.Photo}}" alt="">{{end}}
   <label>Replace photo <input name="photo" type="file" accept="image/jpeg,image/png,image/webp"></label>
+  <p class="muted">Photos are resized for phones when you upload them.</p>
   <button class="btn big">Save</button>
 </form>
-<section class="card">
+<section class="card" id="options">
   <h2>Options</h2>
-  <p class="muted">Extras a guest can tick, such as "Large" or "Extra meat". The extra price is added to the dish.</p>
-  {{range .It.Options}}
-  <div class="lrow"><span class="grow">{{.Name}}</span><span>+{{money .Extra}}</span>
-    <form method="post" action="/owner/options/{{.ID}}/delete"><button class="btn sm ghost">Remove</button></form></div>
+  <p class="muted">Put choices in a group when a rule applies, for example "Size: choose 1" (required) or "Toppings: up to 3". Options without a group are free extras: guests may tick any of them, or none.</p>
+  {{range .AllGroups}}{{$g := .}}
+  <div class="ogcard">
+    <div class="lrow"><span class="grow"><b>{{.Name}}</b> <span class="muted">· {{if eq .Max 1}}{{if ge .Min 1}}required, choose 1{{else}}optional, at most 1{{end}}{{else if gt .Max 1}}optional, up to {{.Max}}{{else}}optional, any number{{end}}</span></span>
+      <form method="post" action="/owner/groups/{{.ID}}/delete" data-confirm="Remove the group “{{.Name}}”? Its options stay on the dish as free extras."><button class="btn sm ghost">Remove group</button></form></div>
+    {{range $.It.Options}}{{if eq .GroupID $g.ID}}
+    <div class="lrow sub"><span class="grow">{{.Name}}</span><span>+{{money .Extra}}</span>
+      <form method="post" action="/owner/options/{{.ID}}/delete"><button class="btn sm ghost">Remove</button></form></div>
+    {{end}}{{end}}
+  </div>
+  {{end}}
+  {{$free := false}}{{range .It.Options}}{{if eq .GroupID 0}}{{$free = true}}{{end}}{{end}}
+  {{if $free}}
+  <div class="ogcard">
+    <div class="lrow"><span class="grow"><b>Free extras</b> <span class="muted">· optional, any number</span></span></div>
+    {{range .It.Options}}{{if eq .GroupID 0}}
+    <div class="lrow sub"><span class="grow">{{.Name}}</span><span>+{{money .Extra}}</span>
+      <form method="post" action="/owner/options/{{.ID}}/delete"><button class="btn sm ghost">Remove</button></form></div>
+    {{end}}{{end}}
+  </div>
   {{end}}
   <form method="post" action="/owner/items/{{.It.ID}}/options" class="form rowform">
-    <label>Option name <input name="name" required maxlength="40"></label>
+    <h3>Add an option</h3>
+    <label>Option name <input name="name" required maxlength="40" placeholder="Large"></label>
     <label>Extra price (taka) <input name="extra" type="number" step="0.01" min="0" value="0"></label>
+    <label>Group <select name="group_id"><option value="0">Free extra (no group)</option>{{range .AllGroups}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
     <button class="btn">Add option</button>
   </form>
+  <form method="post" action="/owner/items/{{.It.ID}}/groups" class="form rowform">
+    <h3>Add a group</h3>
+    <label>Group name <input name="name" required maxlength="40" placeholder="Size"></label>
+    <label>Rule <select name="rule">
+      <option value="one">Required: choose exactly 1</option>
+      <option value="upto">Optional: choose up to …</option>
+      <option value="any">Optional: any number</option></select></label>
+    <label>Up to how many (for "up to") <input name="max" type="number" min="1" max="20" value="3"></label>
+    <button class="btn">Add group</button>
+  </form>
 </section>
-<form method="post" action="/owner/items/{{.It.ID}}/delete" onsubmit="return confirm('Delete this dish from the menu?')">
+<form method="post" action="/owner/items/{{.It.ID}}/delete" data-confirm="Delete this dish from the menu?">
   <button class="btn ghost">Delete dish</button>
 </form>
 {{template "sfoot" .}}{{end}}
@@ -144,7 +191,7 @@
     {{if eq .ID $.Renewed}}<p class="okmsg">New QR made. The old one no longer works: print this card again.</p>{{end}}
     <div class="qracts">
       {{if .Active}}<a class="btn ghost icon" href="/owner/tables/print?id={{.ID}}" target="_blank" aria-label="Print QR card" data-tip="Print QR card">{{template "i_print"}}</a>{{end}}
-      <form method="post" action="/owner/tables/{{.ID}}/newqr" onsubmit="return confirm('Make a new QR for table {{.Label}}? The printed card and any photo of it stop working at once. Guests seated now must scan the new card.')">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn ghost icon" aria-label="Make a new QR" data-tip="Make a new QR">{{template "i_renew"}}</button></form>
+      <form method="post" action="/owner/tables/{{.ID}}/newqr" data-confirm="Make a new QR for table {{.Label}}? The printed card and any photo of it stop working at once. Guests seated now must scan the new card.">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}<button class="btn ghost icon" aria-label="Make a new QR" data-tip="Make a new QR">{{template "i_renew"}}</button></form>
       <form method="post" action="/owner/tables/{{.ID}}/toggle">{{if $.ShowOff}}<input type="hidden" name="off" value="1">{{end}}{{if .Active}}<button class="btn ghost icon" aria-label="Switch off this table" data-tip="Switch off this table">{{template "i_power"}}</button>{{else}}<button class="btn icon" aria-label="Switch on this table" data-tip="Switch on this table">{{template "i_power"}}</button>{{end}}</form>
     </div>
   </div>
@@ -186,7 +233,7 @@
     <div class="pbody"><span><b>{{.Name}}</b>{{if eq .ID $.Staff.ID}} <span class="badge">You</span>{{end}}</span>
       <span class="muted small1">{{.Phone}}</span>
       <span class="badge role-{{.Role}}">{{.Role}}</span></div>
-    {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" onsubmit="return confirm('Remove {{.Name}}?')"><button class="btn sm ghost">Remove</button></form>{{end}}
+    {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" data-confirm="Remove {{.Name}}?"><button class="btn sm ghost">Remove</button></form>{{end}}
   </div>
   {{end}}
 </div>
@@ -215,6 +262,19 @@
   <label>Service charge % <input name="service" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.Service}}"></label>
   <label class="choice"><input type="checkbox" name="is_open" value="1"{{if .Staff.R.IsOpen}} checked{{end}}> Open for orders</label>
   <label class="choice"><input type="checkbox" name="require_accept" value="1"{{if .Staff.R.RequireAccept}} checked{{end}}> Staff must accept each guest order before the kitchen cooks it (recommended: stops fake orders)</label>
+  <h2>Opening hours</h2>
+  <p class="muted">Shown to guests. In the last 30 minutes before the last order time (or the closing time) guests see "The kitchen takes last orders at …". Ordering itself is switched on and off with "Open for orders" above. Leave empty to show nothing.</p>
+  <div class="rowform">
+    <label>Opens at <input name="open_time" type="time" value="{{.Staff.R.OpenTime}}"></label>
+    <label>Closes at <input name="close_time" type="time" value="{{.Staff.R.CloseTime}}"></label>
+    <label>Last order at <input name="last_order" type="time" value="{{.Staff.R.LastOrder}}"></label>
+  </div>
+  <h2>Kitchen ticket colours</h2>
+  <p class="muted">A ticket on the kitchen screen turns amber, then red, as an order waits.</p>
+  <div class="rowform">
+    <label>Amber after (minutes) <input name="warn_minutes" type="number" min="1" max="240" value="{{.Staff.R.WarnMinutes}}"></label>
+    <label>Red after (minutes) <input name="late_minutes" type="number" min="2" max="240" value="{{.Staff.R.LateMinutes}}"></label>
+  </div>
   <button class="btn big">Save</button>
 </form>
 {{template "sfoot" .}}{{end}}
@@ -232,7 +292,7 @@
   <div class="lrow"><code class="grow">{{.}}</code>
     <form method="post" action="/owner/networks"><input type="hidden" name="act" value="remove"><input type="hidden" name="net" value="{{.}}"><button class="btn sm ghost">Remove</button></form></div>
   {{end}}
-  <form method="post" action="/owner/networks" onsubmit="return confirm('Let guests order from any network again?')"><input type="hidden" name="act" value="clear"><button class="btn sm ghost">Allow from anywhere</button></form>
+  <form method="post" action="/owner/networks" data-confirm="Let guests order from any network again?"><input type="hidden" name="act" value="clear"><button class="btn sm ghost">Allow from anywhere</button></form>
   {{else}}
   <p><b>Guests can order from anywhere</b> (any Wi-Fi or mobile data).</p>
   {{end}}
@@ -299,7 +359,7 @@
       <button class="btn big">Save profile</button>
     </form>
     {{if $r.Logo}}
-    <form method="post" action="/owner/profile/logo/delete" onsubmit="return confirm('Remove the logo? Guests will see the first letter of your name instead.')">
+    <form method="post" action="/owner/profile/logo/delete" data-confirm="Remove the logo? Guests will see the first letter of your name instead.">
       <button class="btn ghost sm">Remove logo</button></form>
     {{end}}
   </div>

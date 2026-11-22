@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"bosho/internal/database"
+	"bosho/internal/i18n"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -14,6 +15,7 @@ type Staff struct {
 	ID                int64
 	Name, Phone, Role string
 	R                 Restaurant
+	Lang              string // service screens: "en" or "bn" (see i18n.StaffLang)
 }
 
 func (s *Staff) IsOwner() bool { return s.Role == "owner" }
@@ -34,6 +36,7 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /signup", a.signup)
 	mux.HandleFunc("POST /logout", a.logout)
+	mux.HandleFunc("GET /staff/lang", a.auth(false, a.staffLang))
 
 	mux.HandleFunc("GET /staff/kitchen", a.auth(false, a.kitchen))
 	mux.HandleFunc("GET /staff/kitchen/board", a.poll(a.auth(false, a.kitchenBoard)))
@@ -57,14 +60,15 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 		return nil
 	}
 	var s Staff
-	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks
+	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
 		FROM staff_sessions ss JOIN staff_users u ON u.id=ss.staff_id JOIN restaurants r ON r.id=u.restaurant_id
 		WHERE ss.token=? AND ss.expires_at>?`, c.Value, now()).
-		Scan(&s.ID, &s.Name, &s.Phone, &s.Role, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
-			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone, &s.R.Networks)
+		Scan(append([]any{&s.ID, &s.Name, &s.Phone, &s.Role, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
+			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone, &s.R.Networks}, s.R.extraDest()...)...)
 	if err != nil {
 		return nil
 	}
+	s.Lang = i18n.StaffLang(r)
 	return &s
 }
 
@@ -209,4 +213,21 @@ func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, &http.Cookie{Name: "bosho_staff", Path: "/", MaxAge: -1})
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
+}
+
+// staffLang switches the service screens between English and Bangla and returns to the page.
+func (a *App) staffLang(w http.ResponseWriter, r *http.Request, s *Staff) {
+	l := "en"
+	if r.URL.Query().Get("l") == "bn" {
+		l = "bn"
+	}
+	http.SetCookie(w, &http.Cookie{Name: "staff_lang", Value: l, Path: "/", MaxAge: 365 * 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	to := safeNext(r.URL.Query().Get("next"))
+	if to == "" {
+		to = safeNext(pageOf(r.Referer())) // back to the page the switch was pressed on
+	}
+	if to == "" || strings.HasPrefix(to, "/staff/lang") {
+		to = staffHome(s.Role)
+	}
+	http.Redirect(w, r, to, http.StatusSeeOther)
 }

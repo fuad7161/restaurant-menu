@@ -9,6 +9,16 @@ type Restaurant struct {
 	// profile, edited by the owner on /owner/profile
 	Logo, Color, Tagline, Address, Phone string
 	Networks                             string // order_networks: IP ranges guests may order from, one per line; empty = anywhere
+	// opening hours shown to guests ("HH:MM", empty = not shown), and the kitchen ticket colour limits
+	OpenTime, CloseTime, LastOrder string
+	WarnMinutes, LateMinutes       int
+}
+
+// restExtraCols are the restaurant columns read into the fields after Networks (see extraDest).
+const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes`
+
+func (r *Restaurant) extraDest() []any {
+	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes}
 }
 
 type Table struct {
@@ -34,19 +44,34 @@ type Guest struct {
 }
 
 type Opt struct {
-	ID    int64
-	Name  string
-	Extra int64
+	ID      int64
+	Name    string
+	Extra   int64
+	GroupID int64 // 0 = a free extra, not in a group
+}
+
+// OptGroup is a set of options with a rule, such as "Size: choose 1 (required)".
+// ID 0 is the built-in group of free extras (options without a group).
+type OptGroup struct {
+	ID       int64
+	Name     string
+	Min, Max int // Min >= 1 means required; Max 0 means no limit, 1 means one choice only
+	Options  []Opt
 }
 
 type Item struct {
 	ID, CatID      int64
 	NameBn, NameEn string
+	DescBn, DescEn string
 	Price          int64
 	Photo          string
 	Prep           int
 	Available      bool
+	Featured       bool
+	Tags           string // comma list, see dishTags
+	Popular        bool   // among the restaurant's best sellers (set by menu())
 	Options        []Opt
+	Groups         []OptGroup // Options arranged into their groups; free extras last
 }
 
 type Cat struct {
@@ -68,8 +93,10 @@ type OView struct {
 	N, Step, Minutes                            int
 	Status, Reason, PlacedBy, ETA, Table, Group string
 	Addon                                       bool
-	PlacedAt, Est                               int64
+	PlacedAt, Est, ReadyAt, ServedAt            int64
 	Items                                       []OItem
+	Progress                                    int    // guest screen: 0 to 100 from placed to ready
+	Age                                         string // kitchen screen: "ok", "warn" or "late" by waiting time
 }
 
 type BillLine struct {

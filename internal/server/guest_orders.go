@@ -1,11 +1,14 @@
 package server
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"bosho/internal/database"
 	"bosho/internal/i18n"
 )
 
@@ -22,6 +25,17 @@ func (a *App) liveData(c *gctx, flash string) M {
 			} else {
 				o.ETA = fmt.Sprintf("%s %d–%d %s", i18n.T(c.Lang, "ready_in"), rem, rem+5, i18n.T(c.Lang, "min"))
 			}
+			// Progress from placing the order to the estimated ready time; never shown as finished early.
+			if span := o.Est - o.PlacedAt; span > 0 {
+				o.Progress = int(max(3, min(95, (now()-o.PlacedAt)*100/span)))
+			}
+		}
+		if o.Status == "ready" || o.Status == "served" {
+			o.Progress = 100
+		}
+		// "Order #2 is sent" stays on screen for a minute after placing, for everyone in the group.
+		if o.Status != "rejected" && o.Status != "cancelled" && now()-o.PlacedAt < 60 {
+			m["Sent"] = fmt.Sprintf(i18n.T(c.Lang, "order_sent"), o.N)
 		}
 		for j := range o.Items {
 			it := &o.Items[j]
@@ -31,6 +45,7 @@ func (a *App) liveData(c *gctx, flash string) M {
 		}
 	}
 	m["Orders"], m["Bill"], m["Paid"], m["Flash"] = orders, a.bill(c.S.ID, c.R), paid, flash
+	m["Calls"] = a.callButtons(c)
 	if paid {
 		var n int
 		a.db.QueryRow(`SELECT COUNT(*) FROM reviews WHERE session_id=?`, c.S.ID).Scan(&n)
@@ -86,6 +101,41 @@ func (a *App) gItemChange(w http.ResponseWriter, r *http.Request) {
 	a.render(w, "g_live", a.liveData(c, ""))
 }
 
+// callCooldown is how long after staff answer a call the same button stays off, against repeated taps.
+const callCooldown = 60
+
+// callBtn is one of the call buttons on the orders screen, with what happened to its last call.
+type callBtn struct {
+	Reason, Icon, Note string
+	Off, Done          bool
+}
+
+func (a *App) callButtons(c *gctx) []callBtn {
+	type callRow struct {
+		Reason, Status  string
+		Created, DoneAt int64
+	}
+	rows := database.List(a.db, `SELECT reason,status,created_at,done_at FROM waiter_calls
+		WHERE session_id=? AND (status='pending' OR done_at>?) ORDER BY id`,
+		func(r *sql.Rows, x *callRow) error { return r.Scan(&x.Reason, &x.Status, &x.Created, &x.DoneAt) }, c.S.ID, now()-120)
+	btns := []callBtn{{Reason: "waiter", Icon: "🔔"}, {Reason: "water", Icon: "💧"}, {Reason: "tissue", Icon: "🧻"}}
+	for i := range btns {
+		b := &btns[i]
+		for _, x := range rows { // later rows win
+			if x.Reason != b.Reason {
+				continue
+			}
+			if x.Status == "pending" {
+				t := time.Unix(x.Created, 0).In(a.loc)
+				b.Note, b.Off, b.Done = fmt.Sprintf(i18n.T(c.Lang, "called_at"), clock12(t.Hour()*60+t.Minute())), true, false
+			} else {
+				b.Note, b.Off, b.Done = i18n.T(c.Lang, "call_done"), now()-x.DoneAt < callCooldown, true
+			}
+		}
+	}
+	return btns
+}
+
 func (a *App) gCall(w http.ResponseWriter, r *http.Request) {
 	c, ok := a.joined(w, r)
 	if !ok {
@@ -95,9 +145,11 @@ func (a *App) gCall(w http.ResponseWriter, r *http.Request) {
 	if reason != "water" && reason != "tissue" {
 		reason = "waiter"
 	}
-	var pending int
-	a.db.QueryRow(`SELECT COUNT(*) FROM waiter_calls WHERE session_id=? AND reason=? AND status='pending'`, c.S.ID, reason).Scan(&pending)
-	if pending == 0 && c.S.Status != "paid" {
+	// One open call per reason, and a short pause after staff answered it.
+	var busy int
+	a.db.QueryRow(`SELECT COUNT(*) FROM waiter_calls WHERE session_id=? AND reason=? AND (status='pending' OR done_at>?)`,
+		c.S.ID, reason, now()-callCooldown).Scan(&busy)
+	if busy == 0 && c.S.Status != "paid" {
 		a.db.Exec(`INSERT INTO waiter_calls(restaurant_id,session_id,reason,created_at) VALUES(?,?,?,?)`, c.R.ID, c.S.ID, reason, now())
 	}
 	a.render(w, "g_live", a.liveData(c, i18n.T(c.Lang, "waiter_coming")))
@@ -137,4 +189,28 @@ func (a *App) gReview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	http.Redirect(w, r, c.url("/orders"), http.StatusSeeOther)
+}
+
+// gReceipt is a printable receipt of a paid bill, which the guest can print or save as a PDF.
+func (a *App) gReceipt(w http.ResponseWriter, r *http.Request) {
+	c, ok := a.joined(w, r)
+	if !ok {
+		return
+	}
+	if c.S.Status != "paid" {
+		http.Redirect(w, r, c.url("/orders"), http.StatusSeeOther)
+		return
+	}
+	m := c.data()
+	m["Bill"] = a.bill(c.S.ID, c.R)
+	var method string
+	var at int64
+	a.db.QueryRow(`SELECT method,created_at FROM payments WHERE session_id=? ORDER BY id DESC LIMIT 1`, c.S.ID).Scan(&method, &at)
+	if at == 0 {
+		at = c.S.ClosedAt
+	}
+	m["Method"] = i18n.T(c.Lang, "m_"+method)
+	m["PaidAt"] = time.Unix(at, 0).In(a.loc).Format("2 Jan 2006, 3:04 pm")
+	m["Ref"] = fmt.Sprintf("%d-%d", c.R.ID, c.S.ID)
+	a.render(w, "guest_receipt", m)
 }

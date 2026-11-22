@@ -2,9 +2,11 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"bosho/internal/database"
 	"bosho/internal/i18n"
@@ -31,11 +33,14 @@ func (a *App) guestRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /t/{tok}/bar", a.poll(a.gBar))
 	mux.HandleFunc("POST /t/{tok}/join/{gid}/{act}", a.gJoinDecide)
 	mux.HandleFunc("GET /t/{tok}/add/{id}", a.gAddControl)
+	mux.HandleFunc("GET /t/{tok}/dish/{id}", a.gDish)
 	mux.HandleFunc("POST /t/{tok}/cart/add", a.gCartAdd)
 	mux.HandleFunc("GET /t/{tok}/cart", a.gCart)
 	mux.HandleFunc("GET /t/{tok}/cart/list", a.poll(a.gCartList))
 	mux.HandleFunc("POST /t/{tok}/cart/{id}/qty", a.gCartQty)
+	mux.HandleFunc("POST /t/{tok}/cart/{id}/undo", a.gCartUndo)
 	mux.HandleFunc("POST /t/{tok}/cart/{id}/note", a.gCartNote)
+	mux.HandleFunc("POST /t/{tok}/name", a.gName)
 	mux.HandleFunc("POST /t/{tok}/order", a.gPlaceOrder)
 	mux.HandleFunc("GET /t/{tok}/orders", a.gOrders)
 	mux.HandleFunc("GET /t/{tok}/orders/live", a.poll(a.gOrdersLive))
@@ -44,6 +49,7 @@ func (a *App) guestRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /t/{tok}/bill", a.gBill)
 	mux.HandleFunc("POST /t/{tok}/bill/cancel", a.gBill)
 	mux.HandleFunc("POST /t/{tok}/review", a.gReview)
+	mux.HandleFunc("GET /t/{tok}/receipt", a.gReceipt)
 }
 
 // gctx is everything known about the phone that made the request.
@@ -59,6 +65,65 @@ func (c *gctx) data() M {
 	return M{"Lang": c.Lang, "Tok": c.Tok, "R": c.R, "Tbl": c.Tbl, "S": c.S, "G": c.G}
 }
 
+// infoData adds the opening hours, the "last orders at" notice near closing, and the line saying
+// which charges come on top of the menu prices.
+func (a *App) infoData(c *gctx, m M) {
+	m["Hours"], m["LastCall"] = hoursInfo(c.R, c.Lang, time.Now().In(a.loc))
+	switch {
+	case c.R.VAT > 0 && c.R.Service > 0:
+		m["PriceNote"] = fmt.Sprintf(i18n.T(c.Lang, "price_note_both"), pct(c.R.VAT), pct(c.R.Service))
+	case c.R.VAT > 0:
+		m["PriceNote"] = fmt.Sprintf(i18n.T(c.Lang, "price_note_vat"), pct(c.R.VAT))
+	case c.R.Service > 0:
+		m["PriceNote"] = fmt.Sprintf(i18n.T(c.Lang, "price_note_svc"), pct(c.R.Service))
+	}
+}
+
+// parseHM reads "HH:MM" as minutes after midnight.
+func parseHM(s string) (int, bool) {
+	t, err := time.Parse("15:04", strings.TrimSpace(s))
+	if err != nil {
+		return 0, false
+	}
+	return t.Hour()*60 + t.Minute(), true
+}
+
+// clock12 prints minutes after midnight as "10:30 pm".
+func clock12(m int) string {
+	h, suffix := (m/60)%24, "am"
+	if h >= 12 {
+		suffix = "pm"
+	}
+	if h = h % 12; h == 0 {
+		h = 12
+	}
+	return fmt.Sprintf("%d:%02d %s", h, m%60, suffix)
+}
+
+// hoursInfo returns "Open 12:00 pm – 11:00 pm" when both times are set, and the last-orders notice
+// during the 30 minutes before the last order time (or the closing time when none is set).
+func hoursInfo(r Restaurant, lang string, at time.Time) (hours, lastCall string) {
+	open, okOpen := parseHM(r.OpenTime)
+	closeAt, okClose := parseHM(r.CloseTime)
+	if okOpen && okClose {
+		hours = fmt.Sprintf(i18n.T(lang, "hours"), clock12(open), clock12(closeAt))
+	}
+	cutoff, ok := parseHM(r.LastOrder)
+	if !ok {
+		cutoff, ok = closeAt, okClose
+	}
+	if ok {
+		left := cutoff - (at.Hour()*60 + at.Minute())
+		if left < -12*60 { // the cutoff is after midnight
+			left += 24 * 60
+		}
+		if left >= 0 && left <= 30 {
+			lastCall = fmt.Sprintf(i18n.T(lang, "last_order_at"), clock12(cutoff))
+		}
+	}
+	return
+}
+
 func (c *gctx) url(path string) string { return "/t/" + c.Tok + path }
 
 func deviceToken(w http.ResponseWriter, r *http.Request) string {
@@ -72,10 +137,10 @@ func deviceToken(w http.ResponseWriter, r *http.Request) string {
 
 func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	c := &gctx{Tok: r.PathValue("tok"), Lang: i18n.Lang(r)}
-	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks
+	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
 		FROM tables t JOIN restaurants r ON r.id=t.restaurant_id WHERE t.qr_token=? AND t.is_active`, c.Tok).
-		Scan(&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept,
-			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone, &c.R.Networks)
+		Scan(append([]any{&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept,
+			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone, &c.R.Networks}, c.R.extraDest()...)...)
 	if err != nil {
 		http.NotFound(w, r)
 		return nil, false
@@ -170,6 +235,7 @@ func (a *App) gLanding(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case c.G == nil:
 		m["Groups"] = a.openGroups(c.Tbl.ID)
+		a.infoData(c, m)
 		a.render(w, "guest_enter", m)
 	case c.G.Status == "pending":
 		a.render(w, "guest_wait", m)
@@ -177,7 +243,17 @@ func (a *App) gLanding(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, c.url("/orders"), http.StatusSeeOther)
 	default:
 		a.barData(c, m, "menu")
-		m["Cats"] = a.menu(c.R.ID)
+		a.infoData(c, m)
+		cats := a.menu(c.R.ID)
+		var featured []Item
+		for _, cat := range cats {
+			for _, it := range cat.Items {
+				if it.Featured && it.Available {
+					featured = append(featured, it)
+				}
+			}
+		}
+		m["Cats"], m["Featured"] = cats, featured
 		a.render(w, "guest_menu", m)
 	}
 }

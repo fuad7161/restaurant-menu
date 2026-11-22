@@ -7,27 +7,47 @@ import (
 	"bosho/internal/money"
 )
 
+const itemCols = `id,category_id,name_bn,name_en,desc_bn,desc_en,price,photo,prep_minutes,is_available,featured,tags`
+
+func scanItem(r interface{ Scan(...any) error }, i *Item) error {
+	return r.Scan(&i.ID, &i.CatID, &i.NameBn, &i.NameEn, &i.DescBn, &i.DescEn, &i.Price, &i.Photo, &i.Prep, &i.Available, &i.Featured, &i.Tags)
+}
+
 func (a *App) menu(rid int64) []Cat {
 	cats := database.List(a.db, `SELECT id,name_bn,name_en FROM menu_categories WHERE restaurant_id=? ORDER BY sort_order,id`,
 		func(r *sql.Rows, c *Cat) error { return r.Scan(&c.ID, &c.NameBn, &c.NameEn) }, rid)
-	items := database.List(a.db, `SELECT id,category_id,name_bn,name_en,price,photo,prep_minutes,is_available FROM menu_items WHERE restaurant_id=? AND NOT deleted ORDER BY id`,
-		func(r *sql.Rows, i *Item) error {
-			return r.Scan(&i.ID, &i.CatID, &i.NameBn, &i.NameEn, &i.Price, &i.Photo, &i.Prep, &i.Available)
-		}, rid)
+	// Featured dishes come first in their category.
+	items := database.List(a.db, `SELECT `+itemCols+` FROM menu_items WHERE restaurant_id=? AND NOT deleted ORDER BY featured DESC, id`,
+		func(r *sql.Rows, i *Item) error { return scanItem(r, i) }, rid)
 	type optRow struct {
 		Item int64
 		Opt
 	}
-	opts := database.List(a.db, `SELECT o.menu_item_id,o.id,o.name,o.extra_price FROM item_options o JOIN menu_items m ON m.id=o.menu_item_id WHERE m.restaurant_id=? ORDER BY o.id`,
-		func(r *sql.Rows, o *optRow) error { return r.Scan(&o.Item, &o.ID, &o.Name, &o.Extra) }, rid)
-	byItem := map[int64][]Opt{}
+	opts := database.List(a.db, `SELECT o.menu_item_id,o.id,o.name,o.extra_price,COALESCE(o.group_id,0) FROM item_options o JOIN menu_items m ON m.id=o.menu_item_id WHERE m.restaurant_id=? ORDER BY o.id`,
+		func(r *sql.Rows, o *optRow) error { return r.Scan(&o.Item, &o.ID, &o.Name, &o.Extra, &o.GroupID) }, rid)
+	type groupRow struct {
+		Item int64
+		OptGroup
+	}
+	groups := database.List(a.db, `SELECT g.menu_item_id,g.id,g.name,g.min_choices,g.max_choices FROM option_groups g JOIN menu_items m ON m.id=g.menu_item_id WHERE m.restaurant_id=? ORDER BY g.id`,
+		func(r *sql.Rows, g *groupRow) error { return r.Scan(&g.Item, &g.ID, &g.Name, &g.Min, &g.Max) }, rid)
+	popular := map[int64]bool{}
+	for _, id := range a.bestSellers(rid, 3) {
+		popular[id] = true
+	}
+	optsBy, groupsBy := map[int64][]Opt{}, map[int64][]OptGroup{}
 	for _, o := range opts {
-		byItem[o.Item] = append(byItem[o.Item], o.Opt)
+		optsBy[o.Item] = append(optsBy[o.Item], o.Opt)
+	}
+	for _, g := range groups {
+		groupsBy[g.Item] = append(groupsBy[g.Item], g.OptGroup)
 	}
 	for i := range cats {
 		for _, it := range items {
 			if it.CatID == cats[i].ID {
-				it.Options = byItem[it.ID]
+				it.Options = optsBy[it.ID]
+				it.Groups = arrangeOptions(groupsBy[it.ID], it.Options)
+				it.Popular = popular[it.ID]
 				cats[i].Items = append(cats[i].Items, it)
 			}
 		}
@@ -35,25 +55,66 @@ func (a *App) menu(rid int64) []Cat {
 	return cats
 }
 
+// arrangeOptions puts each option into its group, keeps only groups that have options, and adds
+// the options without a group last as free extras (group ID 0).
+func arrangeOptions(groups []OptGroup, opts []Opt) []OptGroup {
+	var out []OptGroup
+	known := map[int64]bool{}
+	for _, g := range groups {
+		known[g.ID] = true
+		for _, o := range opts {
+			if o.GroupID == g.ID {
+				g.Options = append(g.Options, o)
+			}
+		}
+		if len(g.Options) > 0 {
+			out = append(out, g)
+		}
+	}
+	var free []Opt
+	for _, o := range opts {
+		if o.GroupID == 0 || !known[o.GroupID] {
+			free = append(free, o)
+		}
+	}
+	if len(free) > 0 {
+		out = append(out, OptGroup{Options: free})
+	}
+	return out
+}
+
+// bestSellers returns up to n dish ids with the most portions sold in the last 30 days (3 or more each).
+func (a *App) bestSellers(rid int64, n int) []int64 {
+	return database.List(a.db, `SELECT i.menu_item_id FROM order_items i JOIN orders o ON o.id=i.order_id
+		WHERE o.restaurant_id=? AND o.placed_at>? AND o.status NOT IN ('rejected','cancelled') AND i.status!='cancelled'
+		GROUP BY i.menu_item_id HAVING SUM(i.quantity)>=3 ORDER BY SUM(i.quantity) DESC, i.menu_item_id LIMIT ?`,
+		func(r *sql.Rows, id *int64) error { return r.Scan(id) }, rid, now()-30*86400, n)
+}
+
 func (a *App) item(rid, id int64) (Item, bool) {
 	var it Item
-	err := a.db.QueryRow(`SELECT id,category_id,name_bn,name_en,price,photo,prep_minutes,is_available FROM menu_items WHERE id=? AND restaurant_id=? AND NOT deleted`, id, rid).
-		Scan(&it.ID, &it.CatID, &it.NameBn, &it.NameEn, &it.Price, &it.Photo, &it.Prep, &it.Available)
-	if err != nil {
+	if scanItem(a.db.QueryRow(`SELECT `+itemCols+` FROM menu_items WHERE id=? AND restaurant_id=? AND NOT deleted`, id, rid), &it) != nil {
 		return it, false
 	}
-	it.Options = database.List(a.db, `SELECT id,name,extra_price FROM item_options WHERE menu_item_id=? ORDER BY id`,
-		func(r *sql.Rows, o *Opt) error { return r.Scan(&o.ID, &o.Name, &o.Extra) }, id)
+	it.Options = database.List(a.db, `SELECT id,name,extra_price,COALESCE(group_id,0) FROM item_options WHERE menu_item_id=? ORDER BY id`,
+		func(r *sql.Rows, o *Opt) error { return r.Scan(&o.ID, &o.Name, &o.Extra, &o.GroupID) }, id)
+	it.Groups = arrangeOptions(a.optionGroups(id), it.Options)
 	return it, true
+}
+
+// optionGroups lists a dish's option groups, including empty ones (for the owner's edit page).
+func (a *App) optionGroups(itemID int64) []OptGroup {
+	return database.List(a.db, `SELECT id,name,min_choices,max_choices FROM option_groups WHERE menu_item_id=? ORDER BY id`,
+		func(r *sql.Rows, g *OptGroup) error { return r.Scan(&g.ID, &g.Name, &g.Min, &g.Max) }, itemID)
 }
 
 var orderStep = map[string]int{"placed": 1, "cooking": 2, "ready": 3, "served": 4}
 
 func (a *App) loadOrders(where string, args ...any) []OView {
-	os := database.List(a.db, `SELECT o.id,o.session_id,o.status,o.reject_reason,o.placed_by,o.is_addon,o.placed_at,o.estimated_ready_at,t.label,s.group_label
+	os := database.List(a.db, `SELECT o.id,o.session_id,o.status,o.reject_reason,o.placed_by,o.is_addon,o.placed_at,o.estimated_ready_at,o.ready_at,o.served_at,t.label,s.group_label
 		FROM orders o JOIN table_sessions s ON s.id=o.session_id JOIN tables t ON t.id=s.table_id WHERE `+where+` ORDER BY o.id`,
 		func(r *sql.Rows, o *OView) error {
-			return r.Scan(&o.ID, &o.SessionID, &o.Status, &o.Reason, &o.PlacedBy, &o.Addon, &o.PlacedAt, &o.Est, &o.Table, &o.Group)
+			return r.Scan(&o.ID, &o.SessionID, &o.Status, &o.Reason, &o.PlacedBy, &o.Addon, &o.PlacedAt, &o.Est, &o.ReadyAt, &o.ServedAt, &o.Table, &o.Group)
 		}, args...)
 	for i := range os {
 		o := &os[i]

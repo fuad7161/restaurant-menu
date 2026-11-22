@@ -2,6 +2,7 @@ package server
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -54,7 +55,24 @@ func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 		}
 		return f
 	}
-	a.db.Exec(`UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=? WHERE id=?`,
-		pctOf("vat"), pctOf("service"), r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1", s.R.ID)
+	// Times are "HH:MM" from <input type=time>; anything else is stored as empty (not shown).
+	hm := func(k string) string {
+		if m, ok := parseHM(r.FormValue(k)); ok {
+			return fmt.Sprintf("%02d:%02d", m/60, m%60)
+		}
+		return ""
+	}
+	minutes := func(k string, fallback int) int {
+		n, err := strconv.Atoi(strings.TrimSpace(r.FormValue(k)))
+		if err != nil || n < 1 || n > 240 {
+			return fallback
+		}
+		return n
+	}
+	warn := minutes("warn_minutes", 10)
+	late := max(minutes("late_minutes", 20), warn+1)
+	a.db.Exec(`UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=?,open_time=?,close_time=?,last_order=?,warn_minutes=?,late_minutes=? WHERE id=?`,
+		pctOf("vat"), pctOf("service"), r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1",
+		hm("open_time"), hm("close_time"), hm("last_order"), warn, late, s.R.ID)
 	back(w, r, "/owner/settings?saved=1")
 }

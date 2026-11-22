@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"image"
 	"io"
 	"log"
 	"net/http"
@@ -80,6 +81,45 @@ func (p *Photos) Save(ctx context.Context, r io.Reader) (string, error) {
 	_, err = p.client.PutObject(ctx, p.bucket, name, bytes.NewReader(data), int64(len(data)),
 		minio.PutObjectOptions{ContentType: contentType})
 	return name, err
+}
+
+// SaveDish stores an uploaded dish photo in two sizes (see resize.go) and returns the large name.
+func (p *Photos) SaveDish(ctx context.Context, r io.Reader) (string, error) {
+	data, err := io.ReadAll(io.LimitReader(r, MaxPhotoBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > MaxPhotoBytes {
+		return "", errors.New("photo is larger than 5 MB")
+	}
+	if _, ok := extensions[http.DetectContentType(data)]; !ok {
+		return "", ErrNotImage
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return "", ErrNotImage
+	}
+	o := jpegOrientation(data)
+	large, err := photoJPEG(img, o, largeWidth)
+	if err != nil {
+		return "", err
+	}
+	small, err := photoJPEG(img, o, smallWidth)
+	if err != nil {
+		return "", err
+	}
+	random := make([]byte, 12)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+	stem := hex.EncodeToString(random)
+	for name, b := range map[string][]byte{stem + smallSuffix: small, stem + largeSuffix: large} {
+		if _, err := p.client.PutObject(ctx, p.bucket, name, bytes.NewReader(b), int64(len(b)),
+			minio.PutObjectOptions{ContentType: "image/jpeg"}); err != nil {
+			return "", err
+		}
+	}
+	return stem + largeSuffix, nil
 }
 
 // Serve streams a stored photo to the browser. Names are random and never reused, so browsers may cache for a long time.
