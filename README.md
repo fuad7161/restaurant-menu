@@ -55,10 +55,10 @@ internal/
   config/             settings from environment variables
   database/           PostgreSQL connection, query helpers, migration runner
     migrations/       SQL files, applied in name order at startup
-  storage/            photo upload and serving through S3 (Backblaze B2)
+  storage/            photo upload (dish photos resized to two sizes) and serving through S3 (Backblaze B2)
   cache/              Redis change counter that lets unchanged screens skip the database
   money/              taka and poisha parsing, formatting, percentages
-  i18n/               Bangla and English texts for guest screens
+  i18n/               Bangla and English texts for guest and staff service screens
   server/             HTTP handlers
     server.go           app wiring, routes, rendering
     models.go           shared types
@@ -74,7 +74,7 @@ internal/
     demo.go             sample data
 web/
   templates/          HTML pages and htmx fragments
-  static/             CSS, htmx, polling and alert-sound script
+  static/             CSS, htmx, app.js (polling, alerts, dialogs, dish sheet), fonts, icons, staff app manifest
 Dockerfile, docker-compose.yml, Makefile, .env.example
 ```
 
@@ -98,12 +98,12 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 
 | Who | Where | What |
 | --- | --- | --- |
-| Guest | `/t/<token>` (from the QR) | Menu, shared cart, order status, bill, call waiter, review. Bangla and English. |
-| Kitchen / waiter | `/staff/kitchen` | New, Cooking, Ready columns; accept with a ready time, reject, change requests, waiter calls, sound alert |
+| Guest | `/t/<token>` (from the QR) | Menu with search, tags and a recommended row; dish sheet with options, quantity and live total; shared cart with full total and suggestions; order status with progress and a ready alert; bill, call waiter, receipt, review. Bangla and English. |
+| Kitchen / waiter | `/staff/kitchen` | New, Cooking, Ready columns with amber and red waiting times; accept with a ready time, reject, undo ready or served, change requests, waiter calls, sound alert, keeps the screen on |
 | Waiter | `/staff/tables` | Order on behalf of guests who do not scan |
 | Any staff | `/staff/stock` | Mark dishes sold out |
 | Cashier | `/staff/counter` | Open bills, remove items with a reason, mark paid, close without payment |
-| Owner | `/owner` | Sales today, best sellers, reviews, menu, tables and printable QR cards, staff, settings |
+| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff, settings (charges, hours, ticket colours) |
 
 ## Rules built in
 
@@ -112,9 +112,11 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 - A guest can change or cancel an item freely until the kitchen accepts. After that it is a request the staff approve or decline. After serving, only staff can remove it, with a recorded reason.
 - Prices, VAT and service charge are always computed on the server. Money is stored in poisha.
 - Every query is filtered by restaurant, so one installation serves many restaurants.
+- A dish with options is added from its sheet only; required option groups must be chosen, and the server checks the rules and prices again.
+- Staff service screens (sidebar, kitchen, counter, take order, sold out) switch between English and Bangla; owner pages are English.
 
 ## Not built yet
 
-Online payment, split bill, tips, printing, subscription billing, image compression, login rate limiting, HTTPS (put a reverse proxy such as Caddy in front for production). Screens refresh by polling every 3 to 4 seconds.
+Online payment, split bill, tips, kitchen ticket printing, subscription billing, login rate limiting, allergen information, dark mode, kiosk mode for table tablets, HTTPS (put a reverse proxy such as Caddy in front for production). Screens refresh by polling every 3 to 4 seconds.
 # restaurant-menu
 # restaurant-menu

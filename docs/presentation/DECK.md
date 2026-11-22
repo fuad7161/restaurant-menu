@@ -1,6 +1,6 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 08f42e3 on 2026-11-22 -->
+<!-- presentation-sync: last synced at commit 08f42e3 (plus uncommitted frontend improvements) on 2026-11-22 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
@@ -35,13 +35,11 @@ The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (
 
 ## 4. The guest's meal, step by step
 
-Picture: a row of 6 phone screenshots.
-1. Scan and see the menu in Bangla or English [G-01, G-03, G-04]
-2. Build one cart together, names on each item [G-05, G-06, G-07]
-3. Place the order, order more later on the same bill [G-09]
-4. Watch it cook with a ready time [G-10]
-5. Call a waiter, water or tissue [G-12]
-6. Ask for the bill, pay, review [G-13, G-14]
+Picture: a row of 6 phone screenshots. (screenshot needs retaking)
+1. Scan, search the menu in Bangla or English, tap a dish for photo, options and total [G-01, G-03, G-04, G-16, G-17]
+2. Build one cart together, see the full total with VAT before sending [G-05, G-06, G-07, G-09, G-18]
+3. Watch it cook with a progress bar; the phone buzzes when it is ready [G-10]
+4. Call a waiter, ask for the bill, pay, review, keep the receipt [G-12, G-13, G-14, G-20]
 
 ## 5. Real tables are messy, and Bosho handles it
 
@@ -53,10 +51,10 @@ Picture: a row of 6 phone screenshots.
 
 ## 6. The kitchen screen
 
-- New, Cooking, Ready columns that refresh themselves [K-01].
-- Accept with a ready time, or reject with a reason [K-02].
+- New, Cooking, Ready columns; tickets turn amber, then red, as they wait [K-01].
+- Accept with a ready time, or reject with a reason; undo a mistaken tap [K-02, K-11].
 - Waiter calls and change requests in the same place, with a sound alert [K-03, K-04, K-05].
-- Picture: kitchen board screenshot.
+- In Bangla or English, and the tablet stays awake [K-12, K-13]. Picture: kitchen board screenshot. (screenshot needs retaking)
 
 ## 7. The counter and the floor
 
@@ -75,7 +73,7 @@ Picture: a row of 6 phone screenshots.
 ## 9. Set up in an afternoon
 
 - Get-started checklist on the first login [O-04].
-- Menu with photos and options [O-05], tables [O-06], staff with roles [O-09].
+- Menu with photos, descriptions, tags and option rules [O-05], tables [O-06], staff with roles [O-09].
 - Logo and brand colour on every guest screen and QR card [O-10, G-02, O-07].
 - Print the QR cards and put them on the tables [O-08].
 
@@ -92,6 +90,7 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 - One installation serves many restaurants [P-02].
 - Screens that refresh skip the database when nothing changed [P-05].
 - Free online services, deploys with Docker or Fly.io [P-06, P-07].
+- Built for weak internet and slow phones [P-09, P-10].
 
 ## 12. How it compares
 
@@ -103,7 +102,7 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 
 ## 13. What comes next
 
-- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, printing, subscription billing.
+- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, kitchen ticket printing, subscription billing.
 
 ## 14. Business plan
 
@@ -130,14 +129,18 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 | G-01 to G-07 | 3, 4 |
 | G-08, G-11, P-04 | 5 |
 | G-09, G-10, G-12, G-13, G-14 | 4 |
+| G-16 to G-18, G-20 | 4 |
+| G-19 | (not on a slide) |
 | G-02 | 9 |
 | G-15 | 10 |
 | K-01 to K-05 | 6 |
 | K-06 to K-10 | 7 (K-07 also 5) |
+| K-11 to K-13 | 6 |
 | O-01 to O-03 | 8 |
 | O-04 to O-10 | 9 (O-07 also 1, O-08 also 10) |
 | O-11, O-12 | 10 |
 | A-01, A-02 | 9 |
 | P-01 to P-07 | 11 (P-03 also 10) |
+| P-09, P-10 | 11 |
 | P-08 | 15 |
 | Not built yet | 13 |
