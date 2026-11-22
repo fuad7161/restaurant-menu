@@ -50,7 +50,9 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 ## Project layout
 
 ```
-cmd/bosho/            entry point: load config, connect, start the server
+cmd/bosho/            entry point: load config, connect, start the server and the cleanup job
+cmd/loadtest/         busy-evening load test (make loadtest)
+scripts/              database backup and restore check
 internal/
   config/             settings from environment variables
   database/           PostgreSQL connection, query helpers, migration runner
@@ -61,6 +63,10 @@ internal/
   i18n/               Bangla and English texts for guest and staff service screens
   server/             HTTP handlers
     server.go           app wiring, routes, rendering
+    middleware.go       request ids and logging, crash recovery, security headers, cross-site check, rate limits, time limit
+    maintenance.go      background cleanup every 10 minutes
+    audit.go            activity log
+    reports.go          reports, closing report, CSV export
     models.go           shared types
     queries.go          shared queries: menu, orders, bill, ready-time estimate
     guest.go            scanning, groups, joining a table
@@ -87,8 +93,11 @@ Handlers keep their SQL next to the code that uses it; queries shared by several
 | `make run` | Run the app with Go against the online services |
 | `make up` / `make down` | Start or stop the app in Docker |
 | `make logs` | Follow the app log |
-| `make test` | `go vet` and unit tests |
+| `make test` | `go vet` and tests. Set `TEST_DATABASE_URL` (any PostgreSQL; the tests use a throwaway schema) to also run the order and money tests; CI does |
 | `make psql` | Open a shell on the online database (needs `psql`) |
+| `make backup` | Save the online database to `backups/` and check the file (needs `pg_dump` 17+). Run it nightly |
+| `make restore-check` | Restore the newest backup into a throwaway local PostgreSQL in Docker and count the rows |
+| `make loadtest` | Simulate a busy evening against a running app (`URL=...`); places real orders, so only on test data |
 
 To change the schema, add a new file such as `internal/database/migrations/0002_add_tips.sql`. It runs once at the next start. Never edit a migration that has already run.
 
@@ -103,7 +112,8 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 | Waiter | `/staff/tables` | Order on behalf of guests who do not scan |
 | Any staff | `/staff/stock` | Mark dishes sold out |
 | Cashier | `/staff/counter` | Open bills, remove items with a reason, mark paid, close without payment |
-| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff, settings (charges, hours, ticket colours) |
+| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (with password reset), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
+| Any staff | `/staff/account` | Change own password, log out on all devices |
 
 ## Rules built in
 
@@ -114,9 +124,12 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 - Every query is filtered by restaurant, so one installation serves many restaurants.
 - A dish with options is added from its sheet only; required option groups must be chosen, and the server checks the rules and prices again.
 - Staff service screens (sidebar, kitchen, counter, take order, sold out) switch between English and Bangla; owner pages are English.
+- Money and access changes are recorded in the activity log: price changes, removed items, payments, groups closed without payment, staff and password changes.
+- Login locks for 15 minutes after 5 wrong passwords; guest phones are limited to 60 taps a minute; posts from other websites are refused.
+- Every write is checked; multi-step changes (paying, closing, removing items) run in one transaction. A background job tidies idle groups, old carts and calls every 10 minutes.
 
 ## Not built yet
 
-Online payment, split bill, tips, kitchen ticket printing, subscription billing, login rate limiting, allergen information, dark mode, kiosk mode for table tablets, HTTPS (put a reverse proxy such as Caddy in front for production). Screens refresh by polling every 3 to 4 seconds.
+Online payment, split bill, tips, discounts, kitchen ticket printing, subscription billing, owner password reset by SMS, allergen information, dark mode, kiosk mode for table tablets, built-in HTTPS (Fly provides it; elsewhere put a reverse proxy such as Caddy in front). Screens refresh by polling every 3 to 4 seconds. See `docs/missing-features.md` for the full list and status.
 # restaurant-menu
 # restaurant-menu

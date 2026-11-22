@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit 08f42e3 (plus uncommitted frontend improvements) on 2026-11-22 -->
+<!-- presentation-sync: last synced at commit 81c1314 (plus uncommitted reliability and security work) on 2026-11-22 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -25,13 +25,14 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | G-11 | Change or cancel an item freely until the kitchen accepts; after that, send a change request that staff approve or decline. | `gItemChange` |
 | G-12 | Call a waiter, ask for water or tissue, without shouting across the room. The button shows when it was called and when staff answered, and pauses for a minute against repeated taps. | `gCall`, `callButtons` |
 | G-13 | Ask for the bill: itemised, with VAT and service charge. Can be withdrawn. | `gBill`, `queries.go` (`bill`) |
-| G-14 | Paid screen, then a review: 1 to 5 stars for the visit with a comment, plus optional stars for each dish eaten. One review per group. | `gReview` |
+| G-14 | Paid screen, then a review: 1 to 5 stars for the visit with a comment, plus optional stars for each dish eaten. One review per group. Guests who give 4 or 5 stars are offered the restaurant's Google review page (when the owner set its link). | `gReview`, `liveData` |
 | G-15 | Off-site screen when the restaurant allows ordering only on its Wi-Fi and the guest is elsewhere. | `guest_offsite` template, `network.go` |
 | G-16 | Dish sheet: tapping a dish opens a large photo, the full description, option groups with rules ("Size: required, choose 1", "up to 3"), a note, a quantity picker and an Add button showing the live total. The server checks the choices and prices again. | `gDish`, `chosenOptions`, `g_sheet` template, `app.js` |
 | G-17 | Search the menu in Bangla or English, and a category bar that highlights the section on screen. | `guest_menu` template, `app.js` |
 | G-18 | "Goes well with" suggestions under the cart: dishes often ordered with what is in it, then best sellers. | `guest_cart.go` (`suggestions`) |
 | G-19 | Opening hours on the welcome and menu screens, and a "last orders at …" notice in the 30 minutes before. | `guest.go` (`hoursInfo`) |
 | G-20 | Receipt after paying, to print or save as a PDF: items, VAT, service charge, total, payment method and time. | `gReceipt`, `guest_receipt` template |
+| G-21 | A privacy note on the welcome screen: only the typed name is kept, no phone number, no account. | `guest_enter` template |
 
 ## Kitchen and floor staff (`/staff/...`)
 
@@ -50,6 +51,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | K-11 | Undo "Mark ready" or "Mark served" within a minute, from the message that appears. | `orderAct` (`undo`) |
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |
+| K-14 | My account: change your own password (other devices are logged out) and log out on all devices. | `account`, `accountPassword`, `logoutAll` in `auth.go` |
 
 ## Owner (`/owner/...`)
 
@@ -63,17 +65,21 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | O-06 | Tables: add tables ("New table" is the first card), switch a table off (hidden from guests). | `internal/server/owner_tables.go` |
 | O-07 | Branded QR codes: round dots, the restaurant's logo or initial in the middle, highest error correction so they still scan. | `internal/qrmark/qrmark.go`, `internal/server/qr.go` |
 | O-08 | Print QR cards for all tables or one table; renew a table's QR so old photos of it stop working. | `tablePrint`, `tableNewQR` |
-| O-09 | Staff accounts with roles: owner, kitchen, waiter, cashier. | `internal/server/owner_staff.go` |
-| O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone. | `internal/server/owner_profile.go`, `theme.go` |
-| O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave` |
+| O-09 | Staff accounts with roles: owner, kitchen, waiter, cashier. The owner can set a new password for anyone, which logs that person out everywhere. | `internal/server/owner_staff.go` (`staffPassword`) |
+| O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
+| O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave`, `withinHours` |
 | O-12 | Ordering network: guests can order only on the restaurant's Wi-Fi. One tap allows the current network; ranges can be typed. | `internal/server/network.go`, `owner_networks` template |
+| O-13 | Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour. | `internal/server/reports.go` (`reports`) |
+| O-14 | Download orders, payments and reviews as CSV for any dates (opens in Excel with Bangla intact). | `reports.go` (`export`) |
+| O-15 | Closing report for any day: money by payment method, bills paid, items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. | `reports.go` (`closing`) |
+| O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, took payments, closed bills without payment, rejected orders, or changed staff, passwords or charges. | `internal/server/audit.go` |
 
 ## Accounts and access
 
 | ID | Feature | Where in code |
 | --- | --- | --- |
 | A-01 | Sign up creates a restaurant and its owner account. | `internal/server/auth.go` (`signup`) |
-| A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. | `login`, `?next=` |
+| A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
 
 ## Platform and rules
 
@@ -85,14 +91,17 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | P-04 | The bill belongs to a group, not a table. | `table_sessions` table |
 | P-05 | Redis change counter: self-refreshing screens get an empty 204 reply when nothing changed, without touching PostgreSQL. Works without Redis too. | `internal/cache`, `internal/server/poll.go` |
 | P-06 | Runs on free online services: Supabase PostgreSQL, Backblaze B2 photos (any S3 store), Upstash Redis. | `internal/config`, `internal/storage` |
-| P-07 | Docker and Fly.io deploy (Singapore region); schema migrations run at startup. | `Dockerfile`, `fly.toml`, `internal/database/migrations` |
+| P-07 | Docker and Fly.io deploy (Singapore region) with one machine always running and a health check every 30 seconds; schema migrations run at startup. | `Dockerfile`, `fly.toml`, `internal/database/migrations` |
 | P-08 | Demo mode seeds a sample restaurant; local runs put the laptop's Wi-Fi IP into the QR codes so phones can scan them. | `internal/server/demo.go`, `Makefile` |
 | P-09 | Made for weak internet and busy hands: a "No internet, reconnecting" banner, buttons that show they are working and cannot send twice, short messages at the bottom of the screen, and questions asked in the page's language instead of browser pop-ups. | `web/static/app.js`, `ui` template |
 | P-10 | Fast on slow phones: fonts served by the app itself, static files cached and versioned, dish photos in two sizes. | `web/static/fonts`, `asset` in `helpers.go`, `internal/storage/resize.go` |
+| P-11 | Safe writes: every database write is checked, money changes (paying, closing, removing items) save in one transaction, a second tap changes nothing, and a background job tidies idle groups, old carts and calls every 10 minutes. The app keeps working when photo storage or Redis is down. | `helpers.go` (`inTx`), `maintenance.go`, `internal/storage` |
+| P-12 | Security: guest phones limited to 60 taps a minute, posts from other websites refused, strict security headers, Secure cookies on HTTPS. | `internal/server/middleware.go` |
+| P-13 | Operations: request ids and structured logs, a time limit on every request, nightly backup and restore-check commands, a busy-evening load test, and tests of the money and order rules run on every push. | `middleware.go`, `scripts/`, `cmd/loadtest`, `flow_test.go`, `.github/workflows/test.yml` |
 
 ## Not built yet
 
-Online payment (bKash, Nagad, card gateway), split bill, tips, kitchen ticket printing, subscription billing, login rate limiting, built-in HTTPS, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets.
+Online payment (bKash, Nagad, card gateway), split bill, tips, discounts, kitchen ticket printing, subscription billing, owner password reset by SMS, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
 
 ## Removed
 

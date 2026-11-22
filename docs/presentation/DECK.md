@@ -1,6 +1,6 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 08f42e3 (plus uncommitted frontend improvements) on 2026-11-22 -->
+<!-- presentation-sync: last synced at commit 81c1314 (plus uncommitted reliability and security work) on 2026-11-22 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
@@ -65,10 +65,10 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 
 ## 8. The owner's view
 
-- Today: sales, bills paid, open bills, average rating [O-01].
-- Takings by payment method to match the cash drawer [O-02].
-- Best sellers and latest reviews [O-03].
-- Picture: dashboard screenshot.
+- Today: sales, bills paid, open bills, average rating; takings by method for the cash drawer [O-01, O-02].
+- Reports by day, dish and hour, with CSV export for the accountant [O-13, O-14].
+- Closing report each night: what was taken, removed or left unpaid [O-15].
+- Activity log of every price change, removal and payment [O-16]. Picture: reports screenshot. (screenshot needs retaking)
 
 ## 9. Set up in an afternoon
 
@@ -82,7 +82,7 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 - Staff accept each guest order before it is cooked (on by default) [O-11].
 - Order only on the restaurant's Wi-Fi, set with one tap [O-12, G-15].
 - Renew a table's QR so an old photo stops working [O-08].
-- Prices and totals are always computed on the server [P-03].
+- Prices and totals are always computed on the server; guest taps are rate-limited and other websites cannot post [P-03, P-12].
 
 ## 11. How it is built
 
@@ -90,7 +90,7 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 - One installation serves many restaurants [P-02].
 - Screens that refresh skip the database when nothing changed [P-05].
 - Free online services, deploys with Docker or Fly.io [P-06, P-07].
-- Built for weak internet and slow phones [P-09, P-10].
+- Built for weak internet and slow phones; checked writes, nightly backups, load-tested [P-09, P-10, P-11, P-13].
 
 ## 12. How it compares
 
@@ -102,7 +102,7 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 
 ## 13. What comes next
 
-- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, kitchen ticket printing, subscription billing.
+- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, discounts, kitchen ticket printing, subscription billing, multiple branches.
 
 ## 14. Business plan
 
@@ -137,10 +137,13 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 | K-06 to K-10 | 7 (K-07 also 5) |
 | K-11 to K-13 | 6 |
 | O-01 to O-03 | 8 |
+| O-13 to O-16 | 8 |
 | O-04 to O-10 | 9 (O-07 also 1, O-08 also 10) |
 | O-11, O-12 | 10 |
 | A-01, A-02 | 9 |
 | P-01 to P-07 | 11 (P-03 also 10) |
-| P-09, P-10 | 11 |
+| P-09, P-10, P-11, P-13 | 11 |
+| P-12 | 10 |
+| G-21, K-14 | (not on a slide) |
 | P-08 | 15 |
 | Not built yet | 13 |
