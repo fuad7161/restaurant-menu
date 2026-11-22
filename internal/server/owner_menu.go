@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -120,7 +121,11 @@ func (a *App) itemUpdate(w http.ResponseWriter, r *http.Request, s *Staff) {
 	r.ParseMultipartForm(6 << 20)
 	id := pathID(r, "id")
 	d := itemForm(r)
-	if (d.bn != "" || d.en != "") && a.ownsCategory(s.R.ID, d.cat) {
+	old, found := a.item(s.R.ID, id)
+	if found && (d.bn != "" || d.en != "") && a.ownsCategory(s.R.ID, d.cat) {
+		if old.Price != d.price {
+			a.audit(s.R.ID, s.Name, "price changed", fmt.Sprintf("%s: %s → %s", pick(old.NameEn, old.NameBn), money.Format(old.Price), money.Format(d.price)))
+		}
 		a.db.Exec(`UPDATE menu_items SET category_id=?,name_bn=?,name_en=?,desc_bn=?,desc_en=?,price=?,prep_minutes=?,tags=?,featured=? WHERE id=? AND restaurant_id=?`,
 			d.cat, d.bn, d.en, d.descBn, d.descEn, d.price, d.prep, tagsForm(r), r.FormValue("featured") == "1", id, s.R.ID)
 		if photo := a.savePhoto(r, "photo"); photo != "" {
@@ -132,6 +137,9 @@ func (a *App) itemUpdate(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) itemDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id := pathID(r, "id")
+	if it, ok := a.item(s.R.ID, id); ok {
+		a.audit(s.R.ID, s.Name, "dish deleted", fmt.Sprintf("%s (%s)", pick(it.NameEn, it.NameBn), money.Format(it.Price)))
+	}
 	a.db.Exec(`UPDATE menu_items SET deleted=TRUE, is_available=FALSE WHERE id=? AND restaurant_id=?`, id, s.R.ID)
 	a.db.Exec(`DELETE FROM cart_items WHERE menu_item_id=? AND EXISTS (SELECT 1 FROM menu_items WHERE id=? AND restaurant_id=?)`, id, id, s.R.ID)
 	back(w, r, "/owner/menu")
@@ -209,4 +217,14 @@ func (a *App) optDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	}
 	a.db.Exec(`DELETE FROM item_options WHERE id=?`, id)
 	back(w, r, "/owner/items/"+strconv.FormatInt(itemID, 10)+"#options")
+}
+
+// pick returns the first non-empty name.
+func pick(names ...string) string {
+	for _, n := range names {
+		if n != "" {
+			return n
+		}
+	}
+	return ""
 }

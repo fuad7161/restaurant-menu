@@ -137,7 +137,10 @@
     <a class="{{if eq .Page "staff"}}on{{end}}" href="/owner/staff">{{template "si_people"}}{{t $L "s_staff"}}</a>
     <a class="{{if eq .Page "profile"}}on{{end}}" href="/owner/profile">{{template "si_store"}}{{t $L "s_profile"}}</a>
     <a class="{{if eq .Page "settings"}}on{{end}}" href="/owner/settings">{{template "si_gear"}}{{t $L "s_settings"}}</a>
+    <a class="{{if eq .Page "reports"}}on{{end}}" href="/owner/reports">{{template "si_chart"}}{{t $L "s_reports"}}</a>
+    <a class="{{if eq .Page "activity"}}on{{end}}" href="/owner/activity">{{template "si_menu_book"}}{{t $L "s_activity"}}</a>
     {{end}}
+    <a class="{{if eq .Page "account"}}on{{end}}" href="/staff/account">{{template "si_people"}}{{t $L "s_account"}}</a>
   </nav>
   <a class="langsw" href="/staff/lang?l={{if eq $L "bn"}}en{{else}}bn{{end}}" lang="{{if eq $L "bn"}}en{{else}}bn{{end}}">{{t $L "s_lang_switch"}}</a>
   <form class="sidefoot" method="post" action="/logout">
@@ -317,4 +320,22 @@
   </div>
 {{end}}{{end}}
 </div>
+{{template "sfoot" .}}{{end}}
+
+{{define "staff_account"}}{{template "shead" .}}{{$L := .Staff.Lang}}
+<h1>{{t $L "s_account"}}</h1>
+{{if eq .Done "password"}}<p class="okmsg">{{t $L "s_pw_done"}}</p>{{end}}
+{{if eq .Err "current"}}<p class="warn">{{t $L "s_pw_wrong"}}</p>{{else if eq .Err "short"}}<p class="warn">{{t $L "s_pw_short"}}</p>{{end}}
+<form method="post" action="/staff/account/password" class="card form">
+  <h2>{{t $L "s_pw_change"}}</h2>
+  <label>{{t $L "s_pw_current"}} <input name="current" type="password" required autocomplete="current-password"></label>
+  <label>{{t $L "s_pw_new"}} <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
+  <p class="muted">{{t $L "s_pw_note"}}</p>
+  <button class="btn">{{t $L "save"}}</button>
+</form>
+<form method="post" action="/staff/account/logout-all" class="card form" data-confirm="{{t $L "s_logout_all_ask"}}">
+  <h2>{{t $L "s_logout_all"}}</h2>
+  <p class="muted">{{t $L "s_logout_all_help"}}</p>
+  <button class="btn ghost">{{t $L "s_logout_all"}}</button>
+</form>
 {{template "sfoot" .}}{{end}}

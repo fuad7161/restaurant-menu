@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
+	"bosho/internal/database"
 	"bosho/internal/i18n"
 	"bosho/internal/money"
 	"bosho/internal/storage"
@@ -181,6 +183,13 @@ var templateFuncs = template.FuncMap{
 		}
 		return s
 	},
+	"list": func(v ...int) []int { return v },
+	"div": func(a int64, b int) int64 {
+		if b == 0 {
+			return 0
+		}
+		return a / int64(b)
+	},
 	"seq": func(n int) []int {
 		s := make([]int, n)
 		for i := range s {
@@ -217,4 +226,30 @@ func dishArt(names ...string) string {
 		}
 	}
 	return "thali"
+}
+
+// inTx runs fn inside one transaction: everything fn writes is saved together, or nothing is.
+func (a *App) inTx(fn func(q database.Querier) error) error {
+	tx, err := a.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// exec runs one write and returns only its error, for use inside inTx.
+func exec(q database.Querier, query string, args ...any) error {
+	_, err := q.Exec(query, args...)
+	return err
+}
+
+// serverError answers a failed write with 500, so staff and guests see "Something went wrong"
+// (app.js shows it as a message) instead of a screen that looks as if it worked.
+func serverError(w http.ResponseWriter, err error) {
+	slog.Error("request failed", "error", err)
+	http.Error(w, "Something went wrong. Please try again.", http.StatusInternalServerError)
 }

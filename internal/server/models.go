@@ -12,13 +12,15 @@ type Restaurant struct {
 	// opening hours shown to guests ("HH:MM", empty = not shown), and the kitchen ticket colour limits
 	OpenTime, CloseTime, LastOrder string
 	WarnMinutes, LateMinutes       int
+	OrdersInHours                  bool   // guests can order only between OpenTime and LastOrder (or CloseTime)
+	ReviewURL                      string // Google review link offered after a 4 or 5 star review
 }
 
 // restExtraCols are the restaurant columns read into the fields after Networks (see extraDest).
-const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes`
+const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes,r.orders_in_hours,r.review_url`
 
 func (r *Restaurant) extraDest() []any {
-	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes}
+	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes, &r.OrdersInHours, &r.ReviewURL}
 }
 
 type Table struct {

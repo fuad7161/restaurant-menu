@@ -29,7 +29,9 @@ type Photos struct {
 	bucket string
 }
 
-// New connects to the object store and creates the bucket when it is missing.
+// New connects to the object store and creates the bucket when it is missing. When the store
+// cannot be reached the app still starts: ordering works, photos are missing until it is back
+// (the pages show a drawing instead), and the check is repeated in the background.
 func New(endpoint, accessKey, secretKey, bucket, region string, useSSL bool) (*Photos, error) {
 	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
@@ -37,25 +39,32 @@ func New(endpoint, accessKey, secretKey, bucket, region string, useSSL bool) (*P
 		Region: region,
 	})
 	if err != nil {
-		return nil, err
+		return nil, err // a malformed endpoint: a settings mistake, not an outage
 	}
-	for attempt := 1; ; attempt++ {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		var exists bool
-		exists, err = client.BucketExists(ctx, bucket)
-		if err == nil && !exists {
-			err = client.MakeBucket(ctx, bucket, minio.MakeBucketOptions{})
-		}
-		cancel()
-		if err == nil {
-			return &Photos{client, bucket}, nil
-		}
-		if attempt == 30 {
-			return nil, err
-		}
-		log.Printf("waiting for object storage (%v)", err)
-		time.Sleep(2 * time.Second)
+	p := &Photos{client, bucket}
+	if err := p.ensureBucket(); err != nil {
+		log.Printf("object storage not reachable, starting without photos for now: %v", err)
+		go func() {
+			for attempt := 1; attempt <= 60; attempt++ {
+				time.Sleep(30 * time.Second)
+				if p.ensureBucket() == nil {
+					log.Println("object storage reachable again")
+					return
+				}
+			}
+		}()
 	}
+	return p, nil
+}
+
+func (p *Photos) ensureBucket() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	exists, err := p.client.BucketExists(ctx, p.bucket)
+	if err == nil && !exists {
+		err = p.client.MakeBucket(ctx, p.bucket, minio.MakeBucketOptions{})
+	}
+	return err
 }
 
 // Save stores an uploaded image under a random name and returns that name.

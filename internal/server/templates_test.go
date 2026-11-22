@@ -9,7 +9,7 @@ func TestTemplatesParse(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"guest_menu", "g_sheet", "g_add", "guest_cart", "g_cartlist", "g_live", "guest_receipt",
-		"toast", "g_bar", "kitchen", "k_board", "stock_row", "counter", "session", "staff_tables", "owner_item", "owner_settings"} {
+		"toast", "g_bar", "kitchen", "k_board", "stock_row", "counter", "session", "staff_tables", "owner_item", "owner_settings", "staff_account", "owner_reports", "owner_closing", "owner_activity"} {
 		if tpl.Lookup(name) == nil {
 			t.Errorf("template %q is missing", name)
 		}

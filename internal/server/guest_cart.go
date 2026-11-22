@@ -71,7 +71,10 @@ func (a *App) gJoinDecide(w http.ResponseWriter, r *http.Request) {
 	if r.PathValue("act") == "allow" {
 		status = "joined"
 	}
-	a.db.Exec(`UPDATE session_guests SET status=? WHERE id=? AND session_id=? AND status='pending'`, status, pathID(r, "gid"), c.S.ID)
+	if err := exec(a.db, `UPDATE session_guests SET status=? WHERE id=? AND session_id=? AND status='pending'`, status, pathID(r, "gid"), c.S.ID); err != nil {
+		serverError(w, err)
+		return
+	}
 	m := c.data()
 	a.barData(c, m, r.URL.Query().Get("tab"))
 	a.render(w, "g_bar", m)
@@ -463,7 +466,7 @@ func (a *App) gPlaceOrder(w http.ResponseWriter, r *http.Request) {
 	// One transaction turns the shared cart into an order, so two taps cannot create two orders.
 	tx, err := a.db.Begin()
 	if err != nil {
-		fail("error")
+		fail(i18n.T(c.Lang, "error"))
 		return
 	}
 	defer tx.Rollback()
@@ -497,21 +500,27 @@ func (a *App) gPlaceOrder(w http.ResponseWriter, r *http.Request) {
 	oid, err := database.InsertID(tx, `INSERT INTO orders(restaurant_id,session_id,status,placed_by,is_addon,placed_at) VALUES(?,?,'placed',?,?,?)`,
 		c.R.ID, c.S.ID, c.G.Name, earlier > 0, now())
 	if err != nil {
-		fail("error")
+		fail(i18n.T(c.Lang, "error"))
 		return
 	}
+	// Every write is checked: one failed line must not leave a half order behind.
 	for _, row := range rows {
-		tx.Exec(`INSERT INTO order_items(order_id,menu_item_id,name_bn,name_en,unit_price,quantity,options_text,note) VALUES(?,?,?,?,?,?,?,?)`,
-			oid, row.ItemID, row.NameBn, row.NameEn, row.Unit, row.Qty, row.Options, row.Note)
+		if err := exec(tx, `INSERT INTO order_items(order_id,menu_item_id,name_bn,name_en,unit_price,quantity,options_text,note) VALUES(?,?,?,?,?,?,?,?)`,
+			oid, row.ItemID, row.NameBn, row.NameEn, row.Unit, row.Qty, row.Options, row.Note); err != nil {
+			fail(i18n.T(c.Lang, "error"))
+			return
+		}
 	}
 	// Orders wait for a staff Accept unless the restaurant turned that off, or a waiter placed the order.
 	if !c.R.RequireAccept || c.G.IsStaff {
-		tx.Exec(`UPDATE orders SET status='cooking', estimated_ready_at=? WHERE id=?`, now()+int64(estimateMinutes(tx, c.R.ID, oid))*60, oid)
+		if err := exec(tx, `UPDATE orders SET status='cooking', estimated_ready_at=? WHERE id=?`, now()+int64(estimateMinutes(tx, c.R.ID, oid))*60, oid); err != nil {
+			fail(i18n.T(c.Lang, "error"))
+			return
+		}
 	}
-	tx.Exec(`DELETE FROM cart_items WHERE session_id=?`, c.S.ID)
-	tx.Exec(`UPDATE table_sessions SET last_activity=? WHERE id=?`, now(), c.S.ID)
-	if err := tx.Commit(); err != nil {
-		fail("error")
+	if exec(tx, `DELETE FROM cart_items WHERE session_id=?`, c.S.ID) != nil ||
+		exec(tx, `UPDATE table_sessions SET last_activity=? WHERE id=?`, now(), c.S.ID) != nil || tx.Commit() != nil {
+		fail(i18n.T(c.Lang, "error"))
 		return
 	}
 	http.Redirect(w, r, c.url("/orders"), http.StatusSeeOther)

@@ -40,7 +40,10 @@ func (a *App) staffOpenTable(w http.ResponseWriter, r *http.Request, s *Staff) {
 	var okSession int
 	a.db.QueryRow(`SELECT COUNT(*) FROM table_sessions WHERE id=? AND table_id=? AND status IN ('open','bill_requested')`, sid, t.ID).Scan(&okSession)
 	if okSession == 0 {
-		a.newSession(s.R.ID, t.ID, name, dev, true)
+		if _, err := a.newSession(s.R.ID, t.ID, name, dev, true); err != nil {
+			serverError(w, err)
+			return
+		}
 	} else {
 		res, _ := a.db.Exec(`UPDATE session_guests SET status='joined', is_staff=TRUE, last_seen=? WHERE session_id=? AND device_token=?`, now(), sid, dev)
 		if n, _ := res.RowsAffected(); n == 0 {

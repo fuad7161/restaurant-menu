@@ -153,9 +153,22 @@ document.addEventListener('htmx:sendError', function (e) {
   if (bar && isTap(e.detail.elt)) toast(bar.dataset.failed, true);
 });
 document.addEventListener('htmx:responseError', function (e) {
-  var bar = document.getElementById('netbar');
-  if (bar && isTap(e.detail.elt) && e.detail.xhr.status >= 500) toast(bar.dataset.error, true);
+  var bar = document.getElementById('netbar'), st = e.detail.xhr.status;
+  if (!bar || !isTap(e.detail.elt)) return;
+  if (st === 429) toast(bar.dataset.busy, true);
+  else if (st >= 500 || st === 403) toast(bar.dataset.error, true);
 });
+
+// A photo that cannot be loaded (photo storage down, slow network) shows a drawing instead of a
+// broken image.
+document.addEventListener('error', function (e) {
+  var img = e.target;
+  if (img.tagName !== 'IMG' || img.dataset.fallback || img.src.indexOf('/uploads/') < 0) return;
+  img.dataset.fallback = '1';
+  img.removeAttribute('srcset');
+  img.classList.add('art');
+  img.src = '/static/img/thali.svg';
+}, true);
 document.addEventListener('htmx:afterRequest', function (e) {
   if (e.detail.successful) netbar(false);
 });

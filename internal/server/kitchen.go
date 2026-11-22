@@ -8,6 +8,7 @@ import (
 
 	"bosho/internal/database"
 	"bosho/internal/i18n"
+	"bosho/internal/money"
 )
 
 type callRow struct {
@@ -38,11 +39,20 @@ func ageClass(r Restaurant, since int64) string {
 
 func (a *App) boardData(s *Staff) M {
 	orders := a.loadOrders(`o.restaurant_id=? AND o.status IN ('placed','cooking','ready')`, s.R.ID)
+	var waiting []int64
+	for _, o := range orders {
+		if o.Status == "placed" {
+			waiting = append(waiting, o.ID)
+		}
+	}
+	est := a.estimateAll(s.R.ID, waiting)
 	var fresh, cooking, ready []OView
 	for _, o := range orders {
 		switch o.Status {
 		case "placed":
-			o.Minutes = estimateMinutes(a.db, s.R.ID, o.ID)
+			if o.Minutes = est[o.ID]; o.Minutes == 0 {
+				o.Minutes = 15
+			}
 			o.Age = ageClass(s.R, o.PlacedAt)
 			o.ETA = fmt.Sprintf(i18n.T(s.Lang, "s_waiting"), (now()-o.PlacedAt)/60)
 			fresh = append(fresh, o)
@@ -97,47 +107,58 @@ func staffReason(r *http.Request) string {
 func (a *App) orderAct(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id, rid := pathID(r, "id"), s.R.ID
 	toast, undo := "", false
-	switch r.PathValue("act") {
+	var err error
+	switch act := r.PathValue("act"); act {
 	case "accept":
 		mins, _ := strconv.Atoi(r.FormValue("minutes"))
 		if mins < 1 || mins > 240 {
 			mins = estimateMinutes(a.db, rid, id)
 		}
-		a.db.Exec(`UPDATE orders SET status='cooking', estimated_ready_at=? WHERE id=? AND restaurant_id=? AND status='placed'`, now()+int64(mins)*60, id, rid)
+		err = exec(a.db, `UPDATE orders SET status='cooking', estimated_ready_at=? WHERE id=? AND restaurant_id=? AND status='placed'`, now()+int64(mins)*60, id, rid)
 	case "reject":
 		reason := staffReason(r)
 		if reason == "" {
 			reason = "The kitchen could not take this order."
 		}
-		a.db.Exec(`UPDATE orders SET status='rejected', reject_reason=? WHERE id=? AND restaurant_id=? AND status IN ('placed','cooking')`, reason, id, rid)
+		var res sql.Result
+		res, err = a.db.Exec(`UPDATE orders SET status='rejected', reject_reason=? WHERE id=? AND restaurant_id=? AND status IN ('placed','cooking')`, reason, id, rid)
+		if rows(res, err) == 1 {
+			a.audit(rid, s.Name, "order rejected", fmt.Sprintf("table %s, order #%d: %s", a.orderTable(id), id, reason))
+		}
 	case "ready":
-		if res, err := a.db.Exec(`UPDATE orders SET status='ready', ready_at=? WHERE id=? AND restaurant_id=? AND status='cooking'`, now(), id, rid); err == nil {
-			if n, _ := res.RowsAffected(); n == 1 {
-				toast, undo = fmt.Sprintf(i18n.T(s.Lang, "s_marked_ready"), a.orderTable(id)), true
-			}
+		var res sql.Result
+		res, err = a.db.Exec(`UPDATE orders SET status='ready', ready_at=? WHERE id=? AND restaurant_id=? AND status='cooking'`, now(), id, rid)
+		if rows(res, err) == 1 {
+			toast, undo = fmt.Sprintf(i18n.T(s.Lang, "s_marked_ready"), a.orderTable(id)), true
 		}
 	case "served":
-		if res, err := a.db.Exec(`UPDATE orders SET status='served', served_at=? WHERE id=? AND restaurant_id=? AND status='ready'`, now(), id, rid); err == nil {
-			if n, _ := res.RowsAffected(); n == 1 {
-				toast, undo = fmt.Sprintf(i18n.T(s.Lang, "s_marked_served"), a.orderTable(id)), true
+		var n int64
+		err = a.inTx(func(q database.Querier) error {
+			res, err := q.Exec(`UPDATE orders SET status='served', served_at=? WHERE id=? AND restaurant_id=? AND status='ready'`, now(), id, rid)
+			if n = rows(res, err); err != nil || n == 0 {
+				return err
 			}
+			// A change request that nobody answered lapses once the food is on the table.
+			return exec(q, `UPDATE order_items SET status='active', last_change='declined' WHERE order_id=? AND status='cancel_requested'`, id)
+		})
+		if err == nil && n == 1 {
+			toast, undo = fmt.Sprintf(i18n.T(s.Lang, "s_marked_served"), a.orderTable(id)), true
 		}
-		// A change request that nobody answered lapses once the food is on the table.
-		a.db.Exec(`UPDATE order_items SET status='active', last_change='declined' WHERE order_id=? AND status='cancel_requested'
-			AND EXISTS (SELECT 1 FROM orders WHERE id=? AND restaurant_id=? AND status='served')`, id, id, rid)
 	case "undo":
 		// Step back one status, only shortly after the tap: served -> ready, ready -> cooking.
 		toast = i18n.T(s.Lang, "s_undo_late")
-		res, err := a.db.Exec(`UPDATE orders SET status='ready', served_at=0 WHERE id=? AND restaurant_id=? AND status='served' AND served_at>?`, id, rid, now()-undoWindow)
-		if n := rows(res, err); n == 0 {
-			res, err = a.db.Exec(`UPDATE orders SET status='cooking', ready_at=0 WHERE id=? AND restaurant_id=? AND status='ready' AND ready_at>?`, id, rid, now()-undoWindow)
-			n = rows(res, err)
-			if n == 1 {
-				toast = i18n.T(s.Lang, "s_undone")
-			}
-		} else {
+		res, e := a.db.Exec(`UPDATE orders SET status='ready', served_at=0 WHERE id=? AND restaurant_id=? AND status='served' AND served_at>?`, id, rid, now()-undoWindow)
+		if rows(res, e) == 0 {
+			res, e = a.db.Exec(`UPDATE orders SET status='cooking', ready_at=0 WHERE id=? AND restaurant_id=? AND status='ready' AND ready_at>?`, id, rid, now()-undoWindow)
+		}
+		if rows(res, e) == 1 {
 			toast = i18n.T(s.Lang, "s_undone")
 		}
+		err = e
+	}
+	if err != nil {
+		serverError(w, err)
+		return
 	}
 	a.render(w, "k_board", a.boardData(s))
 	if toast != "" {
@@ -166,13 +187,16 @@ func (a *App) orderTable(orderID int64) string {
 }
 
 // itemAct handles guest change requests (approve, decline) and staff voids on order lines.
+// itemAct handles guest change requests (approve, decline) and staff voids on order lines.
 func (a *App) itemAct(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id := pathID(r, "id")
 	var oid int64
-	var status string
-	var req int
-	err := a.db.QueryRow(`SELECT o.id,i.status,i.req_qty FROM order_items i JOIN orders o ON o.id=i.order_id WHERE i.id=? AND o.restaurant_id=?`, id, s.R.ID).
-		Scan(&oid, &status, &req)
+	var status, name string
+	var req, qty int
+	var unit int64
+	err := a.db.QueryRow(`SELECT o.id,i.status,i.req_qty,i.quantity,i.unit_price,CASE WHEN i.name_en!='' THEN i.name_en ELSE i.name_bn END
+		FROM order_items i JOIN orders o ON o.id=i.order_id WHERE i.id=? AND o.restaurant_id=?`, id, s.R.ID).
+		Scan(&oid, &status, &req, &qty, &unit, &name)
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -180,28 +204,48 @@ func (a *App) itemAct(w http.ResponseWriter, r *http.Request, s *Staff) {
 	act := r.PathValue("act")
 	switch {
 	case act == "approve" && status == "cancel_requested" && req > 0:
-		a.db.Exec(`UPDATE order_items SET quantity=?, status='active', last_change='approved' WHERE id=?`, req, id)
+		err = exec(a.db, `UPDATE order_items SET quantity=?, status='active', last_change='approved' WHERE id=? AND status='cancel_requested'`, req, id)
 	case act == "approve" && status == "cancel_requested":
-		a.db.Exec(`UPDATE order_items SET status='cancelled', last_change='approved', cancelled_by=?, cancel_reason='guest request' WHERE id=?`, s.Name, id)
-		closeEmptyOrder(a.db, oid)
+		err = a.inTx(func(q database.Querier) error {
+			if err := exec(q, `UPDATE order_items SET status='cancelled', last_change='approved', cancelled_by=?, cancel_reason='guest request' WHERE id=? AND status='cancel_requested'`, s.Name, id); err != nil {
+				return err
+			}
+			return closeEmptyOrder(q, oid)
+		})
 	case act == "decline" && status == "cancel_requested":
-		a.db.Exec(`UPDATE order_items SET status='active', last_change='declined' WHERE id=?`, id)
+		err = exec(a.db, `UPDATE order_items SET status='active', last_change='declined' WHERE id=? AND status='cancel_requested'`, id)
 	case act == "void" && status != "cancelled":
 		reason := staffReason(r)
 		if reason == "" {
 			reason = "no reason given"
 		}
 		// Every removal from a bill records who did it and why.
-		a.db.Exec(`UPDATE order_items SET status='cancelled', cancelled_by=?, cancel_reason=? WHERE id=?`, s.Name, reason, id)
-		closeEmptyOrder(a.db, oid)
+		err = a.inTx(func(q database.Querier) error {
+			if err := exec(q, `UPDATE order_items SET status='cancelled', cancelled_by=?, cancel_reason=? WHERE id=? AND status!='cancelled'`, s.Name, reason, id); err != nil {
+				return err
+			}
+			return closeEmptyOrder(q, oid)
+		})
+		if err != nil {
+			serverError(w, err)
+			return
+		}
+		a.audit(s.R.ID, s.Name, "item removed from bill", fmt.Sprintf("table %s: %d × %s (%s): %s", a.orderTable(oid), qty, name, money.Format(int64(qty)*unit), reason))
 		w.Header().Set("HX-Refresh", "true")
+		return
+	}
+	if err != nil {
+		serverError(w, err)
 		return
 	}
 	a.render(w, "k_board", a.boardData(s))
 }
 
 func (a *App) callDone(w http.ResponseWriter, r *http.Request, s *Staff) {
-	a.db.Exec(`UPDATE waiter_calls SET status='done', done_at=? WHERE id=? AND restaurant_id=? AND status='pending'`, now(), pathID(r, "id"), s.R.ID)
+	if err := exec(a.db, `UPDATE waiter_calls SET status='done', done_at=? WHERE id=? AND restaurant_id=? AND status='pending'`, now(), pathID(r, "id"), s.R.ID); err != nil {
+		serverError(w, err)
+		return
+	}
 	a.render(w, "k_board", a.boardData(s))
 }
 
@@ -211,7 +255,10 @@ func (a *App) stock(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) stockToggle(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id := pathID(r, "id")
-	a.db.Exec(`UPDATE menu_items SET is_available=NOT is_available WHERE id=? AND restaurant_id=?`, id, s.R.ID)
+	if err := exec(a.db, `UPDATE menu_items SET is_available=NOT is_available WHERE id=? AND restaurant_id=?`, id, s.R.ID); err != nil {
+		serverError(w, err)
+		return
+	}
 	if it, ok := a.item(s.R.ID, id); ok {
 		a.render(w, "stock_row", M{"It": it, "L": s.Lang})
 	}

@@ -36,9 +36,17 @@ func (a *App) profileSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 		errMsg = "That colour is too light: text on it would be hard to read. Pick a darker one."
 		color = s.R.Color
 	}
-	a.db.Exec(`UPDATE restaurants SET name=?,brand_color=?,tagline=?,address=?,phone=? WHERE id=?`,
+	// The Google review link must be a web address; anything else is dropped.
+	review := strings.TrimSpace(r.FormValue("review_url"))
+	if u, err := url.Parse(review); err != nil || u.Scheme != "https" || u.Host == "" || len(review) > 300 {
+		if review != "" && errMsg == "" {
+			errMsg = "The review link must start with https://"
+		}
+		review = ""
+	}
+	a.db.Exec(`UPDATE restaurants SET name=?,brand_color=?,tagline=?,address=?,phone=?,review_url=? WHERE id=?`,
 		name, color, clean(r.FormValue("tagline"), 80), clean(r.FormValue("address"), 120),
-		clean(r.FormValue("phone"), 20), s.R.ID)
+		clean(r.FormValue("phone"), 20), review, s.R.ID)
 	if _, _, err := r.FormFile("logo"); err == nil {
 		if logo := a.savePhoto(r, "logo"); logo != "" {
 			a.db.Exec(`UPDATE restaurants SET logo=? WHERE id=?`, logo, s.R.ID)

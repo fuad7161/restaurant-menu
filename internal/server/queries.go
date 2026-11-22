@@ -116,19 +116,54 @@ func (a *App) loadOrders(where string, args ...any) []OView {
 		func(r *sql.Rows, o *OView) error {
 			return r.Scan(&o.ID, &o.SessionID, &o.Status, &o.Reason, &o.PlacedBy, &o.Addon, &o.PlacedAt, &o.Est, &o.ReadyAt, &o.ServedAt, &o.Table, &o.Group)
 		}, args...)
+	if len(os) == 0 {
+		return os
+	}
+	// All lines of all these orders in one query (the kitchen board can hold dozens of orders).
+	ids := make([]int64, len(os))
+	byOrder := map[int64]*OView{}
 	for i := range os {
-		o := &os[i]
-		o.N = i + 1
-		o.Step = orderStep[o.Status]
-		o.Items = database.List(a.db, `SELECT id,menu_item_id,name_bn,name_en,options_text,note,status,last_change,quantity,req_qty,unit_price FROM order_items WHERE order_id=? ORDER BY id`,
-			func(r *sql.Rows, it *OItem) error {
-				return r.Scan(&it.ID, &it.MenuItemID, &it.NameBn, &it.NameEn, &it.Options, &it.Note, &it.Status, &it.Last, &it.Qty, &it.ReqQty, &it.Unit)
-			}, o.ID)
-		for j := range o.Items {
-			o.Items[j].Line = int64(o.Items[j].Qty) * o.Items[j].Unit
+		os[i].N = i + 1
+		os[i].Step = orderStep[os[i].Status]
+		ids[i] = os[i].ID
+		byOrder[os[i].ID] = &os[i]
+	}
+	type line struct {
+		Order int64
+		OItem
+	}
+	lines := database.List(a.db, `SELECT order_id,id,menu_item_id,name_bn,name_en,options_text,note,status,last_change,quantity,req_qty,unit_price
+		FROM order_items WHERE order_id = ANY(?) ORDER BY id`,
+		func(r *sql.Rows, l *line) error {
+			return r.Scan(&l.Order, &l.ID, &l.MenuItemID, &l.NameBn, &l.NameEn, &l.Options, &l.Note, &l.Status, &l.Last, &l.Qty, &l.ReqQty, &l.Unit)
+		}, ids)
+	for _, l := range lines {
+		l.Line = int64(l.Qty) * l.Unit
+		if o := byOrder[l.Order]; o != nil {
+			o.Items = append(o.Items, l.OItem)
 		}
 	}
 	return os
+}
+
+// estimateAll is estimateMinutes for many waiting orders at once, with two queries in total.
+func (a *App) estimateAll(rid int64, orderIDs []int64) map[int64]int {
+	out := map[int64]int{}
+	if len(orderIDs) == 0 {
+		return out
+	}
+	var queue int
+	a.db.QueryRow(`SELECT COUNT(*) FROM orders WHERE restaurant_id=? AND status='cooking'`, rid).Scan(&queue)
+	type prep struct {
+		Order int64
+		Mins  int
+	}
+	for _, p := range database.List(a.db, `SELECT i.order_id,COALESCE(MAX(m.prep_minutes),15) FROM order_items i JOIN menu_items m ON m.id=i.menu_item_id
+		WHERE i.order_id = ANY(?) AND i.status!='cancelled' GROUP BY i.order_id`,
+		func(r *sql.Rows, p *prep) error { return r.Scan(&p.Order, &p.Mins) }, orderIDs) {
+		out[p.Order] = p.Mins + min(queue*3, 30)
+	}
+	return out
 }
 
 func (a *App) bill(sid int64, r Restaurant) Bill {
@@ -158,7 +193,7 @@ func estimateMinutes(q database.Querier, rid, orderID int64) int {
 }
 
 // closeEmptyOrder cancels an unserved order once every item in it is cancelled.
-func closeEmptyOrder(q database.Querier, orderID int64) {
-	q.Exec(`UPDATE orders SET status='cancelled' WHERE id=? AND status IN ('placed','cooking','ready')
+func closeEmptyOrder(q database.Querier, orderID int64) error {
+	return exec(q, `UPDATE orders SET status='cancelled' WHERE id=? AND status IN ('placed','cooking','ready')
 		AND NOT EXISTS (SELECT 1 FROM order_items WHERE order_id=? AND status!='cancelled')`, orderID, orderID)
 }

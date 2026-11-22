@@ -5,7 +5,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -18,6 +20,9 @@ import (
 )
 
 func main() {
+	// Structured log lines (time, level, message, key=value pairs). The standard log package
+	// writes through the same handler.
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	cfg := config.Load()
 	if cfg.DatabaseURL == "" || cfg.S3Endpoint == "" {
 		log.Fatal("DATABASE_URL and S3_ENDPOINT must be set (copy .env.example to .env and fill it in)")
@@ -53,15 +58,21 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Generous read time for photo uploads on slow mobile data; handlers themselves are limited
+	// to 20 seconds (server.handlerTimeout).
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           app.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       2 * time.Minute,
+		WriteTimeout:      time.Minute,
+		IdleTimeout:       2 * time.Minute,
 	}
 
 	// Stop cleanly on Ctrl+C or "docker stop": finish requests in flight, then exit.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	go app.Maintain(ctx)
 	go func() {
 		<-ctx.Done()
 		shutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)

@@ -909,3 +909,30 @@ dialog.sheet[open] { animation: sheetup .22s ease-out; }
 .ogcard .lrow.sub { padding-left: 14px; }
 .card h3 { margin: 16px 0 0; grid-column: 1 / -1; }
 
+
+/* ---------- reports, closing report, activity, account ---------- */
+.barrow { display: grid; grid-template-columns: 96px 1fr auto auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.barrow.wide { grid-template-columns: minmax(120px, 220px) 1fr auto auto; }
+.barrow .bl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.barrow .rbar { height: 12px; border-radius: 99px; background: var(--bg); overflow: hidden; }
+.barrow .rbar i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--brand); }
+.chips a.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+.act-at { min-width: 120px; }
+.inline input.dayin { width: auto; }
+.pwreset { width: 100%; }
+.pwreset summary { cursor: pointer; color: var(--brand); font-size: .9rem; padding: 6px 0; }
+.pwreset form { margin: 6px 0; }
+.pwreset input { flex: 1; min-width: 140px; }
+.privacy { margin: 14px 0 0; font-size: .875rem; text-align: center; }
+.card.google { text-align: center; }
+.card.google p { margin: 0 0 10px; }
+.printonly { display: none; }
+@media print {
+  body.staff { padding-left: 0; }
+  body.staff .side, body.staff .stop, .noprint { display: none !important; }
+  .printonly { display: block; }
+}
+@media (max-width: 520px) {
+  .barrow, .barrow.wide { grid-template-columns: 80px 1fr auto; }
+  .barrow .small1 { display: none; }
+}

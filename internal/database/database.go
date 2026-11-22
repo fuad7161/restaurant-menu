@@ -59,7 +59,9 @@ func (d *DB) Close() error { return d.pool.Close() }
 
 func (d *DB) Query(q string, args ...any) (*sql.Rows, error) { return d.pool.Query(rebind(q), args...) }
 func (d *DB) QueryRow(q string, args ...any) *sql.Row        { return d.pool.QueryRow(rebind(q), args...) }
-func (d *DB) Exec(q string, args ...any) (sql.Result, error) { return d.pool.Exec(rebind(q), args...) }
+func (d *DB) Exec(q string, args ...any) (sql.Result, error) {
+	return logErr(d.pool.Exec(rebind(q), args...))
+}
 
 func (d *DB) Begin() (*Tx, error) {
 	tx, err := d.pool.Begin()
@@ -71,9 +73,20 @@ func (d *DB) Begin() (*Tx, error) {
 
 func (t *Tx) Query(q string, args ...any) (*sql.Rows, error) { return t.tx.Query(rebind(q), args...) }
 func (t *Tx) QueryRow(q string, args ...any) *sql.Row        { return t.tx.QueryRow(rebind(q), args...) }
-func (t *Tx) Exec(q string, args ...any) (sql.Result, error) { return t.tx.Exec(rebind(q), args...) }
-func (t *Tx) Commit() error                                  { return t.tx.Commit() }
-func (t *Tx) Rollback() error                                { return t.tx.Rollback() }
+func (t *Tx) Exec(q string, args ...any) (sql.Result, error) {
+	return logErr(t.tx.Exec(rebind(q), args...))
+}
+func (t *Tx) Commit() error   { return t.tx.Commit() }
+func (t *Tx) Rollback() error { return t.tx.Rollback() }
+
+// logErr logs every failed write, so a write whose error a handler does not check still shows
+// up in the log instead of failing silently.
+func logErr(res sql.Result, err error) (sql.Result, error) {
+	if err != nil {
+		log.Printf("database write failed: %v", err)
+	}
+	return res, err
+}
 
 // rebind turns "?" placeholders into "$1", "$2", ...
 func rebind(q string) string {

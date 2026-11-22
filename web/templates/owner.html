@@ -1,5 +1,6 @@
 {{define "dashboard"}}{{template "shead" .}}
-<h1>Today</h1>
+<div class="pagehead"><h1>Today</h1>
+  <div class="qracts"><a class="btn ghost sm" href="/owner/closing">Closing report</a><a class="btn ghost sm" href="/owner/reports">Reports</a></div></div>
 {{if or (eq .Tables 0) (eq .Items 0)}}
 <section class="card">
   <h2>Get started</h2>
@@ -226,6 +227,7 @@
 {{define "owner_staff"}}{{template "shead" .}}
 <h1>Staff</h1>
 {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+{{if .OK}}<p class="okmsg">Password changed.</p>{{end}}
 <div class="cgrid">
   {{range .People}}
   <div class="card pcard">
@@ -234,6 +236,11 @@
       <span class="muted small1">{{.Phone}}</span>
       <span class="badge role-{{.Role}}">{{.Role}}</span></div>
     {{if ne .ID $.Staff.ID}}<form method="post" action="/owner/staff/{{.ID}}/delete" data-confirm="Remove {{.Name}}?"><button class="btn sm ghost">Remove</button></form>{{end}}
+    <details class="pwreset"><summary>Reset password</summary>
+      <form method="post" action="/owner/staff/{{.ID}}/password" class="inline">
+        <input name="password" type="password" required minlength="8" autocomplete="new-password" aria-label="New password for {{.Name}}" placeholder="New password">
+        <button class="btn sm">Set</button></form>
+      <span class="muted small1">{{if eq .ID $.Staff.ID}}Your other devices stay logged in.{{else}}{{.Name}} is logged out everywhere and logs in with the new password.{{end}}</span></details>
   </div>
   {{end}}
 </div>
@@ -269,6 +276,7 @@
     <label>Closes at <input name="close_time" type="time" value="{{.Staff.R.CloseTime}}"></label>
     <label>Last order at <input name="last_order" type="time" value="{{.Staff.R.LastOrder}}"></label>
   </div>
+  <label class="choice"><input type="checkbox" name="orders_in_hours" value="1"{{if .Staff.R.OrdersInHours}} checked{{end}}> Take guest orders only during these hours (from opening to the last order time). Waiters can still order for a table.</label>
   <h2>Kitchen ticket colours</h2>
   <p class="muted">A ticket on the kitchen screen turns amber, then red, as an order waits.</p>
   <div class="rowform">
@@ -343,6 +351,8 @@
       <div class="two">
         <label>Address <input name="address" value="{{$r.Address}}" maxlength="120" placeholder="House 12, Road 5, Dhanmondi"></label>
         <label>Phone <input name="phone" value="{{$r.Phone}}" maxlength="20" inputmode="tel" placeholder="01XXXXXXXXX"></label>
+        <label>Google review link (optional) <input name="review_url" value="{{$r.ReviewURL}}" maxlength="300" inputmode="url" placeholder="https://g.page/r/…/review"></label>
+        <span class="muted small1">Guests who give 4 or 5 stars are asked to rate you on Google too.</span>
       </div>
       <h2>Brand colour</h2>
       <p class="muted">Used for the header, buttons, prices and the page background tint.</p>
@@ -408,4 +418,83 @@
   color();
 })();
 </script>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_reports"}}{{template "shead" .}}
+<div class="pagehead"><h1>Reports</h1>
+  <nav class="chips" aria-label="Period">{{range $d := (list 7 30 90)}}<a href="?days={{$d}}"{{if eq $d $.Days}} class="on" aria-current="page"{{end}}>Last {{$d}} days</a>{{end}}</nav></div>
+<div class="stats">
+  <div class="stat"><span>Sales, last {{.Days}} days</span><b>{{money .Total}}</b></div>
+  <div class="stat"><span>Bills paid</span><b>{{.Bills}}</b></div>
+  <div class="stat"><span>Average bill</span><b>{{if .Bills}}{{money (div .Total .Bills)}}{{else}}–{{end}}</b></div>
+</div>
+<div class="two">
+  <section class="card">
+    <h2>Sales by day</h2>
+    {{range .Daily}}<div class="barrow"><span class="bl">{{.Day}}</span><span class="rbar"><i style="width: {{.Width}}%"></i></span><b>{{money .Sales}}</b><span class="muted small1">{{.Bills}} bills</span></div>
+    {{else}}<p class="muted">No payments in this period.</p>{{end}}
+  </section>
+  <section class="card">
+    <h2>Busiest hours (orders)</h2>
+    {{range .Hours}}<div class="barrow"><span class="bl">{{.Label}}</span><span class="rbar"><i style="width: {{.Width}}%"></i></span><b>{{.Orders}}</b></div>
+    {{else}}<p class="muted">No orders in this period.</p>{{end}}
+  </section>
+</div>
+<section class="card">
+  <h2>Dishes</h2>
+  {{range .Dishes}}<div class="barrow wide"><span class="bl">{{.Name}}</span><span class="rbar"><i style="width: {{.Width}}%"></i></span><b>{{money .Revenue}}</b><span class="muted small1">{{.Qty}} sold</span></div>
+  {{else}}<p class="muted">No orders in this period.</p>{{end}}
+</section>
+<section class="card">
+  <h2>Download for a spreadsheet (CSV)</h2>
+  <form method="get" class="rowform" id="exportform">
+    <label>From <input type="date" name="from" value="{{.From}}"></label>
+    <label>To <input type="date" name="to" value="{{.Today}}"></label>
+  </form>
+  <div class="qracts">
+    <button class="btn ghost" form="exportform" formaction="/owner/export/orders.csv">Orders</button>
+    <button class="btn ghost" form="exportform" formaction="/owner/export/payments.csv">Payments</button>
+    <button class="btn ghost" form="exportform" formaction="/owner/export/reviews.csv">Reviews</button>
+  </div>
+  <p class="muted">Opens in Excel, Google Sheets or LibreOffice. Amounts are in taka.</p>
+</section>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_closing"}}{{template "shead" .}}
+<div class="pagehead noprint"><h1>Closing report</h1>
+  <form method="get" class="inline"><input class="dayin" type="date" name="day" value="{{.Day}}" aria-label="Day"><button class="btn sm">Show</button>
+  <button class="btn sm ghost" type="button" data-print>Print</button></form></div>
+<h2 class="printonly">Closing report · {{.Staff.R.Name}}</h2>
+<p class="muted">{{.DayLong}}</p>
+<div class="stats">
+  <div class="stat"><span>Taken</span><b>{{money .Total}}</b></div>
+  <div class="stat"><span>Bills paid</span><b>{{.Bills}}</b></div>
+  <div class="stat"><span>Orders rejected</span><b>{{.Rejected}}</b></div>
+  <div class="stat"><span>Bills open now</span><b>{{.OpenBills}}</b></div>
+</div>
+<section class="card">
+  <h2>By payment method</h2>
+  {{range .Methods}}<div class="total"><span>{{.Method}} ({{.Count}})</span><b>{{money .Amount}}</b></div>{{else}}<p class="muted">No payments on this day.</p>{{end}}
+  <p class="muted">Count the cash drawer against the cash line. bKash, Nagad and card are what staff marked; check them against the statements.</p>
+</section>
+<section class="card">
+  <h2>Removed from bills by staff</h2>
+  {{range .Removed}}<div class="lrow wrap"><span class="grow">Table {{.Table}}: {{.Qty}} × {{.Item}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
+  {{else}}<p class="muted">Nothing removed.</p>{{end}}
+</section>
+<section class="card">
+  <h2>Closed without payment</h2>
+  {{range .Unpaid}}<div class="lrow wrap"><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}} · {{.At}}</span></div>
+  {{else}}<p class="muted">None.</p>{{end}}
+</section>
+{{if .OpenBills}}<p class="warn noprint">{{.OpenBills}} bills are still open. Close or take payment for them on the <a href="/staff/counter">Counter</a> before closing.</p>{{end}}
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_activity"}}{{template "shead" .}}
+<h1>Activity log</h1>
+<p class="muted">Who changed prices, removed items, took payments, closed bills without payment, and changed staff or charges. The latest 300 entries.</p>
+<div class="list">
+{{range .Rows}}<div class="lrow wrap"><span class="muted act-at">{{.At}}</span><b>{{.Action}}</b><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}}</span></div>
+{{else}}<div class="lrow"><span class="muted">Nothing recorded yet.</span></div>{{end}}
+</div>
 {{template "sfoot" .}}{{end}}

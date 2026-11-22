@@ -28,7 +28,7 @@
 
 {{/* ui is shared by guest and staff pages: the connection banner, the toast area and the
      question dialog that replaces the browser's own confirm and prompt pop-ups. Takes the language. */}}
-{{define "ui"}}<div id="netbar" class="netbar" role="status" hidden data-offline="{{t . "offline"}}" data-failed="{{t . "send_failed"}}" data-error="{{t . "error"}}"></div>
+{{define "ui"}}<div id="netbar" class="netbar" role="status" hidden data-offline="{{t . "offline"}}" data-failed="{{t . "send_failed"}}" data-error="{{t . "error"}}" data-busy="{{t . "too_many"}}"></div>
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <dialog id="ask" class="ask" data-yes="{{t . "dlg_yes"}}" data-no="{{t . "dlg_no"}}" data-ok="{{t . "dlg_ok"}}" data-cancel="{{t . "dlg_cancel"}}">
   <form method="dialog">
@@ -83,6 +83,7 @@
       <button class="btn big">{{t .Lang "start_order"}}</button>
     {{end}}
   </form>
+  <p class="muted privacy">🔒 {{t .Lang "privacy"}}</p>
 </section>
 {{template "gfoot" .}}{{end}}
 
@@ -371,6 +372,8 @@
 {{else}}
   {{if .Reviewed}}
     <p class="okmsg">{{t .Lang "thanks_review"}}</p>
+    {{if .AskGoogle}}<div class="card google"><p>{{t .Lang "google_review"}}</p>
+      <a class="btn gold" href="{{.R.ReviewURL}}" target="_blank" rel="noopener noreferrer">★ {{t .Lang "google_review_btn"}}</a></div>{{end}}
   {{else}}
   <section class="card">
     <h2>{{t .Lang "rate_visit"}}</h2>

@@ -131,7 +131,7 @@ func deviceToken(w http.ResponseWriter, r *http.Request) string {
 		return c.Value
 	}
 	tok := randToken(16)
-	http.SetCookie(w, &http.Cookie{Name: "bosho_dev", Value: tok, Path: "/", MaxAge: 365 * 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	setCookie(w, r, &http.Cookie{Name: "bosho_dev", Value: tok, MaxAge: 365 * 86400, HttpOnly: true})
 	return tok
 }
 
@@ -180,7 +180,31 @@ func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	if err == nil {
 		c.S, c.G = &s, &g
 	}
+	// "Take orders only during opening hours": outside them the menu shows as closed to guests.
+	// A waiter ordering for a table is not held to it.
+	if c.R.IsOpen && c.R.OrdersInHours && (c.G == nil || !c.G.IsStaff) && !withinHours(c.R, time.Now().In(a.loc)) {
+		c.R.IsOpen = false
+	}
 	return c, true
+}
+
+// withinHours reports whether at is between the opening time and the last order time (or the
+// closing time when no last order time is set). Hours past midnight work, for example 18:00 to
+// 01:00. Without both times it is always true.
+func withinHours(r Restaurant, at time.Time) bool {
+	open, ok1 := parseHM(r.OpenTime)
+	cutoff, ok2 := parseHM(r.LastOrder)
+	if !ok2 {
+		cutoff, ok2 = parseHM(r.CloseTime)
+	}
+	if !ok1 || !ok2 {
+		return true
+	}
+	m := at.Hour()*60 + at.Minute()
+	if open <= cutoff {
+		return m >= open && m <= cutoff
+	}
+	return m >= open || m <= cutoff
 }
 
 // joined returns the context only for a guest who is an approved member of a session.
@@ -275,23 +299,35 @@ func (a *App) gEnter(w http.ResponseWriter, r *http.Request) {
 			WHERE s.id=? AND s.table_id=? AND s.status IN ('open','bill_requested') AND g.status='joined'`, sid, c.Tbl.ID).Scan(&members)
 		if members > 0 {
 			// Joining an existing group needs an Allow tap from someone already in it.
-			a.db.Exec(`INSERT INTO session_guests(session_id,display_name,device_token,status,last_seen) VALUES(?,?,?,'pending',?)`, sid, name, c.Dev, now())
+			if err := exec(a.db, `INSERT INTO session_guests(session_id,display_name,device_token,status,last_seen) VALUES(?,?,?,'pending',?)`, sid, name, c.Dev, now()); err != nil {
+				serverError(w, err)
+				return
+			}
 			http.Redirect(w, r, c.url(""), http.StatusSeeOther)
 			return
 		}
 	}
-	a.newSession(c.R.ID, c.Tbl.ID, name, c.Dev, false)
+	if _, err := a.newSession(c.R.ID, c.Tbl.ID, name, c.Dev, false); err != nil {
+		serverError(w, err)
+		return
+	}
 	http.Redirect(w, r, c.url(""), http.StatusSeeOther)
 }
 
-func (a *App) newSession(rid, tableID int64, name, dev string, staff bool) int64 {
-	sid, err := database.InsertID(a.db, `INSERT INTO table_sessions(restaurant_id,table_id,group_label,opened_at,last_activity) VALUES(?,?,?,?,?)`,
-		rid, tableID, a.nextLabel(tableID), now(), now())
-	if err != nil {
-		return 0
-	}
-	a.db.Exec(`INSERT INTO session_guests(session_id,display_name,device_token,status,is_staff,last_seen) VALUES(?,?,?,'joined',?,?)`, sid, name, dev, staff, now())
-	return sid
+// newSession starts a group at a table with its first member, both in one transaction, so a
+// group can never exist without anyone in it.
+func (a *App) newSession(rid, tableID int64, name, dev string, staff bool) (int64, error) {
+	var sid int64
+	err := a.inTx(func(q database.Querier) error {
+		var err error
+		sid, err = database.InsertID(q, `INSERT INTO table_sessions(restaurant_id,table_id,group_label,opened_at,last_activity) VALUES(?,?,?,?,?)`,
+			rid, tableID, a.nextLabel(tableID), now(), now())
+		if err != nil {
+			return err
+		}
+		return exec(q, `INSERT INTO session_guests(session_id,display_name,device_token,status,is_staff,last_seen) VALUES(?,?,?,'joined',?,?)`, sid, name, dev, staff, now())
+	})
+	return sid, err
 }
 
 func (a *App) gWait(w http.ResponseWriter, r *http.Request) {
@@ -325,6 +361,6 @@ func (a *App) gLang(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("l") == "en" {
 		l = "en"
 	}
-	http.SetCookie(w, &http.Cookie{Name: "lang", Value: l, Path: "/", MaxAge: 365 * 86400, SameSite: http.SameSiteLaxMode})
+	setCookie(w, r, &http.Cookie{Name: "lang", Value: l, MaxAge: 365 * 86400})
 	http.Redirect(w, r, "/t/"+r.PathValue("tok"), http.StatusSeeOther)
 }

@@ -28,6 +28,7 @@ type App struct {
 	tpl    *template.Template
 	ver    versionStore   // Redis change counter; nothing configured = no shortcut
 	loc    *time.Location // restaurant-local time, used for "today" on the dashboard
+	limits *limiter       // login attempts and guest taps (see middleware.go)
 }
 
 // New builds the app. ver may be nil (no Redis): refreshes then always query PostgreSQL.
@@ -40,7 +41,7 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.
 	if err != nil {
 		loc = time.FixedZone("BDT", 6*3600)
 	}
-	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver}
+	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver, limits: newLimiter()}
 	if cfg.Demo {
 		a.seedDemo()
 	}
@@ -85,7 +86,7 @@ func (a *App) Handler() http.Handler {
 	a.guestRoutes(mux)
 	a.staffRoutes(mux)
 	a.ownerRoutes(mux)
-	return a.bumpOnWrite(mux)
+	return a.protect(a.bumpOnWrite(mux))
 }
 
 func (a *App) render(w http.ResponseWriter, name string, data any) {

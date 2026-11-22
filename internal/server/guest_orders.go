@@ -47,9 +47,11 @@ func (a *App) liveData(c *gctx, flash string) M {
 	m["Orders"], m["Bill"], m["Paid"], m["Flash"] = orders, a.bill(c.S.ID, c.R), paid, flash
 	m["Calls"] = a.callButtons(c)
 	if paid {
-		var n int
-		a.db.QueryRow(`SELECT COUNT(*) FROM reviews WHERE session_id=?`, c.S.ID).Scan(&n)
-		m["Reviewed"] = n > 0
+		var rating int
+		err := a.db.QueryRow(`SELECT rating FROM reviews WHERE session_id=? AND menu_item_id IS NULL`, c.S.ID).Scan(&rating)
+		m["Reviewed"] = err == nil
+		// A happy guest is offered the restaurant's Google review page.
+		m["AskGoogle"] = err == nil && rating >= 4 && c.R.ReviewURL != ""
 	}
 	return m
 }
@@ -86,16 +88,25 @@ func (a *App) gItemChange(w http.ResponseWriter, r *http.Request) {
 		if r.FormValue("action") == "minus" && qty > 1 {
 			want = qty - 1
 		}
+		var err error
 		switch ostatus {
 		case "placed": // kitchen has not accepted yet: change it right away
 			if want == 0 {
-				a.db.Exec(`UPDATE order_items SET status='cancelled', cancelled_by=?, cancel_reason='guest cancelled before accept' WHERE id=?`, c.G.Name, id)
-				closeEmptyOrder(a.db, oid)
+				err = a.inTx(func(q database.Querier) error {
+					if err := exec(q, `UPDATE order_items SET status='cancelled', cancelled_by=?, cancel_reason='guest cancelled before accept' WHERE id=? AND status='active'`, c.G.Name, id); err != nil {
+						return err
+					}
+					return closeEmptyOrder(q, oid)
+				})
 			} else {
-				a.db.Exec(`UPDATE order_items SET quantity=? WHERE id=?`, want, id)
+				err = exec(a.db, `UPDATE order_items SET quantity=? WHERE id=? AND status='active'`, want, id)
 			}
 		case "cooking", "ready": // staff must approve
-			a.db.Exec(`UPDATE order_items SET status='cancel_requested', req_qty=?, last_change='' WHERE id=?`, want, id)
+			err = exec(a.db, `UPDATE order_items SET status='cancel_requested', req_qty=?, last_change='' WHERE id=? AND status='active'`, want, id)
+		}
+		if err != nil {
+			serverError(w, err)
+			return
 		}
 	}
 	a.render(w, "g_live", a.liveData(c, ""))
@@ -150,7 +161,10 @@ func (a *App) gCall(w http.ResponseWriter, r *http.Request) {
 	a.db.QueryRow(`SELECT COUNT(*) FROM waiter_calls WHERE session_id=? AND reason=? AND (status='pending' OR done_at>?)`,
 		c.S.ID, reason, now()-callCooldown).Scan(&busy)
 	if busy == 0 && c.S.Status != "paid" {
-		a.db.Exec(`INSERT INTO waiter_calls(restaurant_id,session_id,reason,created_at) VALUES(?,?,?,?)`, c.R.ID, c.S.ID, reason, now())
+		if err := exec(a.db, `INSERT INTO waiter_calls(restaurant_id,session_id,reason,created_at) VALUES(?,?,?,?)`, c.R.ID, c.S.ID, reason, now()); err != nil {
+			serverError(w, err)
+			return
+		}
 	}
 	a.render(w, "g_live", a.liveData(c, i18n.T(c.Lang, "waiter_coming")))
 }
@@ -160,12 +174,19 @@ func (a *App) gBill(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	var err error
 	if strings.HasSuffix(r.URL.Path, "/cancel") {
-		a.db.Exec(`UPDATE table_sessions SET status='open' WHERE id=? AND status='bill_requested'`, c.S.ID)
-		c.S.Status = "open"
+		if err = exec(a.db, `UPDATE table_sessions SET status='open' WHERE id=? AND status='bill_requested'`, c.S.ID); err == nil && c.S.Status == "bill_requested" {
+			c.S.Status = "open"
+		}
 	} else if c.S.Status == "open" && len(a.bill(c.S.ID, c.R).Lines) > 0 {
-		a.db.Exec(`UPDATE table_sessions SET status='bill_requested' WHERE id=? AND status='open'`, c.S.ID)
-		c.S.Status = "bill_requested"
+		if err = exec(a.db, `UPDATE table_sessions SET status='bill_requested' WHERE id=? AND status='open'`, c.S.ID); err == nil {
+			c.S.Status = "bill_requested"
+		}
+	}
+	if err != nil {
+		serverError(w, err)
+		return
 	}
 	a.render(w, "g_live", a.liveData(c, ""))
 }
@@ -179,13 +200,25 @@ func (a *App) gReview(w http.ResponseWriter, r *http.Request) {
 	a.db.QueryRow(`SELECT COUNT(*) FROM reviews WHERE session_id=?`, c.S.ID).Scan(&done)
 	rating, _ := strconv.Atoi(r.FormValue("rating"))
 	if c.S.Status == "paid" && done == 0 && rating >= 1 && rating <= 5 {
-		a.db.Exec(`INSERT INTO reviews(restaurant_id,session_id,rating,comment,created_at) VALUES(?,?,?,?,?)`,
-			c.R.ID, c.S.ID, rating, clean(r.FormValue("comment"), 500), now())
-		for _, l := range a.bill(c.S.ID, c.R).Lines {
-			if d, _ := strconv.Atoi(r.FormValue(fmt.Sprintf("dish_%d", l.MenuItemID))); d >= 1 && d <= 5 {
-				a.db.Exec(`INSERT INTO reviews(restaurant_id,session_id,menu_item_id,rating,created_at) VALUES(?,?,?,?,?)`,
-					c.R.ID, c.S.ID, l.MenuItemID, d, now())
+		lines := a.bill(c.S.ID, c.R).Lines
+		err := a.inTx(func(q database.Querier) error {
+			if err := exec(q, `INSERT INTO reviews(restaurant_id,session_id,rating,comment,created_at) VALUES(?,?,?,?,?)`,
+				c.R.ID, c.S.ID, rating, clean(r.FormValue("comment"), 500), now()); err != nil {
+				return err
 			}
+			for _, l := range lines {
+				if d, _ := strconv.Atoi(r.FormValue(fmt.Sprintf("dish_%d", l.MenuItemID))); d >= 1 && d <= 5 {
+					if err := exec(q, `INSERT INTO reviews(restaurant_id,session_id,menu_item_id,rating,created_at) VALUES(?,?,?,?,?)`,
+						c.R.ID, c.S.ID, l.MenuItemID, d, now()); err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			serverError(w, err)
+			return
 		}
 	}
 	http.Redirect(w, r, c.url("/orders"), http.StatusSeeOther)

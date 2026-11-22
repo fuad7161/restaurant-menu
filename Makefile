@@ -1,4 +1,4 @@
-.PHONY: up down logs build run test fmt psql
+.PHONY: up down logs build run test fmt psql backup restore-check loadtest
 
 # The laptop's Wi-Fi address, found fresh on every start, so QR codes keep working when the router gives a new IP.
 LAN_IP := $(shell ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
@@ -31,3 +31,12 @@ fmt:
 
 psql:      ## open a shell on the online database (needs psql installed)
 	@set -a; . ./.env; set +a; psql "$$DATABASE_URL"
+
+backup:    ## save the online database to backups/ and check the file (needs pg_dump 17+); run it nightly
+	./scripts/backup.sh
+
+restore-check: ## restore the newest backup into a throwaway local PostgreSQL in Docker and count the rows
+	./scripts/restore-check.sh
+
+loadtest:  ## simulate a busy evening against a running app: make loadtest URL=http://localhost:8081
+	go run ./cmd/loadtest -url $${URL:-http://localhost:8081}

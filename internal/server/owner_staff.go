@@ -15,7 +15,7 @@ import (
 func (a *App) ownerStaff(w http.ResponseWriter, r *http.Request, s *Staff) {
 	people := database.List(a.db, `SELECT id,name,phone,role FROM staff_users WHERE restaurant_id=? ORDER BY id`,
 		func(r *sql.Rows, p *Staff) error { return r.Scan(&p.ID, &p.Name, &p.Phone, &p.Role) }, s.R.ID)
-	a.render(w, "owner_staff", M{"Staff": s, "Page": "staff", "People": people, "Err": r.URL.Query().Get("err")})
+	a.render(w, "owner_staff", M{"Staff": s, "Page": "staff", "People": people, "Err": r.URL.Query().Get("err"), "OK": r.URL.Query().Get("ok") != ""})
 }
 
 func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
@@ -32,14 +32,52 @@ func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 		back(w, r, "/owner/staff?err=That+phone+number+already+has+an+account.")
 		return
 	}
+	a.audit(s.R.ID, s.Name, "staff added", fmt.Sprintf("%s (%s, %s)", name, phone, role))
 	back(w, r, "/owner/staff")
 }
 
 func (a *App) staffDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if id := pathID(r, "id"); id != s.ID {
-		a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID)
+		var name string
+		a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
+		// Their logins end with the account (staff_sessions cascade).
+		if res, err := a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID); rows(res, err) == 1 {
+			a.audit(s.R.ID, s.Name, "staff removed", name)
+		}
 	}
 	back(w, r, "/owner/staff")
+}
+
+// staffPassword lets the owner set a new password for a staff member who forgot theirs. It also
+// logs that person out everywhere, so an old password left on a shared phone stops working.
+func (a *App) staffPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
+	id, pass := pathID(r, "id"), r.FormValue("password")
+	if len(pass) < 8 {
+		back(w, r, "/owner/staff?err=The+new+password+needs+8+characters.")
+		return
+	}
+	hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	var name string
+	a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
+	err := a.inTx(func(q database.Querier) error {
+		res, err := q.Exec(`UPDATE staff_users SET password_hash=? WHERE id=? AND restaurant_id=?`, string(hash), id, s.R.ID)
+		if rows(res, err) != 1 {
+			if err == nil {
+				err = fmt.Errorf("staff %d not found", id)
+			}
+			return err
+		}
+		if id == s.ID { // the owner's own password: keep this browser logged in
+			return nil
+		}
+		return exec(q, `DELETE FROM staff_sessions WHERE staff_id=?`, id)
+	})
+	if err != nil {
+		back(w, r, "/owner/staff?err=The+password+could+not+be+changed.")
+		return
+	}
+	a.audit(s.R.ID, s.Name, "password reset", name)
+	back(w, r, "/owner/staff?ok=1")
 }
 
 func (a *App) settings(w http.ResponseWriter, r *http.Request, s *Staff) {
@@ -71,8 +109,15 @@ func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 	}
 	warn := minutes("warn_minutes", 10)
 	late := max(minutes("late_minutes", 20), warn+1)
-	a.db.Exec(`UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=?,open_time=?,close_time=?,last_order=?,warn_minutes=?,late_minutes=? WHERE id=?`,
-		pctOf("vat"), pctOf("service"), r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1",
-		hm("open_time"), hm("close_time"), hm("last_order"), warn, late, s.R.ID)
+	vat, svc := pctOf("vat"), pctOf("service")
+	if err := exec(a.db, `UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=?,open_time=?,close_time=?,last_order=?,warn_minutes=?,late_minutes=?,orders_in_hours=? WHERE id=?`,
+		vat, svc, r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1",
+		hm("open_time"), hm("close_time"), hm("last_order"), warn, late, r.FormValue("orders_in_hours") == "1", s.R.ID); err != nil {
+		serverError(w, err)
+		return
+	}
+	if vat != s.R.VAT || svc != s.R.Service {
+		a.audit(s.R.ID, s.Name, "charges changed", fmt.Sprintf("VAT %s%% → %s%%, service %s%% → %s%%", pct(s.R.VAT), pct(vat), pct(s.R.Service), pct(svc)))
+	}
 	back(w, r, "/owner/settings?saved=1")
 }

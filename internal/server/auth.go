@@ -1,9 +1,11 @@
 package server
 
 import (
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"bosho/internal/database"
 	"bosho/internal/i18n"
@@ -37,6 +39,9 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /signup", a.signup)
 	mux.HandleFunc("POST /logout", a.logout)
 	mux.HandleFunc("GET /staff/lang", a.auth(false, a.staffLang))
+	mux.HandleFunc("GET /staff/account", a.auth(false, a.account))
+	mux.HandleFunc("POST /staff/account/password", a.auth(false, a.accountPassword))
+	mux.HandleFunc("POST /staff/account/logout-all", a.auth(false, a.logoutAll))
 
 	mux.HandleFunc("GET /staff/kitchen", a.auth(false, a.kitchen))
 	mux.HandleFunc("GET /staff/kitchen/board", a.poll(a.auth(false, a.kitchenBoard)))
@@ -97,11 +102,11 @@ func (a *App) auth(ownerOnly bool, h func(http.ResponseWriter, *http.Request, *S
 	}
 }
 
-func (a *App) startStaffSession(w http.ResponseWriter, staffID int64) {
+func (a *App) startStaffSession(w http.ResponseWriter, r *http.Request, staffID int64) {
 	tok := randToken(24)
 	a.db.Exec(`DELETE FROM staff_sessions WHERE expires_at<?`, now())
 	a.db.Exec(`INSERT INTO staff_sessions(token,staff_id,expires_at) VALUES(?,?,?)`, tok, staffID, now()+30*86400)
-	http.SetCookie(w, &http.Cookie{Name: "bosho_staff", Value: tok, Path: "/", MaxAge: 30 * 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	setCookie(w, r, &http.Cookie{Name: "bosho_staff", Value: tok, MaxAge: 30 * 86400, HttpOnly: true})
 }
 
 // goInside sends an already logged-in staff member from the login, signup or home page to the
@@ -156,16 +161,38 @@ func staffHome(role string) string {
 	return "/staff/kitchen"
 }
 
+// Wrong passwords: after loginTries for one phone number, or loginTriesNet from one network,
+// logging in is refused for loginLock.
+const (
+	loginTries    = 5
+	loginTriesNet = 30
+	loginLock     = 15 * time.Minute
+)
+
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	phone := clean(r.FormValue("phone"), 20)
+	ip, _ := a.clientIP(r)
+	phoneKey, ipKey := "login:"+phone, "loginip:"+ip.String()
+	m := M{"Phone": phone, "Next": safeNext(r.FormValue("next"))}
+	if a.limits.count(phoneKey, loginLock) >= loginTries || a.limits.count(ipKey, loginLock) >= loginTriesNet {
+		slog.Warn("login locked", "phone", phone, "ip", ip.String())
+		w.WriteHeader(http.StatusTooManyRequests)
+		m["Err"] = "Too many wrong passwords. Wait 15 minutes and try again."
+		a.render(w, "login", m)
+		return
+	}
 	var id int64
 	var hash, role string
 	err := a.db.QueryRow(`SELECT id,password_hash,role FROM staff_users WHERE phone=?`, phone).Scan(&id, &hash, &role)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(r.FormValue("password"))) != nil {
-		a.render(w, "login", M{"Err": "Wrong phone number or password.", "Phone": phone, "Next": safeNext(r.FormValue("next"))})
+		a.limits.hit(phoneKey, loginTries, loginLock)
+		a.limits.hit(ipKey, loginTriesNet, loginLock)
+		m["Err"] = "Wrong phone number or password."
+		a.render(w, "login", m)
 		return
 	}
-	a.startStaffSession(w, id)
+	a.limits.reset(phoneKey)
+	a.startStaffSession(w, r, id)
 	to := safeNext(r.FormValue("next"))
 	if to == "" {
 		to = staffHome(role)
@@ -203,7 +230,7 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", 500)
 		return
 	}
-	a.startStaffSession(w, sid)
+	a.startStaffSession(w, r, sid)
 	http.Redirect(w, r, "/owner", http.StatusSeeOther)
 }
 
@@ -211,7 +238,7 @@ func (a *App) logout(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie("bosho_staff"); err == nil {
 		a.db.Exec(`DELETE FROM staff_sessions WHERE token=?`, c.Value)
 	}
-	http.SetCookie(w, &http.Cookie{Name: "bosho_staff", Path: "/", MaxAge: -1})
+	setCookie(w, r, &http.Cookie{Name: "bosho_staff", MaxAge: -1, HttpOnly: true})
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
 
@@ -221,7 +248,7 @@ func (a *App) staffLang(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if r.URL.Query().Get("l") == "bn" {
 		l = "bn"
 	}
-	http.SetCookie(w, &http.Cookie{Name: "staff_lang", Value: l, Path: "/", MaxAge: 365 * 86400, HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	setCookie(w, r, &http.Cookie{Name: "staff_lang", Value: l, MaxAge: 365 * 86400, HttpOnly: true})
 	to := safeNext(r.URL.Query().Get("next"))
 	if to == "" {
 		to = safeNext(pageOf(r.Referer())) // back to the page the switch was pressed on
@@ -230,4 +257,49 @@ func (a *App) staffLang(w http.ResponseWriter, r *http.Request, s *Staff) {
 		to = staffHome(s.Role)
 	}
 	http.Redirect(w, r, to, http.StatusSeeOther)
+}
+
+// account lets any staff member change their own password and log out on every device.
+func (a *App) account(w http.ResponseWriter, r *http.Request, s *Staff) {
+	q := r.URL.Query()
+	a.render(w, "staff_account", M{"Staff": s, "Page": "account", "Err": q.Get("err"), "Done": q.Get("done")})
+}
+
+func (a *App) accountPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
+	var hash string
+	a.db.QueryRow(`SELECT password_hash FROM staff_users WHERE id=?`, s.ID).Scan(&hash)
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte(r.FormValue("current"))) != nil {
+		back(w, r, "/staff/account?err=current")
+		return
+	}
+	pass := r.FormValue("password")
+	if len(pass) < 8 {
+		back(w, r, "/staff/account?err=short")
+		return
+	}
+	newHash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	// The new password ends every other login; this browser stays logged in.
+	cur, _ := r.Cookie("bosho_staff")
+	err := a.inTx(func(q database.Querier) error {
+		if err := exec(q, `UPDATE staff_users SET password_hash=? WHERE id=?`, string(newHash), s.ID); err != nil {
+			return err
+		}
+		return exec(q, `DELETE FROM staff_sessions WHERE staff_id=? AND token!=?`, s.ID, cur.Value)
+	})
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	a.audit(s.R.ID, s.Name, "password changed", s.Name)
+	back(w, r, "/staff/account?done=password")
+}
+
+// logoutAll ends every login of this staff member, on every phone and tablet, including this one.
+func (a *App) logoutAll(w http.ResponseWriter, r *http.Request, s *Staff) {
+	if err := exec(a.db, `DELETE FROM staff_sessions WHERE staff_id=?`, s.ID); err != nil {
+		serverError(w, err)
+		return
+	}
+	setCookie(w, r, &http.Cookie{Name: "bosho_staff", MaxAge: -1, HttpOnly: true})
+	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
