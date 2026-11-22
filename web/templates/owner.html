@@ -355,7 +355,7 @@
         <span class="muted small1">Guests who give 4 or 5 stars are asked to rate you on Google too.</span>
       </div>
       <h2>Brand colour</h2>
-      <p class="muted">Used for the header, buttons, prices and the page background tint.</p>
+      <p class="muted">Used for buttons, links and selected items. Pages stay white.</p>
       {{$custom := true}}{{range .Swatches}}{{if eq .Hex $r.Color}}{{$custom = false}}{{end}}{{end}}
       <div class="swatches">
         {{range .Swatches}}

@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit 81c1314 (plus uncommitted reliability and security work) on 2026-11-22 -->
+<!-- presentation-sync: last synced at commit 1cc0df1 (plus the minimal-ui redesign) on 2026-11-23 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -13,7 +13,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | ID | Feature | Where in code |
 | --- | --- | --- |
 | G-01 | Scan the table QR and the restaurant's menu opens, already knowing the table. No app, no signup. | `internal/server/guest.go` (`gLanding`, `gEnter`) |
-| G-02 | Restaurant branding on every guest screen: logo or initial mark, brand colour, tagline, address, phone. | `web/templates/guest.html` (`ghead`, `rmark`), `internal/server/theme.go` |
+| G-02 | Restaurant branding on every guest screen: logo or initial mark, brand colour as the accent on a clean white page, tagline, address, phone. | `web/templates/guest.html` (`ghead`, `rmark`), `internal/server/theme.go` |
 | G-03 | Bangla and English, switchable at any time. | `internal/i18n/i18n.go`, `gLang` |
 | G-04 | Menu by category with photos, short descriptions, prices in taka and tags (Popular, Chef's pick, New, Vegetarian, spice level). A "Recommended" row shows the owner's featured dishes. A line says which charges (VAT, service) come on top. Sold-out dishes are greyed out. | `internal/server/queries.go` (`menu`, `bestSellers`), `guest.go` (`infoData`), `guest_menu` template |
 | G-05 | One cart shared by the whole group. Every item shows who added it. | `internal/server/guest_cart.go` |
@@ -47,7 +47,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | K-07 | Take order: a waiter opens a table and orders for guests who do not scan. These orders skip the Accept step. | `internal/server/waiter.go` |
 | K-08 | Counter: all open bills as cards, bill detail, remove an item with a recorded reason. | `internal/server/counter.go` |
 | K-09 | Mark a bill paid by cash, bKash, Nagad or card (recorded, not processed), or close it without payment. | `sessionPaid`, `sessionClose` |
-| K-10 | Left sidebar for staff; it slides in on phones. Each role starts on its own page. | `shead` in `web/templates/staff.html`, `staffHome` in `auth.go` |
+| K-10 | Light left sidebar for staff; it slides in on phones. Each role starts on its own page. | `shead` in `web/templates/staff.html`, `staffHome` in `auth.go` |
 | K-11 | Undo "Mark ready" or "Mark served" within a minute, from the message that appears. | `orderAct` (`undo`) |
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |

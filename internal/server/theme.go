@@ -54,31 +54,26 @@ func (c rgb) luminance() float64 {
 }
 
 // usableColor reports whether a brand colour keeps text readable: white text on it and
-// coloured text on the cream page both need a contrast of about 3:1 or more.
+// coloured text on the white page both need a contrast of about 3:1 or more.
 func usableColor(s string) bool {
 	c, ok := parseHex(s)
 	return ok && c.luminance() <= 0.27
 }
 
-// themeCSS turns a restaurant's brand colour into the CSS variables app.css reads.
+// themeCSS turns a restaurant's brand colour into the accent variables app.css reads: the colour
+// itself (buttons, links, selected states), a darker shade for hover, and a light tint for
+// selected backgrounds. The page itself stays neutral.
 // Anything invalid falls back to the default, so the output is always safe to put in a <style>.
 func themeCSS(color string) template.CSS {
 	if !usableColor(color) {
 		color = DefaultColor
 	}
 	c, _ := parseHex(color)
-	white, black, cream := rgb{255, 255, 255}, rgb{0, 0, 0}, rgb{251, 244, 232}
-	return template.CSS(fmt.Sprintf(
-		":root{--brand:%s;--brand-deep:%s;--brand-hi:%s;--brand-soft:%s;--bg:%s;--line:%s;--night:%s}",
-		c.hex(), c.mix(black, .35).hex(), c.mix(white, .18).hex(), c.mix(white, .87).hex(),
-		cream.mix(c, .035).hex(), cream.mix(c, .09).mix(rgb{236, 223, 202}, .5).hex(), c.mix(black, .62).hex()))
+	white, black := rgb{255, 255, 255}, rgb{0, 0, 0}
+	return template.CSS(fmt.Sprintf(":root{--brand:%s;--brand-deep:%s;--brand-soft:%s}",
+		c.hex(), c.mix(black, .2).hex(), c.mix(white, .9).hex()))
 }
 
-// themeColor is the deep shade used for the phone's browser bar (<meta name="theme-color">).
-func themeColor(color string) string {
-	c, ok := parseHex(color)
-	if !ok || !usableColor(color) {
-		c, _ = parseHex(DefaultColor)
-	}
-	return c.mix(rgb{0, 0, 0}, .35).hex()
-}
+// themeColor is the colour of the phone's browser bar (<meta name="theme-color">): white, to
+// match the white page header.
+func themeColor(color string) string { return "#ffffff" }

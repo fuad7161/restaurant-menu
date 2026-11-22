@@ -56,13 +56,7 @@
 
 {{define "guest_enter"}}{{template "ghead" .}}
 <section class="card hello">
-  {{if .R.Logo}}
-  <img class="biglogo" src="/uploads/{{.R.Logo}}" alt="{{.R.Name}}">
-  {{else}}
-  <div class="spread" aria-hidden="true">
-    <img class="s2" src="/static/img/kebab.svg" alt=""><img class="s3" src="/static/img/drink.svg" alt=""><img class="s1" src="/static/img/biryani.svg" alt="">
-  </div>
-  {{end}}
+  {{if .R.Logo}}<img class="biglogo" src="/uploads/{{.R.Logo}}" alt="{{.R.Name}}">{{end}}
   {{if .R.Tagline}}<p class="tagline">{{.R.Tagline}}</p>{{end}}
   {{if .Hours}}<p class="muted hours">{{.Hours}}</p>{{end}}
   <h1>{{t .Lang "welcome"}}</h1>
@@ -114,7 +108,7 @@
   {{if .PriceNote}}<p class="muted pricenote">{{.PriceNote}}</p>{{end}}
   {{if .Hours}}<p class="muted pricenote">{{.Hours}}</p>{{end}}
 </div>
-<nav class="cats" id="cats" aria-label="{{t .Lang "menu"}}">{{range .Cats}}{{if .Items}}<a href="#c{{.ID}}"><img src="/static/img/{{dishart .NameEn .NameBn}}.svg" alt="">{{pick $.Lang .NameBn .NameEn}}</a>{{end}}{{end}}</nav>
+<nav class="cats" id="cats" aria-label="{{t .Lang "menu"}}">{{range .Cats}}{{if .Items}}<a href="#c{{.ID}}">{{pick $.Lang .NameBn .NameEn}}</a>{{end}}{{end}}</nav>
 {{if .Featured}}
 <section class="featured" aria-labelledby="feat-h">
   <div class="cathead"><h2 id="feat-h">{{t .Lang "featured"}}</h2></div>
@@ -230,7 +224,7 @@
 </div>{{end}}
 
 {{define "guest_cart"}}{{template "ghead" .}}
-<div class="pagetitle"><img src="/static/img/thali.svg" alt=""><h1>{{t .Lang "review_order"}}</h1></div>
+<div class="pagetitle"><h1>{{t .Lang "review_order"}}</h1></div>
 {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
 <details class="whoami">
   <summary>{{t .Lang "ordering_as"}} <b>{{.G.Name}}</b> <span class="link">{{t .Lang "change_name"}}</span></summary>
@@ -257,14 +251,13 @@
 
 {{define "g_cartlist"}}<div id="cartlist" hx-get="/t/{{.Tok}}/cart/list" hx-trigger="every 4s [noFocus()]" hx-swap="outerHTML"{{if .OOB}} hx-swap-oob="true"{{end}}>
 {{if not .Cart}}
-  <div class="card empty"><img src="/static/img/thali.svg" alt="">
+  <div class="card empty">
   <p class="muted">{{t .Lang "cart_empty"}}</p>
   <a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a></div>
 {{else}}
   <div class="rows">
   {{range .Cart}}
   <div class="row">
-    <span class="mini"><img class="art" src="/static/img/{{dishart .NameEn .NameBn}}.svg" alt=""></span>
     <div class="grow">
       <b>{{pick $.Lang .NameBn .NameEn}}</b>{{if .Options}} <span class="muted">· {{.Options}}</span>{{end}}
       <div class="muted">{{t $.Lang "added_by"}} {{.Guest}} · {{money .Unit}} {{t $.Lang "each"}}</div>
@@ -303,7 +296,7 @@
 {{if .Paid}}<div class="paidbox"><h1>✓ {{t .Lang "paid"}}</h1><p>{{t .Lang "thanks"}}</p>
   {{if or .R.Address .R.Phone}}<p class="contact">{{.R.Name}}{{if .R.Address}} · {{.R.Address}}{{end}}{{if .R.Phone}} · <a href="tel:{{.R.Phone}}">{{.R.Phone}}</a>{{end}}</p>{{end}}</div>
   <p><a class="btn ghost big" href="/t/{{.Tok}}/receipt">🧾 {{t .Lang "receipt"}}</a></p>{{end}}
-{{if not .Orders}}<div class="card empty"><img src="/static/img/curry.svg" alt=""><p class="muted">{{t .Lang "no_orders"}}</p><a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a></div>{{end}}
+{{if not .Orders}}<div class="card empty"><p class="muted">{{t .Lang "no_orders"}}</p><a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a></div>{{end}}
 
 {{range $o := .Orders}}
 <section class="order st-{{$o.Status}}" data-order="{{$o.ID}}" data-status="{{$o.Status}}">

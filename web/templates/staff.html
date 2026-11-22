@@ -20,46 +20,68 @@
 <body class="plain">
 <main>
   <header class="topnav">
-    <a class="brand" href="/"><span class="mark">ব</span><b>Bosho</b><span>বসো</span></a>
-    <a class="btn ghost sm" href="/login">Staff login</a>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho</b></a>
+    <nav class="links" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="/login">Staff login</a>
+    </nav>
+    <a class="btn" href="/signup">Get started</a>
   </header>
+
   <section class="hero">
     <div>
-      <span class="kicker">QR table ordering · বসো, অর্ডার করো</span>
-      <h1>Sit down, scan, and the <em>biryani</em> is on its way.</h1>
-      <p class="lead">Guests scan the QR on the table, order from their phone in Bangla or English, and watch the food get ready. No app, no waiting for a waiter.</p>
+      <span class="kicker">QR table ordering for restaurants</span>
+      <h1>Guests order from the table. Your staff focus on the food.</h1>
+      <p class="lead">Every table gets a QR code. Guests order from their own phone in Bangla or English, watch their food get ready and ask for the bill. No app to install.</p>
       <div class="ctas">
         <a class="btn" href="/signup">Set up your restaurant, free</a>
         <a class="btn ghost" href="/login">Staff login</a>
       </div>
     </div>
-    <div class="stage" aria-hidden="true">
-      <div class="ring"></div>
-      <div class="phone"><div class="screen">
-        <div class="sh">Demo Kitchen<small>টেবিল 4 · Table 4</small></div>
-        <div class="si"><img src="/static/img/biryani.svg" alt=""><span>কাচ্চি বিরিয়ানি<small>৳320</small></span><i>+</i></div>
-        <div class="si"><img src="/static/img/kebab.svg" alt=""><span>শিক কাবাব<small>৳160</small></span><i>+</i></div>
-        <div class="si"><img src="/static/img/drink.svg" alt=""><span>বোরহানি<small>৳60</small></span><i>+</i></div>
-        <div class="si"><img src="/static/img/dessert.svg" alt=""><span>ফিরনি<small>৳70</small></span><i>+</i></div>
-        <div class="sd"><span>3 items</span><b>৳540 →</b></div>
-      </div></div>
-      <div class="qrtag"><svg viewBox="0 0 21 21" shape-rendering="crispEdges"><path fill="#5e1115" d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM14 0h7v7h-7zM15 1v5h5V1zM16 2h3v3h-3zM0 14h7v7H0zM1 15v5h5v-5zM2 16h3v3H2zM8 0h2v2H8zM11 1h2v3h-2zM8 3h2v3H8zM9 8h3v2H9zM13 8h2v3h-2zM8 11h2v2H8zM16 8h3v2h-3zM0 8h2v2H0zM3 9h3v2H3zM11 12h3v2h-3zM15 12h2v3h-2zM18 11h3v2h-3zM8 15h3v2H8zM12 16h2v5h-2zM15 17h3v2h-3zM19 15h2v3h-2zM9 18h2v3H9zM16 20h5v1h-5z"/></svg>Scan to order</div>
-      <img class="float f1" src="/static/img/biryani.svg" alt="">
-      <img class="float f2" src="/static/img/tea.svg" alt="">
-      <img class="float f3" src="/static/img/kebab.svg" alt="">
+    <div class="card preview-card" aria-label="Example of the guest menu">
+      <div class="ph">Demo Kitchen <small>Table 4</small></div>
+      <div class="pi"><span>Kacchi Biryani<small>কাচ্চি বিরিয়ানি</small></span><b>৳320</b></div>
+      <div class="pi"><span>Seekh Kebab<small>শিক কাবাব</small></span><b>৳160</b></div>
+      <div class="pi"><span>Borhani<small>বোরহানি</small></span><b>৳60</b></div>
+      <div class="pf"><span>3 items</span><span>৳540</span></div>
     </div>
   </section>
-  <section class="how">
-    <div class="card"><span class="num">1</span><img src="/static/img/thali.svg" alt=""><h3>Scan the table</h3><p>Every table gets its own printed QR stand.</p></div>
-    <div class="card"><span class="num">2</span><img src="/static/img/biryani.svg" alt=""><h3>Order together</h3><p>Friends at one table share one cart, each from their own phone.</p></div>
-    <div class="card"><span class="num">3</span><img src="/static/img/curry.svg" alt=""><h3>Kitchen cooks</h3><p>Orders ring on the kitchen tablet. Guests see a live timer.</p></div>
-    <div class="card"><span class="num">4</span><img src="/static/img/dessert.svg" alt=""><h3>Pay and rate</h3><p>Ask for the bill, pay with cash, bKash, Nagad or card.</p></div>
+
+  <section class="section" id="how" aria-labelledby="how-h">
+    <h2 id="how-h">How it works</h2>
+    <p class="lead">Four steps from sitting down to paying.</p>
+    <div class="how">
+      <div class="card"><span class="num">1</span><h3>Scan the table</h3><p>Every table has its own printed QR code. The menu opens in the phone's browser.</p></div>
+      <div class="card"><span class="num">2</span><h3>Order together</h3><p>Friends at one table share one cart, each from their own phone.</p></div>
+      <div class="card"><span class="num">3</span><h3>Kitchen cooks</h3><p>Orders appear on the kitchen tablet with a sound. Guests see a live ready time.</p></div>
+      <div class="card"><span class="num">4</span><h3>Pay and review</h3><p>Guests ask for the bill and pay cash, bKash, Nagad or card at the table.</p></div>
+    </div>
   </section>
-  <section class="band">
-    <h2>Ready in ten minutes</h2>
-    <p>Add your menu, print the QR cards, put them on the tables.</p>
-    <a class="btn gold" href="/signup">Create your restaurant</a>
+
+  <section class="section" id="features" aria-labelledby="feat-h">
+    <h2 id="feat-h">Built for busy restaurants</h2>
+    <p class="lead">Everything runs in the browser on the phones and tablets you already have.</p>
+    <div class="feats">
+      <div class="card feat"><h3>Bangla and English</h3><p>Guests switch language at any time. Staff screens work in both too.</p></div>
+      <div class="card feat"><h3>Kitchen screen</h3><p>New, cooking and ready columns, with tickets that change colour as they wait.</p></div>
+      <div class="card feat"><h3>No fake orders</h3><p>Staff accept each order, and ordering can be limited to your Wi-Fi.</p></div>
+      <div class="card feat"><h3>Clear bills</h3><p>VAT and service charge shown up front, and a receipt guests can keep.</p></div>
+      <div class="card feat"><h3>Reports</h3><p>Sales by day, dish and hour, a closing report and CSV export.</p></div>
+      <div class="card feat"><h3>Your brand</h3><p>Your logo and colour on every screen and every printed QR card.</p></div>
+    </div>
   </section>
+
+  <section class="section band" aria-labelledby="band-h">
+    <h2 id="band-h">Ready in ten minutes</h2>
+    <p>Add your menu, print the QR cards and put them on the tables.</p>
+    <a class="btn" href="/signup">Create your restaurant</a>
+  </section>
+
+  <footer class="foot">
+    <span>© Bosho · বসো</span>
+    <nav aria-label="Footer"><a href="#how">How it works</a><a href="#features">Features</a><a href="/login">Staff login</a><a href="/signup">Sign up</a></nav>
+  </footer>
 </main>
 </body></html>{{end}}
 
@@ -67,20 +89,17 @@
 <body class="plain">
 <main>
   <div class="authwrap">
-  <aside class="authside">
-    <a class="brand" href="/"><span class="mark">ব</span><b>Bosho</b></a>
-    <div><h2>Welcome back</h2><p>The kitchen is waiting. Log in to see today's orders.</p>
-    <div class="plates" aria-hidden="true"><img src="/static/img/biryani.svg" alt=""><img src="/static/img/tea.svg" alt=""></div></div>
-  </aside>
-  <form method="post" action="/login" class="card form authform">
-    {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
-    <h1>Staff login</h1>
-    {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
-    <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
-    <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
-    <button class="btn big">Log in</button>
-    <p class="muted">New restaurant? <a href="/signup">Sign up free</a></p>
-  </form>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho</b></a>
+    <form method="post" action="/login" class="card form authform">
+      {{if .Next}}<input type="hidden" name="next" value="{{.Next}}">{{end}}
+      <h1>Staff login</h1>
+      <p class="sub">Log in to see today's orders.</p>
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
+      <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn big">Log in</button>
+      <p class="muted authfoot">New restaurant? <a href="/signup">Sign up free</a></p>
+    </form>
   </div>
 </main>
 </body></html>{{end}}
@@ -89,21 +108,19 @@
 <body class="plain">
 <main>
   <div class="authwrap">
-  <aside class="authside">
-    <a class="brand" href="/"><span class="mark">ব</span><b>Bosho</b></a>
-    <div><h2>Open your digital menu</h2><p>Free to start. Add dishes, print QR cards, and take orders from every table tonight.</p>
-    <div class="plates" aria-hidden="true"><img src="/static/img/kebab.svg" alt=""><img src="/static/img/drink.svg" alt=""></div></div>
-  </aside>
-  <form method="post" action="/signup" class="card form authform">
-    <h1>Set up your restaurant</h1>
-    {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
-    <label>Restaurant name <input name="restaurant" value="{{.Restaurant}}" required maxlength="60"></label>
-    <label>Your name <input name="name" value="{{.Name}}" required maxlength="40"></label>
-    <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
-    <label>Password (8 or more characters) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-    <button class="btn big">Create account</button>
-    <p class="muted">Already have an account? <a href="/login">Log in</a></p>
-  </form>
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho</b></a>
+    <form method="post" action="/signup" class="card form authform">
+      <h1>Set up your restaurant</h1>
+      <p class="sub">Free to start. You can add your menu right after.</p>
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>Restaurant name <input name="restaurant" value="{{.Restaurant}}" required maxlength="60"></label>
+      <label>Your name <input name="name" value="{{.Name}}" required maxlength="40" autocomplete="name"></label>
+      <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
+      <label>Password <input name="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="pwhelp"></label>
+      <p class="muted help" id="pwhelp">At least 8 characters.</p>
+      <button class="btn big">Create account</button>
+      <p class="muted authfoot">Already have an account? <a href="/login">Log in</a></p>
+    </form>
   </div>
 </main>
 </body></html>{{end}}

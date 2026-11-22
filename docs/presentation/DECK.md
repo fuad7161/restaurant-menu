@@ -1,12 +1,12 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 81c1314 (plus uncommitted reliability and security work) on 2026-11-22 -->
+<!-- presentation-sync: last synced at commit 1cc0df1 (plus the minimal-ui redesign) on 2026-11-23 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
 **Length:** 15 slides, about 12 minutes plus a 3-minute live demo.
 **Audience:** restaurant owners and investors. Plain words, no code on slides except slide 11.
-**Look:** the app's own style. Cream page, sindoor maroon `#8f1d21` as the accent, the alpona and rosette art from `web/static/img/`, Bangla title next to English.
+**Look:** the app's own style. White page, Inter font, sindoor maroon `#8f1d21` as the one accent, thin grey borders, no decoration. Bangla title next to English.
 **Each slide:** one title that states the point, at most 4 bullets or one picture, speaker notes underneath.
 
 ---

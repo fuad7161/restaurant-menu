@@ -3,3 +3,4 @@ data/
 bin/
 old-sqlite-data/
 backups/
+.noneedingit/
