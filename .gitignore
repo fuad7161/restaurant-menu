@@ -4,3 +4,4 @@ bin/
 old-sqlite-data/
 backups/
 .noneedingit/
+docs/marketing/*.mp4

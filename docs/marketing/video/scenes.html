@@ -1,0 +1,322 @@
+<!doctype html>
+<!--
+  "বসো" 20-second cartoon. One page = the whole video: five scenes on a 20 s timeline.
+  render.mjs pauses every CSS animation and steps the time frame by frame, so the video is the
+  same on every run. Open it in a browser (served from the repo root, see README.md) to watch it
+  play live. Canvas: 540 × 960 CSS pixels, rendered at 2× = 1080 × 1920.
+-->
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<title>বসো · ২০ সেকেন্ড</title>
+<style>
+@font-face { font-family: 'Hind Siliguri'; font-weight: 500; src: url(/web/static/fonts/hind-siliguri-500-bengali.woff2) format('woff2'); unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+200C-200D, U+25CC; }
+@font-face { font-family: 'Hind Siliguri'; font-weight: 700; src: url(/web/static/fonts/hind-siliguri-700-bengali.woff2) format('woff2'); unicode-range: U+0951-0952, U+0964-0965, U+0980-09FE, U+200C-200D, U+25CC; }
+@font-face { font-family: 'Inter'; font-weight: 400 700; src: url(/web/static/fonts/inter-latin.woff2) format('woff2'); }
+
+:root {
+  --brand: #8f1d21; --brand-soft: #f6e7e7; --gold: #e2a03a; --ink: #1f1a17; --muted: #6b6259;
+  --skin: #e9b48a; --hair: #2b1d16; --cream: #fff8f1; --leaf: #1f7a4d;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 540px; height: 960px; overflow: hidden; background: var(--cream); }
+body { font-family: 'Hind Siliguri', 'Inter', sans-serif; color: var(--ink); }
+.stage { position: relative; width: 540px; height: 960px; overflow: hidden; }
+.scene { position: absolute; inset: 0; opacity: 0; }
+.abs { position: absolute; }
+
+/* Every animation states its fill mode: "both" holds the first frame before it starts and the
+   last one after; fade-outs use "forwards" so they do not hide anything before they start. */
+
+@keyframes fin { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fout { from { opacity: 1 } to { opacity: 0 } }
+@keyframes pop { 0% { opacity: 0; transform: scale(.5) } 70% { opacity: 1; transform: scale(1.06) } 100% { opacity: 1; transform: scale(1) } }
+@keyframes up { from { opacity: 0; transform: translateY(50px) } to { opacity: 1; transform: none } }
+@keyframes down { from { opacity: 0; transform: translateY(-40px) } to { opacity: 1; transform: none } }
+@keyframes fromRight { from { opacity: 0; transform: translateX(80px) } to { opacity: 1; transform: none } }
+@keyframes fromLeft { from { opacity: 0; transform: translateX(-80px) } to { opacity: 1; transform: none } }
+@keyframes wave { 0%, 100% { transform: rotate(-8deg) } 50% { transform: rotate(22deg) } }
+@keyframes walkaway { from { transform: translateX(0) } to { transform: translateX(190px) } }
+@keyframes bob { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+@keyframes spin { to { transform: rotate(1440deg) } }
+@keyframes spinSlow { to { transform: rotate(120deg) } }
+@keyframes fill { from { width: 0 } to { width: 100% } }
+@keyframes grow { from { transform: scaleY(0) } to { transform: scaleY(1) } }
+@keyframes scan { 0% { top: 12% } 50% { top: 78% } 100% { top: 12% } }
+@keyframes tap { 0% { opacity: 0; transform: translate(60px, 90px) } 50% { opacity: 1; transform: translate(0, 0) } 70% { transform: scale(.85) } 100% { opacity: 1; transform: scale(1) } }
+@keyframes shake { 0%, 100% { transform: translateX(0) } 25% { transform: translateX(-5px) } 75% { transform: translateX(5px) } }
+@keyframes drip { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: translateY(6px) } }
+@keyframes pulse { 0%, 100% { transform: scale(1) } 50% { transform: scale(1.06) } }
+
+/* ---------- shared pieces ---------- */
+.caption {
+  position: absolute; left: 28px; right: 28px; bottom: 56px; padding: 18px 22px; border-radius: 22px;
+  background: #fff; box-shadow: 0 10px 30px -12px rgba(60, 30, 20, .35); text-align: center;
+  font-size: 30px; font-weight: 700; line-height: 1.35;
+}
+.caption b { color: var(--brand); }
+.bubble {
+  position: absolute; padding: 14px 20px; border-radius: 22px; background: #fff; font-size: 30px; font-weight: 700; line-height: 1.3;
+  box-shadow: 0 10px 24px -12px rgba(60, 30, 20, .4);
+}
+.bubble::after { content: ""; position: absolute; bottom: -14px; left: 40px; border: 14px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.pill { display: inline-block; padding: 10px 22px; border-radius: 999px; font-weight: 700; font-size: 26px; }
+svg { overflow: visible; }
+
+/* ---------- 1. hook: nobody comes (0–3 s) ---------- */
+.s1 { background: #fdf1e6; animation: fout .3s 2.85s forwards; opacity: 1; }
+.s1 .wall { position: absolute; inset: 0 0 330px; background: #f9e3cf; }
+.s1 .lamp { left: 70px; top: 0; animation: bob 1.5s ease-in-out 0s 2 both; }
+.s1 .lamp2 { left: 400px; top: 0; animation: bob 1.5s ease-in-out .4s 2 both; }
+.s1 .waiter { left: 360px; top: 300px; animation: walkaway 2.6s linear .2s both; }
+.s1 .waiter .legs { animation: bob .35s linear .2s 7 both; }
+.s1 .guest { left: 70px; top: 360px; }
+.s1 .arm { transform-box: fill-box; transform-origin: 10% 90%; animation: wave .55s ease-in-out 0s 5 both; }
+.s1 .b1 { left: 40px; top: 170px; animation: pop .4s .25s both; }
+.s1 .b2 { left: 140px; top: 240px; animation: pop .4s 1.45s both; }
+.s1 .b2::after { left: 60px; }
+.s1 .tag { left: 0; right: 0; top: 72px; text-align: center; animation: down .4s 1.9s both; }
+.s1 .tag span { background: var(--ink); color: #fff; }
+
+/* ---------- 2. problem: waiting (3–7 s) ---------- */
+.s2 { background: #fff; animation: fin .3s 3s both, fout .3s 6.85s forwards; }
+.s2 .clock { left: 170px; top: 90px; animation: shake .25s linear 3.2s 6 both; }
+.s2 .hand { transform-box: view-box; transform-origin: 100px 100px; animation: spin 3.6s linear 3.2s both; }
+.s2 .hand2 { transform-box: view-box; transform-origin: 100px 100px; animation: spinSlow 3.6s linear 3.2s both; }
+.s2 .title { left: 0; right: 0; top: 330px; text-align: center; font-size: 44px; font-weight: 700; color: var(--brand); animation: up .4s 3.3s both; }
+.s2 .row { left: 40px; right: 40px; height: 84px; display: flex; align-items: center; gap: 16px; padding: 0 22px; border-radius: 20px; background: var(--cream); font-size: 28px; font-weight: 700; }
+.s2 .row i { font-style: normal; font-size: 34px; }
+.s2 .row em { margin-left: auto; font-style: normal; color: var(--brand); font-size: 30px; }
+.s2 .r1 { top: 420px; animation: fromLeft .35s 3.7s both; }
+.s2 .r2 { top: 520px; animation: fromLeft .35s 4.4s both; }
+.s2 .r3 { top: 620px; animation: fromLeft .35s 5.1s both; }
+.s2 .caption { animation: up .4s 3.2s both; }
+
+/* ---------- 3. solution: scan and order (7–14 s) ---------- */
+.s3 { background: linear-gradient(#fdf1e6 0 62%, #c98d5a 62% 100%); animation: fin .3s 7s both, fout .3s 13.85s forwards; }
+.s3 .qr { left: 150px; top: 250px; animation: pop .4s 7.05s both, fout .3s 8.1s forwards; }
+.s3 .phone { left: 120px; top: 120px; animation: up .5s 7.5s both; }
+.s3 .screen { position: absolute; left: 14px; top: 14px; right: 14px; bottom: 14px; border-radius: 30px; overflow: hidden; background: #fff; }
+.s3 .cam { position: absolute; inset: 0; background: #2c2420; animation: fout .2s 8.75s forwards; opacity: 1; }
+.s3 .cam .frame { position: absolute; left: 50px; top: 150px; width: 170px; height: 170px; border: 4px solid #fff; border-radius: 18px; }
+.s3 .cam .line { position: absolute; left: 44px; right: 44px; height: 4px; background: #ffd27a; box-shadow: 0 0 14px #ffd27a; animation: scan 1s linear 7.8s both; }
+.s3 .cam .hint { position: absolute; left: 0; right: 0; bottom: 70px; text-align: center; color: #fff; font-size: 20px; font-weight: 700; }
+.s3 .menu { position: absolute; inset: 0; animation: fin .2s 8.75s both, fout .2s 11.3s forwards; }
+.s3 .mh { padding: 18px 16px 12px; background: var(--brand); color: #fff; }
+.s3 .mh b { display: block; font-size: 22px; }
+.s3 .mh small { font-size: 15px; opacity: .85; }
+.s3 .mi { display: flex; align-items: center; gap: 10px; margin: 10px 12px 0; padding: 10px; border: 2px solid #f0e4da; border-radius: 16px; }
+.s3 .mi .ic { font-size: 34px; }
+.s3 .mi div { flex: 1; font-size: 18px; font-weight: 700; line-height: 1.25; }
+.s3 .mi div small { display: block; color: var(--brand); font-size: 17px; }
+.s3 .mi .add { width: 40px; height: 40px; border-radius: 12px; background: var(--brand); color: #fff; display: grid; place-items: center; font-size: 26px; font-weight: 700; }
+.s3 .mi .done { position: absolute; width: 40px; height: 40px; border-radius: 12px; background: var(--leaf); color: #fff; display: grid; place-items: center; font-size: 22px; animation: pop .3s 10.05s both; }
+.s3 .cartbar { position: absolute; left: 12px; right: 12px; bottom: 14px; padding: 14px; border-radius: 16px; background: var(--ink); color: #fff; display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; animation: up .3s 10.2s both; }
+.s3 .finger { position: absolute; right: 2px; top: 132px; font-size: 46px; animation: tap .7s 9.45s both, fout .2s 10.4s forwards; }
+.s3 .status { position: absolute; inset: 0; padding: 22px 18px; animation: fin .25s 11.3s both; }
+.s3 .status h4 { margin: 0 0 6px; font-size: 24px; }
+.s3 .steps { display: flex; justify-content: space-between; margin: 18px 0 8px; }
+.s3 .steps span { width: 56px; text-align: center; font-size: 14px; font-weight: 700; color: var(--muted); }
+.s3 .steps span i { display: grid; place-items: center; width: 34px; height: 34px; margin: 0 auto 6px; border-radius: 50%; background: #eee; font-style: normal; font-size: 16px; color: #999; }
+.s3 .steps span.on i { background: var(--leaf); color: #fff; }
+.s3 .steps span.now i { background: var(--gold); color: #fff; animation: pulse .8s ease-in-out 11.6s 3 both; }
+.s3 .eta { margin-top: 18px; padding: 14px; border-radius: 16px; background: #fdf3dd; font-size: 20px; font-weight: 700; color: #7a4b07; }
+.s3 .bar { margin-top: 14px; height: 12px; border-radius: 99px; background: #eee; overflow: hidden; }
+.s3 .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gold), var(--leaf)); animation: fill 2.4s linear 11.5s both; }
+.s3 .plate { margin: 26px auto 0; width: 120px; font-size: 80px; text-align: center; animation: pop .4s 12.4s both; }
+.s3 .noapp { left: 0; right: 0; top: 40px; text-align: center; animation: down .4s 8.9s both; }
+.s3 .noapp span { background: var(--leaf); color: #fff; }
+.s3 .caption { font-size: 28px; }
+.s3 .c1 { animation: up .4s 7.3s both, fout .25s 10.65s forwards; }
+.s3 .c2 { animation: fin .25s 10.9s both; }
+
+/* ---------- 4. owner: kitchen and the day's numbers (14–18 s) ---------- */
+.s4 { background: #fff; animation: fin .3s 14s both, fout .3s 17.85s forwards; }
+.s4 .tab { left: 30px; top: 70px; width: 480px; height: 300px; padding: 16px; border-radius: 26px; background: var(--ink); animation: down .4s 14.05s both; }
+.s4 .tab .in { height: 100%; border-radius: 14px; background: #f6f2ee; padding: 12px; display: flex; gap: 10px; }
+.s4 .col { flex: 1; }
+.s4 .col h5 { margin: 0 0 8px; font-size: 18px; color: var(--muted); }
+.s4 .tk { margin-bottom: 8px; padding: 10px; border-radius: 10px; background: #fff; border-left: 5px solid var(--brand); font-size: 18px; font-weight: 700; line-height: 1.3; box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+.s4 .tk small { display: block; color: var(--muted); font-weight: 500; }
+.s4 .tk.ok { border-left-color: var(--leaf); }
+.s4 .t1 { animation: fromRight .35s 14.5s both; }
+.s4 .t2 { animation: fromRight .35s 15s both; }
+.s4 .t3 { animation: fromRight .35s 15.5s both; }
+.s4 .bell { left: 440px; top: 34px; z-index: 2; font-size: 44px; animation: pop .3s 14.5s both; }
+.s4 .owner { left: 30px; top: 420px; animation: fromLeft .4s 15.2s both; }
+.s4 .chart { left: 230px; top: 430px; width: 280px; height: 260px; padding: 18px; border-radius: 24px; background: var(--cream); animation: fromRight .4s 15.4s both; }
+.s4 .chart small { font-size: 17px; color: var(--muted); font-weight: 700; }
+.s4 .chart b { display: block; font-size: 34px; color: var(--brand); }
+.s4 .bars { position: absolute; left: 18px; right: 18px; bottom: 18px; height: 110px; display: flex; align-items: flex-end; gap: 12px; }
+.s4 .bars i { flex: 1; border-radius: 8px 8px 0 0; background: var(--brand); transform-origin: bottom; animation: grow .5s both; }
+.s4 .bars i:nth-child(1) { height: 40%; animation-delay: 15.7s; opacity: .55; }
+.s4 .bars i:nth-child(2) { height: 62%; animation-delay: 15.85s; opacity: .65; }
+.s4 .bars i:nth-child(3) { height: 50%; animation-delay: 16s; opacity: .75; }
+.s4 .bars i:nth-child(4) { height: 78%; animation-delay: 16.15s; opacity: .85; }
+.s4 .bars i:nth-child(5) { height: 100%; animation-delay: 16.3s; }
+.s4 .caption { font-size: 28px; }
+.s4 .c1 { animation: up .4s 14.2s both, fout .25s 15.95s forwards; }
+.s4 .c2 { animation: fin .25s 16.15s both; }
+
+/* ---------- 5. end card (18–20 s) ---------- */
+.s5 { background: var(--brand); color: #fff; text-align: center; animation: fin .35s 18s both; }
+.s5 .logo { left: 195px; top: 210px; width: 150px; height: 150px; border-radius: 50%; background: #fff; color: var(--brand); display: grid; place-items: center; font-size: 96px; font-weight: 700; animation: pop .45s 18.1s both; }
+.s5 .name { left: 0; right: 0; top: 390px; font-size: 92px; font-weight: 700; line-height: 1.1; animation: up .4s 18.3s both; }
+.s5 .line { left: 0; right: 0; top: 520px; font-size: 30px; font-weight: 700; opacity: .92; animation: up .4s 18.5s both; }
+.s5 .cta { left: 60px; right: 60px; top: 640px; padding: 20px; border-radius: 20px; background: #fff; color: var(--brand); font-size: 32px; font-weight: 700; animation: pop .4s 18.8s both; }
+.s5 .url { left: 0; right: 0; top: 760px; font: 600 26px/1 'Inter', sans-serif; opacity: .9; animation: fin .4s 19.1s both; }
+</style>
+</head>
+<body>
+<div class="stage">
+
+<!-- 1. HOOK -->
+<section class="scene s1">
+  <div class="wall"></div>
+  <svg class="abs lamp" width="70" height="120" viewBox="0 0 70 120"><line x1="35" y1="0" x2="35" y2="70" stroke="#6b4a33" stroke-width="3"/><path d="M5 100 Q35 55 65 100 Z" fill="#e2a03a"/><circle cx="35" cy="104" r="8" fill="#fff3c4"/></svg>
+  <svg class="abs lamp2" width="70" height="120" viewBox="0 0 70 120"><line x1="35" y1="0" x2="35" y2="70" stroke="#6b4a33" stroke-width="3"/><path d="M5 100 Q35 55 65 100 Z" fill="#e2a03a"/><circle cx="35" cy="104" r="8" fill="#fff3c4"/></svg>
+  <div class="abs tag"><span class="pill">চেনা দৃশ্য?</span></div>
+
+  <!-- waiter walking away with a tray -->
+  <svg class="abs waiter" width="130" height="290" viewBox="0 0 130 290">
+    <g class="legs"><rect x="38" y="205" width="20" height="78" rx="9" fill="#2b2b2b"/><rect x="70" y="205" width="20" height="78" rx="9" fill="#2b2b2b"/></g>
+    <rect x="26" y="100" width="78" height="115" rx="26" fill="#ffffff" stroke="#e6d8cc" stroke-width="3"/>
+    <path d="M40 104 L65 160 L90 104 Z" fill="#2b2b2b"/>
+    <rect x="96" y="104" width="16" height="62" rx="8" fill="#ffffff" stroke="#e6d8cc" stroke-width="3"/>
+    <ellipse cx="108" cy="102" rx="34" ry="6" fill="#bfbfbf"/>
+    <circle cx="65" cy="62" r="36" fill="#e9b48a"/>
+    <path d="M30 56 Q34 22 66 22 Q98 22 101 56 Q86 40 66 42 Q46 40 30 56 Z" fill="#2b1d16"/>
+    <circle cx="88" cy="64" r="4" fill="#2b1d16"/>
+  </svg>
+
+  <!-- table and the waiting guest -->
+  <svg class="abs" style="left:20px; top:600px" width="500" height="240" viewBox="0 0 500 240">
+    <rect x="0" y="0" width="500" height="34" rx="14" fill="#8a5a36"/>
+    <rect x="40" y="30" width="22" height="210" fill="#6e4528"/><rect x="438" y="30" width="22" height="210" fill="#6e4528"/>
+    <ellipse cx="330" cy="-2" rx="64" ry="12" fill="#ffffff"/><ellipse cx="330" cy="-4" rx="40" ry="6" fill="#f2ebe4"/>
+    <rect x="400" y="-46" width="26" height="44" rx="6" fill="#cfe8f5" stroke="#9cc3d6" stroke-width="2"/>
+  </svg>
+  <svg class="abs guest" width="260" height="280" viewBox="0 0 260 280">
+    <g class="arm"><rect x="168" y="20" width="26" height="110" rx="13" fill="#1d4e89"/><circle cx="181" cy="18" r="18" fill="#e9b48a"/></g>
+    <rect x="50" y="120" width="140" height="150" rx="44" fill="#1d4e89"/>
+    <circle cx="118" cy="78" r="56" fill="#e9b48a"/>
+    <path d="M62 70 Q66 18 120 18 Q172 18 176 70 Q150 44 120 48 Q90 44 62 70 Z" fill="#2b1d16"/>
+    <circle cx="98" cy="84" r="6" fill="#2b1d16"/><circle cx="140" cy="84" r="6" fill="#2b1d16"/>
+    <path d="M90 70 L108 74 M148 70 L130 74" stroke="#2b1d16" stroke-width="4" stroke-linecap="round"/>
+    <path d="M102 112 Q119 102 136 112" stroke="#2b1d16" stroke-width="5" fill="none" stroke-linecap="round"/>
+  </svg>
+  <div class="bubble b1">ভাই, অর্ডারটা নেবেন? 🙋</div>
+  <div class="bubble b2">আর কতক্ষণ বসে থাকব? 😩</div>
+</section>
+
+<!-- 2. PROBLEM -->
+<section class="scene s2">
+  <svg class="abs clock" width="200" height="200" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="92" fill="#fff" stroke="#1f1a17" stroke-width="10"/>
+    <g fill="#1f1a17"><circle cx="100" cy="24" r="5"/><circle cx="176" cy="100" r="5"/><circle cx="100" cy="176" r="5"/><circle cx="24" cy="100" r="5"/></g>
+    <rect class="hand2" x="95" y="52" width="10" height="52" rx="5" fill="#1f1a17"/>
+    <rect class="hand" x="97" y="30" width="6" height="74" rx="3" fill="#8f1d21"/>
+    <circle cx="100" cy="100" r="9" fill="#1f1a17"/>
+  </svg>
+  <div class="abs title">অপেক্ষা... অপেক্ষা...</div>
+  <div class="abs row r1"><i>📝</i> অর্ডার দিতে <em>⏳</em></div>
+  <div class="abs row r2"><i>🍛</i> খাবারের খবর নিতে <em>⏳</em></div>
+  <div class="abs row r3"><i>🧾</i> এমনকি বিল চাইতেও <em>⏳</em></div>
+  <div class="caption">বসে থাকতে হয় <b>প্রতিটি কাজে</b></div>
+</section>
+
+<!-- 3. SOLUTION -->
+<section class="scene s3">
+  <div class="abs noapp"><span class="pill">✓ কোনো অ্যাপ লাগবে না</span></div>
+  <!-- the table QR card -->
+  <svg class="abs qr" width="240" height="300" viewBox="0 0 240 300">
+    <rect x="0" y="0" width="240" height="300" rx="24" fill="#fff" stroke="#8f1d21" stroke-width="6"/>
+    <text x="120" y="48" text-anchor="middle" font-size="24" font-weight="700" fill="#8f1d21" font-family="Hind Siliguri">স্ক্যান করে অর্ডার করুন</text>
+    <g fill="#1f1a17">
+      <rect x="50" y="70" width="44" height="44" rx="6"/><rect x="146" y="70" width="44" height="44" rx="6"/><rect x="50" y="166" width="44" height="44" rx="6"/>
+      <rect x="60" y="80" width="24" height="24" rx="3" fill="#fff"/><rect x="156" y="80" width="24" height="24" rx="3" fill="#fff"/><rect x="60" y="176" width="24" height="24" rx="3" fill="#fff"/>
+      <rect x="66" y="86" width="12" height="12"/><rect x="162" y="86" width="12" height="12"/><rect x="66" y="182" width="12" height="12"/>
+      <rect x="104" y="72" width="12" height="12"/><rect x="122" y="90" width="12" height="12"/><rect x="104" y="108" width="12" height="12"/>
+      <rect x="104" y="132" width="12" height="12"/><rect x="122" y="150" width="12" height="12"/><rect x="146" y="132" width="12" height="12"/>
+      <rect x="170" y="150" width="12" height="12"/><rect x="146" y="176" width="12" height="12"/><rect x="176" y="192" width="12" height="12"/>
+      <rect x="122" y="196" width="12" height="12"/><rect x="104" y="176" width="12" height="12"/><rect x="60" y="132" width="12" height="12"/><rect x="80" y="146" width="12" height="12"/>
+    </g>
+    <rect x="70" y="236" width="100" height="40" rx="20" fill="#8f1d21"/>
+    <text x="120" y="263" text-anchor="middle" font-size="22" font-weight="700" fill="#fff" font-family="Hind Siliguri">টেবিল ৪</text>
+  </svg>
+
+  <!-- the guest's phone -->
+  <div class="abs phone" style="width:300px; height:560px; border-radius:44px; background:#1f1a17; box-shadow:0 30px 60px -24px rgba(40,20,10,.6)">
+    <div class="screen">
+      <div class="status">
+        <h4>অর্ডার #১ ✓</h4>
+        <div style="color:var(--muted); font-size:16px; font-weight:700">ডেমো কিচেন · টেবিল ৪</div>
+        <div class="steps">
+          <span class="on"><i>✓</i>গৃহীত</span><span class="now"><i>২</i>রান্না হচ্ছে</span><span><i>৩</i>প্রস্তুত</span><span><i>৪</i>পরিবেশিত</span>
+        </div>
+        <div class="eta">⏱ প্রস্তুত হবে আনুমানিক ১৫ মিনিটে</div>
+        <div class="bar"><i></i></div>
+        <div class="plate">🍛</div>
+      </div>
+      <div class="menu">
+        <div class="mh"><b>ডেমো কিচেন</b><small>টেবিল ৪ · মেনু</small></div>
+        <div class="mi" style="position:relative"><span class="ic">🍛</span><div>কাচ্চি বিরিয়ানি<small>৳৩২০</small></div><span class="add">+</span><span class="done" style="right:10px">✓</span></div>
+        <div class="mi"><span class="ic">🥤</span><div>বোরহানি<small>৳৬০</small></div><span class="add">+</span></div>
+        <div class="mi"><span class="ic">🍮</span><div>ফিরনি<small>৳৭০</small></div><span class="add">+</span></div>
+        <div class="cartbar"><span>১টি আইটেম</span><span>অর্ডার দিন →</span></div>
+        <div class="finger">👆</div>
+      </div>
+      <div class="cam"><div class="frame"></div><div class="line"></div><div class="hint">কিউআর কোডের দিকে ধরুন</div></div>
+    </div>
+  </div>
+  <div class="caption c1">টেবিলের <b>কিউআর কোড</b> স্ক্যান করুন, মেনু খুলবে ফোনেই</div>
+  <div class="caption c2">অর্ডার দিন, দেখুন <b>খাবার কখন আসছে</b></div>
+</section>
+
+<!-- 4. OWNER -->
+<section class="scene s4">
+  <div class="abs bell">🔔</div>
+  <div class="abs tab"><div class="in">
+    <div class="col"><h5>নতুন</h5>
+      <div class="tk t1">টেবিল ৪<small>১ × কাচ্চি বিরিয়ানি</small></div>
+      <div class="tk t2">টেবিল ৭<small>২ × বোরহানি</small></div></div>
+    <div class="col"><h5>রান্না হচ্ছে</h5>
+      <div class="tk t3" style="border-left-color:var(--gold)">টেবিল ২<small>৩ × ফিরনি</small></div></div>
+    <div class="col"><h5>প্রস্তুত</h5>
+      <div class="tk ok t3">টেবিল ৯<small>১ × তেহারি</small></div></div>
+  </div></div>
+  <!-- the smiling owner -->
+  <svg class="abs owner" width="190" height="280" viewBox="0 0 190 280">
+    <rect x="22" y="130" width="146" height="150" rx="46" fill="#8f1d21"/>
+    <path d="M70 134 L95 180 L120 134 Z" fill="#fff"/>
+    <circle cx="95" cy="80" r="58" fill="#c9875e"/>
+    <path d="M36 72 Q40 16 96 16 Q150 16 154 72 Q130 46 96 48 Q62 46 36 72 Z" fill="#2b1d16"/>
+    <path d="M70 66 Q78 60 86 66 M104 66 Q112 60 120 66" stroke="#2b1d16" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M66 98 Q95 128 124 98" stroke="#2b1d16" stroke-width="6" fill="#fff" stroke-linecap="round"/>
+    <circle cx="62" cy="92" r="8" fill="#e9967a" opacity=".6"/><circle cx="128" cy="92" r="8" fill="#e9967a" opacity=".6"/>
+  </svg>
+  <div class="abs chart"><small>আজকের বিক্রি</small><b>৳১২,৪৫০</b>
+    <div class="bars"><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="caption c1"><b>ভুল অর্ডার কম</b>, অপেক্ষাও কম</div>
+  <div class="caption c2">দিনের শেষে <b>পুরো হিসাব</b> হাতের মুঠোয়</div>
+</section>
+
+<!-- 5. END CARD -->
+<section class="scene s5">
+  <div class="abs logo">ব</div>
+  <div class="abs name">বসো</div>
+  <div class="abs line">বসুন · স্ক্যান করুন · অর্ডার দিন</div>
+  <div class="abs cta">আজই বিনামূল্যে শুরু করুন</div>
+  <div class="abs url">bosho.app</div>
+</section>
+
+</div>
+<script>
+// render.mjs calls setTime(ms) for every frame; opened in a browser, the page simply plays.
+function setTime(ms) {
+  document.getAnimations().forEach(function (a) { a.pause(); a.currentTime = ms; });
+  return true;
+}
+</script>
+</body>
+</html>
