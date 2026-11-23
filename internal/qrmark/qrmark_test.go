@@ -27,7 +27,7 @@ func TestRenderBadge(t *testing.T) {
 		"letter":    {nil, brand},
 		"wide logo": {solid(red, 300, 200), red},
 	} {
-		b, err := Render("https://bosho.app/t/0123456789abcdef", 640, c.logo, "ব", brand)
+		b, err := Render("https://bosho.food/t/0123456789abcdef", 640, c.logo, "ব", brand)
 		if err != nil {
 			t.Fatal(name, err)
 		}

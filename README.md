@@ -36,7 +36,7 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `ADDR` | `:8081` | Listen address |
-| `BASE_URL` | request host | Public address printed into QR codes, for example `https://bosho.app` |
+| `BASE_URL` | request host | Public address printed into QR codes, for example `https://bosho.food` |
 | `DATABASE_URL` | required | PostgreSQL connection string (Supabase session pooler, `sslmode=require`) |
 | `S3_ENDPOINT` | required | S3-compatible host, for example `s3.us-east-005.backblazeb2.com` |
 | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | required | Object storage credentials |

@@ -17,10 +17,10 @@ and a chime on the logo. It has no voice.
 | 3–7 s | Problem | A spinning clock and three waits: ordering, asking about the food, asking for the bill |
 | 7–14 s | Solution | The table QR card, the phone scans it, the menu opens, a dish is added, the order cooks with a progress bar; "কোনো অ্যাপ লাগবে না" |
 | 14–18 s | Owner | Orders arrive on the kitchen tablet, the owner smiles at the day's sales |
-| 18–20 s | End card | বসো · "বসুন · স্ক্যান করুন · অর্ডার দিন" · "আজই বিনামূল্যে শুরু করুন" · bosho.app |
+| 18–20 s | End card | বসো · "বসুন · স্ক্যান করুন · অর্ডার দিন" · "আজই বিনামূল্যে শুরু করুন" · bosho.food |
 
-The numbers shown (prices, "৳১২,৪৫০") are illustrations, not real data. Change `bosho.app` in
-the end card to your real address before publishing.
+The numbers shown (prices, "৳১২,৪৫০") are illustrations, not real data. The end card shows `bosho.food`, the current address;
+change it if the domain changes.
 
 ## Watch it play
 
