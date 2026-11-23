@@ -48,8 +48,19 @@ func TestNewPicksTheSender(t *testing.T) {
 		t.Error("nothing set should log")
 	}
 	s, ok := New(Settings{SMTPHost: "smtp.gmail.com", SMTPUser: "me@gmail.com", ResendKey: "x"}).(*SMTP)
-	if !ok || s.Port != "587" || s.From != "Bosho <me@gmail.com>" {
+	if !ok || s.Port != "587" || s.From != "\"Bosho\" <me@gmail.com>" {
 		t.Errorf("SMTP settings: %+v", s)
+	}
+	for from, want := range map[string]string{
+		"Bosho":                "\"Bosho\" <me@gmail.com>",
+		"":                     "\"Bosho\" <me@gmail.com>",
+		"Bosho <me@gmail.com>": "Bosho <me@gmail.com>",
+		"\"My Shop\"":          "\"My Shop\" <me@gmail.com>",
+	} {
+		s := New(Settings{SMTPHost: "smtp.gmail.com", SMTPUser: "me@gmail.com", From: from}).(*SMTP)
+		if s.From != want {
+			t.Errorf("EMAIL_FROM %q: from = %q, want %q", from, s.From, want)
+		}
 	}
 	if _, ok := New(Settings{ResendKey: "x"}).(*Resend); !ok {
 		t.Error("Resend key alone should use Resend")

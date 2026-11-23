@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"net/mail"
 	"net/smtp"
+	"strings"
 	"time"
 )
 
@@ -39,9 +40,15 @@ type Settings struct {
 func New(s Settings) Sender {
 	switch {
 	case s.SMTPHost != "":
-		from := s.From
-		if from == "" {
-			from = "Bosho <" + s.SMTPUser + ">"
+		// EMAIL_FROM may be a full "Name <address>" or just a name ("Bosho"): with only a name, or
+		// nothing, the address is the Gmail account itself (Gmail sends from it anyway).
+		from := strings.TrimSpace(s.From)
+		if _, err := mail.ParseAddress(from); err != nil {
+			name := strings.Trim(from, `"'`)
+			if name == "" {
+				name = "Bosho"
+			}
+			from = (&mail.Address{Name: name, Address: s.SMTPUser}).String()
 		}
 		port := s.SMTPPort
 		if port == "" {
