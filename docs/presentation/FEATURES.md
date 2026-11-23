@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit eec6acd (plus uncommitted role permissions) on 2026-11-23 -->
+<!-- presentation-sync: last synced at commit 7d77861 (plus uncommitted owner email and staff passwords) on 2026-11-24 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -51,7 +51,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | K-11 | Undo "Mark ready" (kitchen) or "Mark served" (waiter) within a minute, from the message that appears. Each undo is in the activity log. | `orderAct` (`undo`) |
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |
-| K-14 | My account: change your own password (other devices are logged out) and log out on all devices. | `account`, `accountPassword`, `logoutAll` in `auth.go` |
+| K-14 | My account: log out on all devices. The owner also changes their own password there (other devices are logged out) and sets their email. Staff can't change their password; the owner sets it. | `account`, `accountPassword`, `logoutAll` in `auth.go`, `accountEmail` in `email.go` |
 
 ## Owner (`/owner/...`)
 
@@ -65,7 +65,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | O-06 | Tables: add tables ("New table" is the first card), switch a table off (hidden from guests). | `internal/server/owner_tables.go` |
 | O-07 | Branded QR codes: round dots, the restaurant's logo or initial in the middle, highest error correction so they still scan. | `internal/qrmark/qrmark.go`, `internal/server/qr.go` |
 | O-08 | Print QR cards for all tables or one table; renew a table's QR so old photos of it stop working. | `tablePrint`, `tableNewQR` |
-| O-09 | Staff accounts with the roles kitchen, waiter and cashier. The owner can set a new staff password, which logs that person out everywhere. A restaurant has one owner: the owner can't add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`) |
+| O-09 | Staff accounts with the roles kitchen, waiter and cashier. The owner sets each staff password, can look it up again on the Staff page (stored encrypted), and can change it at any time, which logs that person out everywhere. A restaurant has one owner: the owner can't add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`), `secret.go` |
 | O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
 | O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave`, `withinHours` |
 | O-12 | Ordering network: guests can order only on the restaurant's Wi-Fi. One tap allows the current network; ranges can be typed. | `internal/server/network.go`, `owner_networks` template |
@@ -78,9 +78,11 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 
 | ID | Feature | Where in code |
 | --- | --- | --- |
-| A-01 | Sign up creates a restaurant and its owner account. | `internal/server/auth.go` (`signup`) |
+| A-01 | Sign up creates a restaurant and its owner account, with the owner's email. | `internal/server/auth.go` (`signup`) |
 | A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
 | A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
+| A-04 | Forgot password for owners: a link by email that works once for 1 hour and logs out every device. The page never says whether an account exists. Staff ask their owner instead. | `internal/server/email.go` (`forgot`, `resetSave`), `internal/mail` |
+| A-05 | Email confirmation: the owner gets a link at signup (valid 24 hours; send again once a minute, 5 a day). Off by default; when switched on, an unconfirmed owner can set up but guests see "Not taking orders yet". Emails go through Gmail (SMTP) or Resend, or into the log when neither is set. | `email.go` (`verifyEmail`, `awaitingEmail`), `EMAIL_VERIFY` |
 
 ## Platform and rules
 
@@ -102,7 +104,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 
 ## Not built yet
 
-Online payment (bKash, Nagad, card gateway), split bill, tips, discounts, kitchen ticket printing, subscription billing, owner password reset by SMS, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
+Online payment (bKash, Nagad, card gateway), split bill, tips, discounts, kitchen ticket printing, subscription billing, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
 
 ## Removed
 

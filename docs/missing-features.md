@@ -37,7 +37,7 @@ Each item is marked:
 2. **Rate limiting on guest actions.** Done. 60 taps a minute per phone and 600 per network, then "Please wait a minute".
 3. **CSRF protection.** Done. Form posts and taps that come from another website are refused (checked with `Sec-Fetch-Site` and `Origin`), on top of `SameSite=Lax` cookies.
 4. **Security headers.** Done. Content-Security-Policy (this site's files only), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`. Cookies are `Secure` on HTTPS.
-5. **Password reset.** Partly. The owner can set a new password for any staff member, which also logs them out everywhere. Anyone can change their own password on "My account". Later: an owner who forgets their own password needs an SMS code, which needs an SMS provider.
+5. **Password reset.** Done. The owner sets every staff password, can look it up on the Staff page, and can change it at any time (the person is logged out everywhere). Staff can't change their own. An owner who forgets their password gets a reset link by email ("Forgot password?" on the login page). Owners also confirm their email by a link; requiring it before guests can order is off by default (`EMAIL_VERIFY`).
 6. **Log out everywhere.** Done: on "My account". Changing a password also logs out every other device. Later: a list of active logins.
 7. **Audit log.** Done. The "Activity log" page records price changes, deleted dishes, items removed from bills (with reason and amount), rejected orders, payments, groups closed without payment, staff added, removed or with a reset password, changed charges and password changes.
 8. **Check uploaded files are real images.** Done (frontend work): dish photos must decode as an image, and are resized and turned upright.

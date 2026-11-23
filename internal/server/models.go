@@ -14,13 +14,17 @@ type Restaurant struct {
 	WarnMinutes, LateMinutes       int
 	OrdersInHours                  bool   // guests can order only between OpenTime and LastOrder (or CloseTime)
 	ReviewURL                      string // Google review link offered after a 4 or 5 star review
+	VerifyEmail                    string // global | required | off: must the owner confirm their email (set by the platform admin)
+	OwnerVerified                  bool   // an owner of this restaurant has confirmed their email
+	NotReady                       bool   // guests: closed because the owner hasn't confirmed their email yet
 }
 
 // restExtraCols are the restaurant columns read into the fields after Networks (see extraDest).
-const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes,r.orders_in_hours,r.review_url`
+const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes,r.orders_in_hours,r.review_url,r.verify_email,
+	EXISTS(SELECT 1 FROM staff_users o WHERE o.restaurant_id=r.id AND o.role='owner' AND o.email_verified_at>0)`
 
 func (r *Restaurant) extraDest() []any {
-	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes, &r.OrdersInHours, &r.ReviewURL}
+	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes, &r.OrdersInHours, &r.ReviewURL, &r.VerifyEmail, &r.OwnerVerified}
 }
 
 type Table struct {

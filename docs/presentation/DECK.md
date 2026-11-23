@@ -1,6 +1,6 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit eec6acd (plus uncommitted role permissions) on 2026-11-23 -->
+<!-- presentation-sync: last synced at commit 7d77861 (plus uncommitted owner email and staff passwords) on 2026-11-24 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
@@ -142,6 +142,7 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 | O-11, O-12 | 10 |
 | A-01, A-02 | 9 |
 | A-03 | 9 |
+| A-04, A-05 | (not on a slide) |
 | P-01 to P-07 | 11 (P-03 also 10) |
 | P-09, P-10, P-11, P-13 | 11 |
 | P-12 | 10 |

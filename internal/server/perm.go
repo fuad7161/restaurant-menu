@@ -9,7 +9,9 @@ import (
 // anything the person's role does not include, so a hidden button is never the only guard.
 // docs/plans/owner-verification-admin-roles.md section 7 is the source of this table.
 const (
-	PermAccount = "account.self" // own password, own logins, own language: everyone
+	PermAccount     = "account.self"     // own logins, own language: everyone
+	PermOwnPassword = "account.password" // change own password: owner only (staff passwords are set by the owner)
+	PermOwnEmail    = "account.email"    // own email, for verification and "Forgot password"
 
 	PermKitchenView   = "kitchen.view"
 	PermOrderAccept   = "order.accept" // accept or reject a new order
@@ -41,7 +43,7 @@ const (
 
 // rolePerms is exactly what each role may do. Anything not listed is refused.
 var rolePerms = map[string]map[string]bool{
-	"owner": set(PermAccount, PermKitchenView, PermOrderAccept, PermOrderReady, PermOrderServe, PermOrderUndo,
+	"owner": set(PermAccount, PermOwnPassword, PermOwnEmail, PermKitchenView, PermOrderAccept, PermOrderReady, PermOrderServe, PermOrderUndo,
 		PermChangeRequest, PermCallDone, PermStock, PermCounterView, PermBillView, PermBillPaid, PermBillVoid,
 		PermBillClose, PermTablesOrder, PermDashboard, PermMenuEdit, PermTablesManage, PermStaffManage,
 		PermActivity, PermReports, PermClosingReport, PermSettings, PermNetworks, PermProfile),

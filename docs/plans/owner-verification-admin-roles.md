@@ -1,6 +1,6 @@
 # Plan: admin control, owner verification, branches, multi-restaurant staff and roles
 
-Status: **step 1 of section 9 built** (23 November 2026): role permissions in `internal/server/perm.go`, checked on every route, and one owner per restaurant. Steps 2 to 7 are not built yet. First written 23 November 2026, updated the same day with your decisions.
+Status: **step 1 and most of step 5 built.** Step 1 (23 November 2026): role permissions in `internal/server/perm.go`, checked on every route, and one owner per restaurant. Step 5 (24 November 2026): owner email at signup, email confirmation, forgot password by email, and staff passwords the owner can look up (`internal/server/email.go`, `internal/mail`). Steps 2, 3, 4 and 6 are not built yet. First written 23 November 2026, updated the same day with your decisions.
 
 ## Your decisions so far
 
@@ -13,7 +13,8 @@ Status: **step 1 of section 9 built** (23 November 2026): role permissions in `i
 | Branches | **The owner can create branches.** |
 | Owner forgot password | **Yes, by email.** |
 | Domain | **`bosho.food`** for now (cheaper). The product name is **Bosho** everywhere; a `.com` may come later. |
-| Owner resets staff passwords | **Yes.** This already exists today (`POST /owner/staff/{id}/password`) and stays, with one safety rule for shared staff (see 5.4). |
+| Owner resets staff passwords | **Yes, with no conditions.** The owner sets every staff password and changes it whenever they want (`POST /owner/staff/{id}/password`). |
+| Staff passwords | **The owner sets them and can look them up** on the Staff page (they're hard to remember). Staff can't change their own password and have no "Forgot password": they ask the owner. Built 24 November 2026. |
 
 Decisions still open are in **section 8**.
 
@@ -147,8 +148,10 @@ These come later:
 
 **Manager / staff:**
 
-- The owner, or a manager with the "reset staff password" permission, sets a new password. This already exists for the owner today.
-- **If the staff member has a verified email,** they can also use "Forgot password" themselves (optional).
+- **The owner sets the password and can look it up** on the Staff page. It is stored encrypted (AES-GCM, key from `PASSWORD_KEY`), not only as a hash, so it can be shown again. Passwords set before this was built show "not saved" until the owner sets a new one.
+- **Staff can't change their own password,** and "Forgot password" doesn't email staff. They ask the owner.
+- The owner's own password is never shown or kept in a readable form.
+- Later, a manager with the "reset staff password" permission can do the same as the owner.
 
 ### Email designs
 
@@ -161,7 +164,7 @@ The names, phone and restaurant in these images are examples. The images show `b
 ### Name and domain
 
 - The product is called **Bosho** in every page, email and message. The domain is never used as the name.
-- The domain is **`bosho.food`** for now, chosen for cost. A `.com` may come later.
+- The planned domain is **`bosho.food`**, chosen for cost; **it isn't bought yet** (24 November 2026). A `.com` may come later. Until there is a domain, email goes through Gmail.
 - The domain only lives in settings (`BASE_URL`, `EMAIL_FROM`), never in the code. Moving to `.com` later is a settings change.
 - **When moving:** keep `bosho.food` and redirect it to the new domain for good. QR codes already printed on tables point at `bosho.food` and must keep working.
 - Printed QR cards say "Bosho", not a domain, so they don't go out of date.
@@ -193,22 +196,25 @@ Settings: `EMAIL_PROVIDER`, `EMAIL_API_KEY` or `SMTP_*`, `EMAIL_FROM` (for examp
 1. The owner or manager enters a phone number.
 2. **New phone:** they set a name and starting password, as now.
 3. **Phone already registered:**
-   - The owner **can't see or change** that person's name or password.
-   - Instead, an **invitation** is created: "Kacchi Ghar invites you to work as Waiter at Gulshan."
+   - The owner **can't change** that person's name.
+   - The owner sets the **password for their own restaurant** (see 5.4). It doesn't touch the person's other workplaces.
+   - An **invitation** is created: "Kacchi Ghar invites you to work as Waiter at Gulshan."
    - The person accepts it on their next login.
    - Until they accept, they can't work at that business.
 
 **Why invitations:** without them, any owner could type a stranger's phone and attach them to their restaurant. Sharing accounts is only safe if the person agrees.
 
-### 5.4 Password resets for shared staff (safety rule)
+### 5.4 Staff passwords when one person works at several restaurants
 
-One person has **one password**, used at every restaurant they work for. If Owner A could reset it, Owner A could log in as that person **at Restaurant B**. So:
+**Decided (24 November 2026): keep it as it is.** Every owner sets, sees and changes the staff passwords of their own restaurant, with no conditions, even for a person who also works somewhere else.
 
-- **Owner/manager can reset a staff password only if that person works only inside their business.**
-- **If the person also works elsewhere,** the owner sees "This person works at other restaurants too. They can reset it themselves by email, or ask Bosho admin." In that case:
-  - The person resets it by email (if they have one), or
-  - You (admin) reset it.
-- The owner can always **turn the person's job at their business off** or **remove** it. This blocks them from that business straight away, whatever their password.
+To keep that safe, **each workplace has its own password** for that person:
+
+- The password is stored on the job (membership), not on the person. Owner A only ever sees and changes the password for Restaurant A.
+- **Login:** phone + password. The password tells Bosho which workplace it is, and the person goes straight there. If the same password happens to open two workplaces, the "Where are you working now?" list appears.
+- Owner A's password can never open Restaurant B, so seeing it gives Owner A nothing outside their own restaurant.
+- The owner can also **turn the person's job off** or **remove** it, which blocks them from that restaurant straight away.
+- The owner's own password stays on their account, is never shown, and is reset only by email or by you (admin).
 
 ### Removing someone
 
@@ -243,7 +249,7 @@ Removing a person **ends their job at this business only.** Their account and th
   - **Reset the owner's password.**
   - **Change the owner's email or phone.**
   - Move ownership to another person.
-- **Reset any person's password** (needed for shared staff, see 5.4).
+- **Reset an owner's password**, or any staff password if an owner asks for help.
 - **Log out all devices** of a business or of one person.
 - **Log in as the owner** to help them. A red banner shows the whole time, and the action is written to both activity logs.
 
@@ -370,7 +376,7 @@ Existing kitchen, waiter and cashier accounts keep their role and get exactly th
 | | Add / remove tables, print QR | ✓ | ✓ | – | – | – |
 | | Refresh / hide / switch off a QR | ✓ | ✓ | – | – | – |
 | **Staff** | Add / remove / invite staff (below manager) | ✓ | ✓ | – | – | – |
-| | Reset staff password (rule 5.4) | ✓ | ✓ | – | – | – |
+| | Set, see and reset staff passwords (5.4) | ✓ | ✓ | – | – | – |
 | | Change permissions (below manager) | ✓ | ✓ | – | – | – |
 | | Add / remove / change managers | ✓ | – | – | – | – |
 | **Reports** | Today's sales | ✓ | ✓ | ✓ | – | – |
@@ -525,6 +531,8 @@ CREATE TABLE memberships (
   role TEXT NOT NULL,                              -- owner|manager|cashier|waiter|kitchen
   all_branches BOOLEAN NOT NULL DEFAULT FALSE,
   status TEXT NOT NULL DEFAULT 'active',           -- invited|active|off
+  password_hash TEXT,                              -- staff: this workplace's password (5.4); NULL for the owner,
+  password_enc  TEXT NOT NULL DEFAULT '',          --   who logs in with accounts.password_hash
   created_at BIGINT NOT NULL,
   UNIQUE (account_id, business_id)
 );
@@ -573,8 +581,8 @@ Each step can go live on its own. Run `presentation-sync` after each one.
    - Turning a job off.
    - Tests.
 3. **Branches:** businesses table, create a branch, copy the menu, branch switcher, branch-limited staff, combined reports.
-4. **Staff at several restaurants:** invitations, the "where are you working" step and the workplace switcher, and the reset rule 5.4.
-5. **Email:** sending, owner email at signup, verification link, **forgot password**, and verification controlled by the admin (off by default).
+4. **Staff at several restaurants:** invitations, a password per workplace (5.4), the "where are you working" step and the workplace switcher.
+5. ✅ **Email:** sending (Gmail SMTP now; Resend once there's a domain; the log when neither is set), owner email at signup, verification link, **forgot password**, verification off by default (`EMAIL_VERIFY`, and `restaurants.verify_email` per restaurant). Still to do: the admin panel switch for it (step 6), and an email field for staff if ever needed.
 6. **Admin panel:**
    - Admin login with 2-step code.
    - Business list and detail.
@@ -595,7 +603,7 @@ Each step can go live on its own. Run `presentation-sync` after each one.
 | 8.2 | **Branch menu:** separate per branch, or one shared menu? | Copy then separate · Shared with per-branch price/stock | **Copy then separate** now, shared later |
 | 8.3 | Can a **branch have its own logo/colour/name style**? | Always the business's · Branch can override | **Branch can override** |
 | 8.4 | Adding a phone that **already has an account**: | Invitation they accept · Added straight away | **Invitation** |
-| 8.5 | Owner reset of a **shared staff member's** password: | Blocked, as in 5.4 · Allowed | **Blocked** (person or admin resets) |
+| 8.5 | Owner reset of a **shared staff member's** password | **Decided (24 Nov 2026): allowed, as for everyone else.** Each workplace has its own password (5.4). | |
 | 8.6 | **PIN for sensitive actions?** | No · Optional per business · Always | **Optional**, owner turns it on |
 | 8.7 | Does **staff need an email**? | No · Optional (lets them reset their own password) | **Optional** |
 | 8.8 | Must a **changed owner email** be verified again? | Yes · No | **Yes** |
@@ -603,7 +611,7 @@ Each step can go live on its own. Run `presentation-sync` after each one.
 | 8.10 | Do **new signups need your approval**? | No · Switch, off by default | **Switch, off by default** |
 | 8.11 | Can a **manager be limited to some branches**? | Yes · Always all branches | **Yes** |
 | 8.12 | Can a **manager change VAT/service charge**? | Yes · Owner only | **Owner only** |
-| 8.13 | **Email service**? (Domain decided: `bosho.food`) | Resend · Brevo · Gmail SMTP | **Resend**, sending from `bosho.food` |
+| 8.13 | **Email service** | **Decided (24 Nov 2026): Gmail SMTP for now**, with an app password, because there's no domain yet. Move to Resend on `bosho.food` once the domain is bought (only settings change). | |
 | 8.14 | Does **"log in as owner"** need the owner's agreement? | No, log + banner · Owner approves each time | **Log + banner** |
 | 8.15 | **Suspended business/branch**: what do guests see? | "Temporarily closed" · 404 | **"Temporarily closed"** |
 | 8.16 | Can **one business's QR/guest pages show its branches** (e.g. a branch list at `/r/kacchi-ghar`)? | Yes · No, each branch alone | **Yes**, simple list page |

@@ -61,6 +61,7 @@
   {{if .Hours}}<p class="muted hours">{{.Hours}}</p>{{end}}
   <h1>{{t .Lang "welcome"}}</h1>
   {{if .LastCall}}<p class="warn">⏰ {{.LastCall}}</p>{{end}}
+  {{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{end}}
   <form method="post" action="/t/{{.Tok}}/enter">
     <label>{{t .Lang "your_name"}}
       <input name="name" required maxlength="30" autocomplete="given-name" autofocus></label>
@@ -100,7 +101,7 @@
 {{define "dishpic"}}{{if .It.Photo}}<img src="/uploads/{{small .It.Photo}}" alt="" loading="lazy" width="480" height="480">{{else}}<img class="art" src="/static/img/{{.Art}}.svg" alt="" loading="lazy" width="120" height="100">{{end}}{{end}}
 
 {{define "guest_menu"}}{{template "ghead" .}}
-{{if not .R.IsOpen}}<p class="warn">{{t .Lang "closed_now"}}</p>{{end}}
+{{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{else if not .R.IsOpen}}<p class="warn">{{t .Lang "closed_now"}}</p>{{end}}
 {{if ne .S.Status "open"}}<p class="warn">{{t .Lang "not_ordering"}}</p>{{end}}
 {{if .LastCall}}<p class="warn">⏰ {{.LastCall}}</p>{{end}}
 <div class="menutools">

@@ -18,6 +18,9 @@ var routeAccess = []struct {
 	allowed      string // roles, space separated
 }{
 	{"GET", "/staff/account", "owner kitchen waiter cashier"},
+	{"POST", "/staff/account/password", "owner"},
+	{"POST", "/staff/account/email", "owner"},
+	{"POST", "/staff/account/email/resend", "owner"},
 	{"GET", "/staff/kitchen", "owner kitchen waiter"},
 	{"GET", "/staff/kitchen/board", "owner kitchen waiter"},
 	{"POST", "/staff/orders/999999/accept", "owner kitchen"},

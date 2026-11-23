@@ -3,6 +3,7 @@ package server
 
 import (
 	"bytes"
+	"crypto/cipher"
 	"hash/fnv"
 	"html/template"
 	"io/fs"
@@ -17,6 +18,7 @@ import (
 	"bosho/internal/cache"
 	"bosho/internal/config"
 	"bosho/internal/database"
+	"bosho/internal/mail"
 	"bosho/internal/storage"
 	"bosho/web"
 )
@@ -29,6 +31,8 @@ type App struct {
 	ver    versionStore   // Redis change counter; nothing configured = no shortcut
 	loc    *time.Location // restaurant-local time, used for "today" on the dashboard
 	limits *limiter       // login attempts and guest taps (see middleware.go)
+	mail   mail.Sender    // verify-email and reset-password emails (log only without RESEND_API_KEY)
+	pwKey  cipher.AEAD    // encrypts staff passwords the owner can look up (see secret.go)
 }
 
 // New builds the app. ver may be nil (no Redis): refreshes then always query PostgreSQL.
@@ -41,7 +45,12 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.
 	if err != nil {
 		loc = time.FixedZone("BDT", 6*3600)
 	}
-	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver, limits: newLimiter()}
+	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver, limits: newLimiter(),
+		mail: mail.New(mail.Settings{SMTPHost: cfg.SMTPHost, SMTPPort: cfg.SMTPPort, SMTPUser: cfg.SMTPUser,
+			SMTPPassword: cfg.SMTPPassword, ResendKey: cfg.ResendAPIKey, From: cfg.EmailFrom})}
+	if a.pwKey, err = a.passwordCipher(); err != nil {
+		return nil, err
+	}
 	if cfg.Demo {
 		a.seedDemo()
 	}
@@ -85,6 +94,7 @@ func (a *App) Handler() http.Handler {
 	})
 	a.guestRoutes(mux)
 	a.staffRoutes(mux)
+	a.emailRoutes(mux)
 	a.ownerRoutes(mux)
 	return a.protect(a.bumpOnWrite(mux))
 }

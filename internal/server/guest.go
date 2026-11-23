@@ -185,6 +185,10 @@ func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	if c.R.IsOpen && c.R.OrdersInHours && (c.G == nil || !c.G.IsStaff) && !withinHours(c.R, time.Now().In(a.loc)) {
 		c.R.IsOpen = false
 	}
+	// An owner who still has to confirm their email can set up, but guests can't order yet.
+	if c.R.IsOpen && a.awaitingEmail(c.R) && (c.G == nil || !c.G.IsStaff) {
+		c.R.IsOpen, c.R.NotReady = false, true
+	}
 	return c, true
 }
 

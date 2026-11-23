@@ -47,6 +47,7 @@ func (a *App) cleanup() {
 		{"old carts", `DELETE FROM cart_items c USING table_sessions s WHERE s.id=c.session_id AND s.status NOT IN ('open','bill_requested')`, nil},
 		{"old calls", `UPDATE waiter_calls SET status='done', done_at=? WHERE status='pending' AND created_at<?`, []any{n, n - 3*3600}},
 		{"expired logins", `DELETE FROM staff_sessions WHERE expires_at<?`, []any{n}},
+		{"old email links", `DELETE FROM email_tokens WHERE expires_at<?`, []any{n - 7*86400}},
 	}
 	changed := false
 	for _, s := range steps {

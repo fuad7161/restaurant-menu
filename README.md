@@ -45,6 +45,11 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | `S3_USE_SSL` | on | `0` only for a plain-HTTP store such as a local MinIO |
 | `REDIS_URL` | empty | Upstash `rediss://` URL. Optional; without it every refresh queries PostgreSQL |
 | `DEMO` | off | `1` seeds the sample restaurant |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | empty, `587` | SMTP server for owner emails (confirm email, forgot password). Gmail: `smtp.gmail.com`, your Gmail address, and an [app password](https://myaccount.google.com/apppasswords) (needs 2-Step Verification) |
+| `RESEND_API_KEY` | empty | Resend instead of SMTP, once you have your own domain. With neither set, emails are printed in the log |
+| `EMAIL_FROM` | `Bosho <SMTP_USER>` | Sender name and address. With Gmail it must be your Gmail address |
+| `EMAIL_VERIFY` | off | `1`: guests can't order until the owner confirms their email; owners can still set up. A restaurant can override it (`restaurants.verify_email`: `global`, `required`, `off`) |
+| `PASSWORD_KEY` | stored in the database | 32 bytes in base64 (`openssl rand -base64 32`); encrypts the staff passwords the owner can look up. Don't change it once set |
 | `TRUST_PROXY` | off | `1` when a reverse proxy (Cloudflare, Fly, Render, nginx) sits in front: guest addresses are then read from `X-Forwarded-For`. Needed for **Ordering network**; leave off otherwise, or anyone could fake their address |
 
 ## Project layout
@@ -60,6 +65,7 @@ internal/
   storage/            photo upload (dish photos resized to two sizes) and serving through S3 (Backblaze B2)
   cache/              Redis change counter that lets unchanged screens skip the database
   money/              taka and poisha parsing, formatting, percentages
+  mail/               sending emails through SMTP (Gmail) or Resend, or into the log when neither is set
   i18n/               Bangla and English texts for guest and staff service screens
   server/             HTTP handlers
     server.go           app wiring, routes, rendering
@@ -73,6 +79,9 @@ internal/
     guest_cart.go       shared cart and placing an order
     guest_orders.go     order status, changes, bill, review
     auth.go             staff login, signup, sessions
+    perm.go             what each role may do, checked on every route
+    email.go            owner email: confirmation link, forgot password
+    secret.go           encryption of the staff passwords the owner can look up
     kitchen.go          kitchen board, order and item actions, sold-out list
     counter.go          open bills, mark paid, close
     waiter.go           ordering on behalf of guests
@@ -112,8 +121,9 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 | Waiter | `/staff/tables` | Order on behalf of guests who do not scan |
 | Kitchen / waiter | `/staff/stock` | Mark dishes sold out |
 | Cashier | `/staff/counter`, `/owner/closing` | Open bills, mark paid, closing report (the owner also removes items with a reason and closes without payment) |
-| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (kitchen, waiter, cashier; password reset), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
-| Any staff | `/staff/account` | Change own password, log out on all devices |
+| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (kitchen, waiter, cashier; the owner sets and can look up their passwords), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
+| Any staff | `/staff/account` | Log out on all devices; the owner also changes their own password and email here |
+| Owner | `/forgot`, `/reset`, `/verify-email` | Forgot password by email link, and email confirmation |
 
 ## Rules built in
 
@@ -131,6 +141,6 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 
 ## Not built yet
 
-Online payment, split bill, tips, discounts, kitchen ticket printing, subscription billing, owner password reset by SMS, allergen information, dark mode, kiosk mode for table tablets, built-in HTTPS (Fly provides it; elsewhere put a reverse proxy such as Caddy in front). Screens refresh by polling every 3 to 4 seconds. See `docs/missing-features.md` for the full list and status.
+Online payment, split bill, tips, discounts, kitchen ticket printing, subscription billing, allergen information, dark mode, kiosk mode for table tablets, built-in HTTPS (Fly provides it; elsewhere put a reverse proxy such as Caddy in front). Screens refresh by polling every 3 to 4 seconds. See `docs/missing-features.md` for the full list and status.
 # restaurant-menu
 # restaurant-menu

@@ -1,6 +1,9 @@
 {{define "dashboard"}}{{template "shead" .}}
 <div class="pagehead"><h1>Today</h1>
   <div class="qracts"><a class="btn ghost sm" href="/owner/closing">Closing report</a><a class="btn ghost sm" href="/owner/reports">Reports</a></div></div>
+{{if .AwaitingEmail}}<p class="warn"><b>Guests can't order yet.</b> Confirm your email first: open the link we sent{{with .Staff.Email}} to {{.}}{{end}}. You can set up your menu and tables meanwhile. <a href="/staff/account">My account</a></p>
+{{else if not .Staff.Email}}<p class="warn">Add your email in <a href="/staff/account">My account</a>, so you can get back in if you forget your password.</p>
+{{else if not .Staff.EmailVerified}}<p class="warn">Confirm your email: open the link we sent to {{.Staff.Email}}. <a href="/staff/account">Send it again</a></p>{{end}}
 {{if or (eq .Tables 0) (eq .Items 0)}}
 <section class="card">
   <h2>Get started</h2>
@@ -234,7 +237,9 @@
     <span class="avatar" aria-hidden="true">{{initial .Name}}</span>
     <div class="pbody"><span><b>{{.Name}}</b>{{if eq .ID $.Staff.ID}} <span class="badge">You</span>{{end}}</span>
       <span class="muted small1">{{.Phone}}</span>
-      <span class="badge role-{{.Role}}">{{.Role}}</span></div>
+      <span class="badge role-{{.Role}}">{{.Role}}</span>
+      {{if .Password}}<details class="pwshow"><summary>Show password</summary><code>{{.Password}}</code></details>
+      {{else if ne .Role "owner"}}<span class="muted small1">Password not saved here. Set a new one below to see it.</span>{{end}}</div>
     {{if and (ne .ID $.Staff.ID) (ne .Role "owner")}}<form method="post" action="/owner/staff/{{.ID}}/delete" data-confirm="Remove {{.Name}}?"><button class="btn sm ghost">Remove</button></form>{{end}}
     {{if or (eq .ID $.Staff.ID) (ne .Role "owner")}}<details class="pwreset"><summary>Reset password</summary>
       <form method="post" action="/owner/staff/{{.ID}}/password" class="inline">
@@ -252,7 +257,7 @@
   <label>Role <select name="role"><option value="waiter">Waiter</option><option value="kitchen">Kitchen</option><option value="cashier">Cashier</option></select></label>
   <button class="btn">Add</button>
 </form>
-<p class="muted">Each role sees only its own screens. <b>Kitchen</b>: accepts orders, marks them ready, sold-out list. <b>Waiter</b>: takes orders, marks them served, answers calls, sold-out list. <b>Cashier</b>: counter, takes payment, closing report. Only the owner removes items from a bill, closes a bill without payment, and sees sales, menu, tables, staff and settings.</p>
+<p class="muted">You set each staff member's password, and you can look it up here. Staff can't change it themselves. Only you see this page. Each role sees only its own screens. <b>Kitchen</b>: accepts orders, marks them ready, sold-out list. <b>Waiter</b>: takes orders, marks them served, answers calls, sold-out list. <b>Cashier</b>: counter, takes payment, closing report. Only the owner removes items from a bill, closes a bill without payment, and sees sales, menu, tables, staff and settings.</p>
 {{template "sfoot" .}}{{end}}
 
 {{define "owner_settings"}}{{template "shead" .}}

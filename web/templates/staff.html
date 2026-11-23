@@ -95,9 +95,11 @@
       <h1>Staff login</h1>
       <p class="sub">Log in to see today's orders.</p>
       {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      {{if eq .Done "reset"}}<p class="okmsg" role="status">Password changed. Log in with the new one.</p>{{end}}
       <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
       <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
       <button class="btn big">Log in</button>
+      <p class="muted authfoot"><a href="/forgot">Forgot password?</a></p>
       <p class="muted authfoot">New restaurant? <a href="/signup">Sign up free</a></p>
     </form>
   </div>
@@ -116,6 +118,8 @@
       <label>Restaurant name <input name="restaurant" value="{{.Restaurant}}" required maxlength="60"></label>
       <label>Your name <input name="name" value="{{.Name}}" required maxlength="40" autocomplete="name"></label>
       <label>Phone number <input name="phone" value="{{.Phone}}" required inputmode="tel" autocomplete="username"></label>
+      <label>Email <input name="email" type="email" value="{{.Email}}" required maxlength="120" autocomplete="email" aria-describedby="emhelp"></label>
+      <p class="muted help" id="emhelp">If you forget your password, Bosho sends a link here.</p>
       <label>Password <input name="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="pwhelp"></label>
       <p class="muted help" id="pwhelp">At least 8 characters.</p>
       <button class="btn big">Create account</button>
@@ -124,6 +128,61 @@
   </div>
 </main>
 </body></html>{{end}}
+
+{{/* Forgot password, set a new password, email confirmed: plain pages like login. */}}
+{{define "authtop"}}{{template "phead"}}
+<body class="plain">
+<main>
+  <div class="authwrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho</b></a>{{end}}
+{{define "authend"}}  </div>
+</main>
+</body></html>{{end}}
+
+{{define "forgot"}}{{template "authtop"}}
+    {{if .Sent}}<div class="card form authform">
+      <h1>Check your email</h1>
+      <p>If this account has an email, we've sent a link to set a new password. It works for 1 hour.</p>
+      <p class="muted">No email? Check spam. Staff: ask your restaurant owner to set a new password for you. An owner without an email can ask Bosho support.</p>
+      <p class="muted authfoot"><a href="/login">Back to log in</a></p>
+    </div>{{else}}
+    <form method="post" action="/forgot" class="card form authform">
+      <h1>Forgot password</h1>
+      <p class="sub">Restaurant owners: we email you a link to set a new password.</p>
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>Phone number or email <input name="who" required maxlength="120" autocomplete="username"></label>
+      <button class="btn big">Send link</button>
+      <p class="muted">Staff: your owner sets your password. Ask them.</p>
+      <p class="muted authfoot"><a href="/login">Back to log in</a></p>
+    </form>{{end}}
+{{template "authend"}}{{end}}
+
+{{define "reset"}}{{template "authtop"}}
+    {{if .Bad}}<div class="card form authform">
+      <h1>This link doesn't work</h1>
+      <p>It was already used, or it is more than 1 hour old.</p>
+      <p class="authfoot"><a class="btn" href="/forgot">Get a new link</a></p>
+    </div>{{else}}
+    <form method="post" action="/reset" class="card form authform">
+      <h1>Set a new password</h1>
+      <input type="hidden" name="token" value="{{.Token}}">
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>New password <input name="password" type="password" required minlength="8" autocomplete="new-password" aria-describedby="pwhelp"></label>
+      <p class="muted help" id="pwhelp">At least 8 characters. You will be logged out on every device.</p>
+      <button class="btn big">Save password</button>
+    </form>{{end}}
+{{template "authend"}}{{end}}
+
+{{define "verified"}}{{template "authtop"}}
+    <div class="card form authform">
+      {{if .OK}}<h1>Email confirmed</h1>
+      <p>Thank you. If you forget your password, Bosho will send a link to this email.</p>
+      <p class="authfoot"><a class="btn" href="/owner">Go to Bosho</a></p>
+      {{else}}<h1>This link doesn't work</h1>
+      <p>It was already used, is more than 24 hours old, or your email has changed since. Log in and open My account to send a new link.</p>
+      <p class="authfoot"><a class="btn" href="/staff/account">My account</a></p>{{end}}
+    </div>
+{{template "authend"}}{{end}}
 
 {{define "shead"}}{{template "phead" .}}{{$L := .Staff.Lang}}
 <body class="staff"{{if or (eq .Page "kitchen") (eq .Page "counter")}} data-wake{{end}}>
@@ -343,7 +402,26 @@
 {{define "staff_account"}}{{template "shead" .}}{{$L := .Staff.Lang}}
 <h1>{{t $L "s_account"}}</h1>
 {{if eq .Done "password"}}<p class="okmsg">{{t $L "s_pw_done"}}</p>{{end}}
-{{if eq .Err "current"}}<p class="warn">{{t $L "s_pw_wrong"}}</p>{{else if eq .Err "short"}}<p class="warn">{{t $L "s_pw_short"}}</p>{{end}}
+{{if or (eq .Done "email") (eq .Done "sent")}}<p class="okmsg">{{t $L "s_email_sent"}}</p>{{end}}
+{{with .Err}}{{if eq . "current"}}<p class="warn">{{t $L "s_pw_wrong"}}</p>{{else if eq . "short"}}<p class="warn">{{t $L "s_pw_short"}}</p>
+{{else if eq . "email"}}<p class="warn">{{t $L "s_email_bad"}}</p>{{else if eq . "email_taken"}}<p class="warn">{{t $L "s_email_taken"}}</p>
+{{else if eq . "wait"}}<p class="warn">{{t $L "s_email_wait"}}</p>{{else if eq . "send"}}<p class="warn">{{t $L "s_email_fail"}}</p>{{end}}{{end}}
+{{if .Staff.Can "account.email"}}
+<section class="card form">
+  <h2>{{t $L "s_email"}}</h2>
+  {{if not .Staff.Email}}<p class="warn">{{t $L "s_email_none"}}</p>
+  {{else if .Staff.EmailVerified}}<p><b>{{.Staff.Email}}</b> <span class="badge free">{{t $L "s_email_ok"}}</span></p>
+  {{else}}<p><b>{{.Staff.Email}}</b></p><p class="warn">{{t $L "s_email_wait_ok"}}</p>
+    <form method="post" action="/staff/account/email/resend"><button class="btn sm ghost">{{t $L "s_email_resend"}}</button></form>{{end}}
+  <form method="post" action="/staff/account/email" class="form">
+    <label>{{t $L "s_email"}} <input name="email" type="email" required maxlength="120" autocomplete="email" value="{{.Staff.Email}}"></label>
+    <label>{{t $L "s_pw_current"}} <input name="current" type="password" required autocomplete="current-password"></label>
+    <p class="muted">{{t $L "s_email_help"}} {{t $L "s_email_pw_note"}}</p>
+    <button class="btn">{{t $L "s_email_save"}}</button>
+  </form>
+</section>
+{{end}}
+{{if .Staff.Can "account.password"}}
 <form method="post" action="/staff/account/password" class="card form">
   <h2>{{t $L "s_pw_change"}}</h2>
   <label>{{t $L "s_pw_current"}} <input name="current" type="password" required autocomplete="current-password"></label>
@@ -351,6 +429,7 @@
   <p class="muted">{{t $L "s_pw_note"}}</p>
   <button class="btn">{{t $L "save"}}</button>
 </form>
+{{else}}<p class="card muted">{{t $L "s_pw_by_owner"}}</p>{{end}}
 <form method="post" action="/staff/account/logout-all" class="card form" data-confirm="{{t $L "s_logout_all_ask"}}">
   <h2>{{t $L "s_logout_all"}}</h2>
   <p class="muted">{{t $L "s_logout_all_help"}}</p>

@@ -87,6 +87,6 @@ func (a *App) dashboard(w http.ResponseWriter, r *http.Request, s *Staff) {
 	reviews := database.List(a.db, `SELECT v.rating,v.comment,t.label,v.created_at FROM reviews v JOIN table_sessions s ON s.id=v.session_id JOIN tables t ON t.id=s.table_id
 		WHERE v.restaurant_id=? AND v.menu_item_id IS NULL ORDER BY v.id DESC LIMIT 10`,
 		func(r *sql.Rows, v *reviewRow) error { return r.Scan(&v.Rating, &v.Comment, &v.Table, &v.At) }, rid)
-	a.render(w, "dashboard", M{"Staff": s, "Page": "owner", "Sales": sales, "BillsPaid": bills, "Methods": methods,
+	a.render(w, "dashboard", M{"Staff": s, "Page": "owner", "AwaitingEmail": a.awaitingEmail(s.R), "Sales": sales, "BillsPaid": bills, "Methods": methods,
 		"OpenBills": openBills, "Tables": tables, "Items": items, "Avg": avg, "Top": top, "Reviews": reviews})
 }

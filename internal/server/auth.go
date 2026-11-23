@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -16,6 +17,8 @@ import (
 type Staff struct {
 	ID                int64
 	Name, Phone, Role string
+	Email             string // owners only, for now
+	EmailVerified     bool
 	R                 Restaurant
 	Lang              string // service screens: "en" or "bn" (see i18n.StaffLang)
 }
@@ -25,7 +28,7 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 		if a.goInside(w, r) {
 			return
 		}
-		a.render(w, "login", M{"Next": safeNext(r.URL.Query().Get("next"))})
+		a.render(w, "login", M{"Next": safeNext(r.URL.Query().Get("next")), "Done": r.URL.Query().Get("done")})
 	})
 	mux.HandleFunc("POST /login", a.login)
 	mux.HandleFunc("GET /signup", func(w http.ResponseWriter, r *http.Request) {
@@ -38,7 +41,7 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /logout", a.logout)
 	mux.HandleFunc("GET /staff/lang", a.need(PermAccount, a.staffLang))
 	mux.HandleFunc("GET /staff/account", a.need(PermAccount, a.account))
-	mux.HandleFunc("POST /staff/account/password", a.need(PermAccount, a.accountPassword))
+	mux.HandleFunc("POST /staff/account/password", a.need(PermOwnPassword, a.accountPassword))
 	mux.HandleFunc("POST /staff/account/logout-all", a.need(PermAccount, a.logoutAll))
 
 	mux.HandleFunc("GET /staff/kitchen", a.need(PermKitchenView, a.kitchen))
@@ -64,10 +67,10 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 		return nil
 	}
 	var s Staff
-	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
+	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,COALESCE(u.email,''),u.email_verified_at>0,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
 		FROM staff_sessions ss JOIN staff_users u ON u.id=ss.staff_id JOIN restaurants r ON r.id=u.restaurant_id
 		WHERE ss.token=? AND ss.expires_at>?`, c.Value, now()).
-		Scan(append([]any{&s.ID, &s.Name, &s.Phone, &s.Role, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
+		Scan(append([]any{&s.ID, &s.Name, &s.Phone, &s.Role, &s.Email, &s.EmailVerified, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
 			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone, &s.R.Networks}, s.R.extraDest()...)...)
 	if err != nil {
 		return nil
@@ -189,9 +192,22 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 	rest, name, phone, pass := clean(r.FormValue("restaurant"), 60), clean(r.FormValue("name"), 40), clean(r.FormValue("phone"), 20), r.FormValue("password")
-	m := M{"Restaurant": rest, "Name": name, "Phone": phone}
+	email := validEmail(r.FormValue("email"))
+	m := M{"Restaurant": rest, "Name": name, "Phone": phone, "Email": r.FormValue("email")}
 	if rest == "" || name == "" || len(phone) < 6 || len(pass) < 8 {
 		m["Err"] = "Fill in every field. The password needs at least 8 characters."
+		a.render(w, "signup", m)
+		return
+	}
+	if email == "" {
+		m["Err"] = "Enter a working email address. Bosho sends a link there if you forget your password."
+		a.render(w, "signup", m)
+		return
+	}
+	var taken bool
+	a.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM staff_users WHERE lower(email)=lower(?))`, email).Scan(&taken)
+	if taken {
+		m["Err"] = "That email already has an account. Log in, or use \"Forgot password?\"."
 		a.render(w, "signup", m)
 		return
 	}
@@ -207,7 +223,7 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", 500)
 		return
 	}
-	sid, err := database.InsertID(tx, `INSERT INTO staff_users(restaurant_id,name,phone,password_hash,role) VALUES(?,?,?,?,'owner')`, rid, name, phone, string(hash))
+	sid, err := database.InsertID(tx, `INSERT INTO staff_users(restaurant_id,name,phone,email,password_hash,role) VALUES(?,?,?,?,?,'owner')`, rid, name, phone, email, string(hash))
 	if err != nil {
 		m["Err"] = "That phone number already has an account."
 		a.render(w, "signup", m)
@@ -217,6 +233,9 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", 500)
 		return
 	}
+	a.limits.hit(fmt.Sprintf("verifymail:%d", sid), 1, time.Minute)
+	a.limits.hit(fmt.Sprintf("verifymailday:%d", sid), 5, 24*time.Hour)
+	a.sendLink(r, sid, name, email, "verify")
 	a.startStaffSession(w, r, sid)
 	http.Redirect(w, r, "/owner", http.StatusSeeOther)
 }

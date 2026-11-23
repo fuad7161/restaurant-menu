@@ -21,6 +21,17 @@ type Config struct {
 
 	TrustProxy bool // read the guest address from X-Forwarded-For; set only when a reverse proxy sits in front
 
+	// Email (verify email, forgot password): SMTP (for example Gmail) when SMTP_HOST is set, else
+	// Resend when RESEND_API_KEY is set, else the log.
+	SMTPHost, SMTPPort, SMTPUser, SMTPPassword string
+	ResendAPIKey                               string
+	EmailFrom                                  string // for example "Bosho <you@gmail.com>"
+	EmailVerify                                bool   // owners must confirm their email before guests can order (EMAIL_VERIFY=1); off by default
+
+	// PasswordKey encrypts the staff passwords the owner can look up (32 bytes, base64). Empty:
+	// the app makes one and keeps it in the database.
+	PasswordKey string
+
 	RedisURL string // for example rediss://default:<token>@<name>.upstash.io:6379 (optional: lets refreshing screens skip the database when nothing changed)
 }
 
@@ -38,6 +49,15 @@ func Load() Config {
 		S3UseSSL:    os.Getenv("S3_USE_SSL") != "0",
 		RedisURL:    os.Getenv("REDIS_URL"),
 		TrustProxy:  os.Getenv("TRUST_PROXY") == "1",
+
+		SMTPHost:     os.Getenv("SMTP_HOST"),
+		SMTPPort:     os.Getenv("SMTP_PORT"),
+		SMTPUser:     os.Getenv("SMTP_USER"),
+		SMTPPassword: strings.ReplaceAll(os.Getenv("SMTP_PASSWORD"), " ", ""), // Google shows app passwords in groups of 4
+		ResendAPIKey: os.Getenv("RESEND_API_KEY"),
+		EmailFrom:    os.Getenv("EMAIL_FROM"),
+		EmailVerify:  os.Getenv("EMAIL_VERIFY") == "1",
+		PasswordKey:  os.Getenv("PASSWORD_KEY"),
 	}
 }
 

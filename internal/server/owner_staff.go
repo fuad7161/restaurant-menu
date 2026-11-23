@@ -13,9 +13,21 @@ import (
 	"bosho/internal/database"
 )
 
+// staffRow is one person on the Staff page. Password is the staff password the owner set, so the
+// owner can look it up; it is empty for owners and for passwords set before this was kept.
+type staffRow struct {
+	ID                int64
+	Name, Phone, Role string
+	Password          string
+}
+
 func (a *App) ownerStaff(w http.ResponseWriter, r *http.Request, s *Staff) {
-	people := database.List(a.db, `SELECT id,name,phone,role FROM staff_users WHERE restaurant_id=? ORDER BY id`,
-		func(r *sql.Rows, p *Staff) error { return r.Scan(&p.ID, &p.Name, &p.Phone, &p.Role) }, s.R.ID)
+	people := database.List(a.db, `SELECT id,name,phone,role,password_enc FROM staff_users WHERE restaurant_id=? ORDER BY id`,
+		func(r *sql.Rows, p *staffRow) error { return r.Scan(&p.ID, &p.Name, &p.Phone, &p.Role, &p.Password) }, s.R.ID)
+	for i := range people {
+		people[i].Password = a.openPassword(people[i].Password)
+	}
+	w.Header().Set("Cache-Control", "no-store") // the page shows passwords
 	a.render(w, "owner_staff", M{"Staff": s, "Page": "staff", "People": people, "Err": r.URL.Query().Get("err"), "OK": r.URL.Query().Get("ok") != ""})
 }
 
@@ -30,7 +42,7 @@ func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-	if _, err := a.db.Exec(`INSERT INTO staff_users(restaurant_id,name,phone,password_hash,role) VALUES(?,?,?,?,?)`, s.R.ID, name, phone, string(hash), role); err != nil {
+	if _, err := a.db.Exec(`INSERT INTO staff_users(restaurant_id,name,phone,password_hash,password_enc,role) VALUES(?,?,?,?,?,?)`, s.R.ID, name, phone, string(hash), a.sealPassword(pass), role); err != nil {
 		back(w, r, "/owner/staff?err=That+phone+number+already+has+an+account.")
 		return
 	}
@@ -62,10 +74,14 @@ func (a *App) staffPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
+	sealed := a.sealPassword(pass)
+	if id == s.ID {
+		sealed = "" // the owner's own password is never kept in a readable form
+	}
 	var name string
 	a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
 	err := a.inTx(func(q database.Querier) error {
-		res, err := q.Exec(`UPDATE staff_users SET password_hash=? WHERE id=? AND restaurant_id=? AND (role!='owner' OR id=?)`, string(hash), id, s.R.ID, s.ID)
+		res, err := q.Exec(`UPDATE staff_users SET password_hash=?, password_enc=? WHERE id=? AND restaurant_id=? AND (role!='owner' OR id=?)`, string(hash), sealed, id, s.R.ID, s.ID)
 		if rows(res, err) != 1 {
 			if err == nil {
 				err = fmt.Errorf("staff %d not found", id)
