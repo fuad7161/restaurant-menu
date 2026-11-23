@@ -4,10 +4,12 @@ package server
 import (
 	"bytes"
 	"crypto/cipher"
+	"fmt"
 	"hash/fnv"
 	"html/template"
 	"io/fs"
 	"log"
+	"log/slog"
 	"mime"
 	"net/http"
 	"strconv"
@@ -46,8 +48,9 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.
 		loc = time.FixedZone("BDT", 6*3600)
 	}
 	a := &App{cfg: cfg, db: db, photos: photos, tpl: tpl, loc: loc, ver: ver, limits: newLimiter(),
-		mail: mail.New(mail.Settings{SMTPHost: cfg.SMTPHost, SMTPPort: cfg.SMTPPort, SMTPUser: cfg.SMTPUser,
+		mail: mail.New(mail.Settings{BrevoKey: cfg.BrevoAPIKey, SMTPHost: cfg.SMTPHost, SMTPPort: cfg.SMTPPort, SMTPUser: cfg.SMTPUser,
 			SMTPPassword: cfg.SMTPPassword, ResendKey: cfg.ResendAPIKey, From: cfg.EmailFrom})}
+	slog.Info("email sender", "via", strings.TrimPrefix(fmt.Sprintf("%T", a.mail), "*mail."))
 	if a.pwKey, err = a.passwordCipher(); err != nil {
 		return nil, err
 	}

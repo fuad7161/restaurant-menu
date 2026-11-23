@@ -611,7 +611,7 @@ Each step can go live on its own. Run `presentation-sync` after each one.
 | 8.10 | Do **new signups need your approval**? | No · Switch, off by default | **Switch, off by default** |
 | 8.11 | Can a **manager be limited to some branches**? | Yes · Always all branches | **Yes** |
 | 8.12 | Can a **manager change VAT/service charge**? | Yes · Owner only | **Owner only** |
-| 8.13 | **Email service** | **Decided (24 Nov 2026): Gmail SMTP for now**, with an app password, because there's no domain yet. Move to Resend on `bosho.food` once the domain is bought (only settings change). | |
+| 8.13 | **Email service** | **Decided (24 Nov 2026): Brevo's API** on Render (Render's free plan blocks SMTP), sending from the owner's Gmail address; Gmail SMTP works for local runs. Move to Resend on `bosho.food` once the domain is bought (only settings change). | |
 | 8.14 | Does **"log in as owner"** need the owner's agreement? | No, log + banner · Owner approves each time | **Log + banner** |
 | 8.15 | **Suspended business/branch**: what do guests see? | "Temporarily closed" · 404 | **"Temporarily closed"** |
 | 8.16 | Can **one business's QR/guest pages show its branches** (e.g. a branch list at `/r/kacchi-ghar`)? | Yes · No, each branch alone | **Yes**, simple list page |

@@ -21,8 +21,9 @@ type Config struct {
 
 	TrustProxy bool // read the guest address from X-Forwarded-For; set only when a reverse proxy sits in front
 
-	// Email (verify email, forgot password): SMTP (for example Gmail) when SMTP_HOST is set, else
-	// Resend when RESEND_API_KEY is set, else the log.
+	// Email (verify email, forgot password): Brevo when BREVO_API_KEY is set, else SMTP (for
+	// example Gmail) when SMTP_HOST is set, else Resend when RESEND_API_KEY is set, else the log.
+	BrevoAPIKey                                string
 	SMTPHost, SMTPPort, SMTPUser, SMTPPassword string
 	ResendAPIKey                               string
 	EmailFrom                                  string // for example "Bosho <you@gmail.com>"
@@ -50,6 +51,7 @@ func Load() Config {
 		RedisURL:    os.Getenv("REDIS_URL"),
 		TrustProxy:  os.Getenv("TRUST_PROXY") == "1",
 
+		BrevoAPIKey:  os.Getenv("BREVO_API_KEY"),
 		SMTPHost:     os.Getenv("SMTP_HOST"),
 		SMTPPort:     os.Getenv("SMTP_PORT"),
 		SMTPUser:     os.Getenv("SMTP_USER"),

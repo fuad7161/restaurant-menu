@@ -32,24 +32,33 @@ type Sender interface {
 // Settings choose how mail is sent: SMTP when SMTPHost is set, else Resend when ResendKey is set,
 // else the log.
 type Settings struct {
+	BrevoKey                                   string
 	SMTPHost, SMTPPort, SMTPUser, SMTPPassword string
 	ResendKey                                  string
 	From                                       string
 }
 
+// New picks the sender: Brevo, then SMTP, then Resend, then the log. Brevo and Resend send over
+// HTTPS, which works on hosts that block SMTP ports (Render's free plan does).
 func New(s Settings) Sender {
-	switch {
-	case s.SMTPHost != "":
-		// EMAIL_FROM may be a full "Name <address>" or just a name ("Bosho"): with only a name, or
-		// nothing, the address is the Gmail account itself (Gmail sends from it anyway).
-		from := strings.TrimSpace(s.From)
-		if _, err := mail.ParseAddress(from); err != nil {
-			name := strings.Trim(from, `"'`)
-			if name == "" {
-				name = "Bosho"
-			}
-			from = (&mail.Address{Name: name, Address: s.SMTPUser}).String()
+	// EMAIL_FROM may be a full "Name <address>" or just a name ("Bosho"): with only a name, or
+	// nothing, the address is SMTP_USER (Gmail sends from the logged-in account anyway).
+	// Quotes around the whole value (EMAIL_FROM="Bosho <me@gmail.com>" typed into a dashboard) are dropped.
+	from := strings.TrimSpace(s.From)
+	if len(from) >= 2 && (from[0] == '"' || from[0] == '\'') && from[len(from)-1] == from[0] && strings.Contains(from, "<") {
+		from = strings.TrimSpace(from[1 : len(from)-1])
+	}
+	if _, err := mail.ParseAddress(from); err != nil {
+		name := strings.Trim(from, `"'`)
+		if name == "" {
+			name = "Bosho"
 		}
+		from = (&mail.Address{Name: name, Address: s.SMTPUser}).String()
+	}
+	switch {
+	case s.BrevoKey != "":
+		return &Brevo{Key: s.BrevoKey, From: from, Client: &http.Client{Timeout: 10 * time.Second}}
+	case s.SMTPHost != "":
 		port := s.SMTPPort
 		if port == "" {
 			port = "587"
@@ -65,7 +74,7 @@ func New(s Settings) Sender {
 type Log struct{}
 
 func (Log) Send(_ context.Context, m Message) error {
-	slog.Info("email (not sent: no SMTP_HOST or RESEND_API_KEY)", "to", m.To, "subject", m.Subject, "text", m.Text)
+	slog.Info("email (not sent: no BREVO_API_KEY, SMTP_HOST or RESEND_API_KEY)", "to", m.To, "subject", m.Subject, "text", m.Text)
 	return nil
 }
 
@@ -169,4 +178,47 @@ func mimeMessage(from string, m Message) []byte {
 	}
 	fmt.Fprintf(&b, "--%s--\r\n", boundary)
 	return b.Bytes()
+}
+
+// Brevo sends through https://www.brevo.com over HTTPS. The From address must be a sender verified
+// in Brevo (Senders, domains & dedicated IPs -> Senders); a single Gmail address is enough.
+type Brevo struct {
+	Key, From string
+	Client    *http.Client
+	URL       string // empty: Brevo's API (tests point it elsewhere)
+}
+
+func (s *Brevo) Send(ctx context.Context, m Message) error {
+	from, err := mail.ParseAddress(s.From)
+	if err != nil || from.Address == "" {
+		return fmt.Errorf("EMAIL_FROM needs an address for Brevo, for example \"Bosho <you@gmail.com>\"")
+	}
+	body, _ := json.Marshal(map[string]any{
+		"sender":      map[string]string{"name": from.Name, "email": from.Address},
+		"to":          []map[string]string{{"email": m.To}},
+		"subject":     m.Subject,
+		"htmlContent": m.HTML,
+		"textContent": m.Text,
+	})
+	url := s.URL
+	if url == "" {
+		url = "https://api.brevo.com/v3/smtp/email"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("api-key", s.Key)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 500))
+		return fmt.Errorf("brevo: status %d: %s", resp.StatusCode, msg)
+	}
+	return nil
 }

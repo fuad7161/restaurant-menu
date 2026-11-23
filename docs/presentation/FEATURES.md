@@ -82,7 +82,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
 | A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
 | A-04 | Forgot password for owners: a link by email that works once for 1 hour and logs out every device. The page never says whether an account exists. Staff ask their owner instead. | `internal/server/email.go` (`forgot`, `resetSave`), `internal/mail` |
-| A-05 | Email confirmation: the owner gets a link at signup (valid 24 hours; send again once a minute, 5 a day). Off by default; when switched on, an unconfirmed owner can set up but guests see "Not taking orders yet". Emails go through Gmail (SMTP) or Resend, or into the log when neither is set. | `email.go` (`verifyEmail`, `awaitingEmail`), `EMAIL_VERIFY` |
+| A-05 | Email confirmation: the owner gets a link at signup (valid 24 hours; send again once a minute, 5 a day). Off by default; when switched on, an unconfirmed owner can set up but guests see "Not taking orders yet". Emails go through Brevo, Gmail (SMTP) or Resend, or into the log when none is set. | `email.go` (`verifyEmail`, `awaitingEmail`), `EMAIL_VERIFY` |
 
 ## Platform and rules
 

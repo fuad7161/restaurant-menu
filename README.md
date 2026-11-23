@@ -45,6 +45,7 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | `S3_USE_SSL` | on | `0` only for a plain-HTTP store such as a local MinIO |
 | `REDIS_URL` | empty | Upstash `rediss://` URL. Optional; without it every refresh queries PostgreSQL |
 | `DEMO` | off | `1` seeds the sample restaurant |
+| `BREVO_API_KEY` | empty | Brevo API key for owner emails. Sends over HTTPS, so it works on Render's free plan, which blocks SMTP. The `EMAIL_FROM` address must be a sender verified in Brevo (a Gmail address is fine) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | empty, `587` | SMTP server for owner emails (confirm email, forgot password). Gmail: `smtp.gmail.com`, your Gmail address, and an [app password](https://myaccount.google.com/apppasswords) (needs 2-Step Verification) |
 | `RESEND_API_KEY` | empty | Resend instead of SMTP, once you have your own domain. With neither set, emails are printed in the log |
 | `EMAIL_FROM` | `Bosho <SMTP_USER>` | Sender name and address. With Gmail it must be your Gmail address |
@@ -65,7 +66,7 @@ internal/
   storage/            photo upload (dish photos resized to two sizes) and serving through S3 (Backblaze B2)
   cache/              Redis change counter that lets unchanged screens skip the database
   money/              taka and poisha parsing, formatting, percentages
-  mail/               sending emails through SMTP (Gmail) or Resend, or into the log when neither is set
+  mail/               sending emails through Brevo, SMTP (Gmail) or Resend, or into the log when none is set
   i18n/               Bangla and English texts for guest and staff service screens
   server/             HTTP handlers
     server.go           app wiring, routes, rendering
