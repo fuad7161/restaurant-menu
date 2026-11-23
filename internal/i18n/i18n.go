@@ -278,6 +278,7 @@ var texts = map[string][2]string{
 	"s_account":         {"My account", "আমার অ্যাকাউন্ট"},
 	"s_reports":         {"Reports", "রিপোর্ট"},
 	"s_activity":        {"Activity log", "কার্যকলাপ"},
+	"s_closing":         {"Closing report", "দিনশেষের হিসাব"},
 	"s_pw_change":       {"Change password", "পাসওয়ার্ড বদলান"},
 	"s_pw_current":      {"Current password", "বর্তমান পাসওয়ার্ড"},
 	"s_pw_new":          {"New password (8 or more characters)", "নতুন পাসওয়ার্ড (৮ বা তার বেশি অক্ষর)"},

@@ -108,11 +108,11 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 | Who | Where | What |
 | --- | --- | --- |
 | Guest | `/t/<token>` (from the QR) | Menu with search, tags and a recommended row; dish sheet with options, quantity and live total; shared cart with full total and suggestions; order status with progress and a ready alert; bill, call waiter, receipt, review. Bangla and English. |
-| Kitchen / waiter | `/staff/kitchen` | New, Cooking, Ready columns with amber and red waiting times; accept with a ready time, reject, undo ready or served, change requests, waiter calls, sound alert, keeps the screen on |
+| Kitchen / waiter | `/staff/kitchen` | New, Cooking, Ready columns with amber and red waiting times; kitchen accepts with a ready time, rejects and marks ready; waiter marks served and answers calls; each can undo their own tap; change requests, sound alert, keeps the screen on |
 | Waiter | `/staff/tables` | Order on behalf of guests who do not scan |
-| Any staff | `/staff/stock` | Mark dishes sold out |
-| Cashier | `/staff/counter` | Open bills, remove items with a reason, mark paid, close without payment |
-| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (with password reset), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
+| Kitchen / waiter | `/staff/stock` | Mark dishes sold out |
+| Cashier | `/staff/counter`, `/owner/closing` | Open bills, mark paid, closing report (the owner also removes items with a reason and closes without payment) |
+| Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (kitchen, waiter, cashier; password reset), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
 | Any staff | `/staff/account` | Change own password, log out on all devices |
 
 ## Rules built in
@@ -125,6 +125,7 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 - A dish with options is added from its sheet only; required option groups must be chosen, and the server checks the rules and prices again.
 - Staff service screens (sidebar, kitchen, counter, take order, sold out) switch between English and Bangla; owner pages are English.
 - Money and access changes are recorded in the activity log: price changes, removed items, payments, groups closed without payment, staff and password changes.
+- Each role does only its own tasks, and the server checks it on every request (`internal/server/perm.go`). One owner per restaurant: an owner can't add, remove or reset another owner.
 - Login locks for 15 minutes after 5 wrong passwords; guest phones are limited to 60 taps a minute; posts from other websites are refused.
 - Every write is checked; multi-step changes (paying, closing, removing items) run in one transaction. A background job tidies idle groups, old carts and calls every 10 minutes.
 

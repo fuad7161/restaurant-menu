@@ -1,6 +1,6 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 1cc0df1 (plus the minimal-ui redesign) on 2026-11-23 -->
+<!-- presentation-sync: last synced at commit eec6acd (plus uncommitted role permissions) on 2026-11-23 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
@@ -73,7 +73,7 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 ## 9. Set up in an afternoon
 
 - Get-started checklist on the first login [O-04].
-- Menu with photos, descriptions, tags and option rules [O-05], tables [O-06], staff with roles [O-09].
+- Menu with photos, descriptions, tags and option rules [O-05], tables [O-06], staff with roles, each doing only its own tasks [O-09, A-03].
 - Logo and brand colour on every guest screen and QR card [O-10, G-02, O-07].
 - Print the QR cards and put them on the tables [O-08].
 
@@ -141,6 +141,7 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 | O-04 to O-10 | 9 (O-07 also 1, O-08 also 10) |
 | O-11, O-12 | 10 |
 | A-01, A-02 | 9 |
+| A-03 | 9 |
 | P-01 to P-07 | 11 (P-03 also 10) |
 | P-09, P-10, P-11, P-13 | 11 |
 | P-12 | 10 |

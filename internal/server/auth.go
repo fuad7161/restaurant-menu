@@ -20,8 +20,6 @@ type Staff struct {
 	Lang              string // service screens: "en" or "bn" (see i18n.StaffLang)
 }
 
-func (s *Staff) IsOwner() bool { return s.Role == "owner" }
-
 func (a *App) staffRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
 		if a.goInside(w, r) {
@@ -38,25 +36,26 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /signup", a.signup)
 	mux.HandleFunc("POST /logout", a.logout)
-	mux.HandleFunc("GET /staff/lang", a.auth(false, a.staffLang))
-	mux.HandleFunc("GET /staff/account", a.auth(false, a.account))
-	mux.HandleFunc("POST /staff/account/password", a.auth(false, a.accountPassword))
-	mux.HandleFunc("POST /staff/account/logout-all", a.auth(false, a.logoutAll))
+	mux.HandleFunc("GET /staff/lang", a.need(PermAccount, a.staffLang))
+	mux.HandleFunc("GET /staff/account", a.need(PermAccount, a.account))
+	mux.HandleFunc("POST /staff/account/password", a.need(PermAccount, a.accountPassword))
+	mux.HandleFunc("POST /staff/account/logout-all", a.need(PermAccount, a.logoutAll))
 
-	mux.HandleFunc("GET /staff/kitchen", a.auth(false, a.kitchen))
-	mux.HandleFunc("GET /staff/kitchen/board", a.poll(a.auth(false, a.kitchenBoard)))
-	mux.HandleFunc("POST /staff/orders/{id}/{act}", a.auth(false, a.orderAct))
-	mux.HandleFunc("POST /staff/items/{id}/{act}", a.auth(false, a.itemAct))
-	mux.HandleFunc("POST /staff/calls/{id}/done", a.auth(false, a.callDone))
-	mux.HandleFunc("GET /staff/stock", a.auth(false, a.stock))
-	mux.HandleFunc("POST /staff/stock/{id}/toggle", a.auth(false, a.stockToggle))
-	mux.HandleFunc("GET /staff/counter", a.auth(false, a.counter))
-	mux.HandleFunc("GET /staff/counter/list", a.poll(a.auth(false, a.counterList)))
-	mux.HandleFunc("GET /staff/sessions/{id}", a.auth(false, a.sessionDetail))
-	mux.HandleFunc("POST /staff/sessions/{id}/paid", a.auth(false, a.sessionPaid))
-	mux.HandleFunc("POST /staff/sessions/{id}/close", a.auth(false, a.sessionClose))
-	mux.HandleFunc("GET /staff/tables", a.auth(false, a.staffTables))
-	mux.HandleFunc("POST /staff/tables/{id}/open", a.auth(false, a.staffOpenTable))
+	mux.HandleFunc("GET /staff/kitchen", a.need(PermKitchenView, a.kitchen))
+	mux.HandleFunc("GET /staff/kitchen/board", a.poll(a.need(PermKitchenView, a.kitchenBoard)))
+	// orderAct and itemAct check the permission of each action themselves (orderActPerm, itemActPerm).
+	mux.HandleFunc("POST /staff/orders/{id}/{act}", a.auth(a.orderAct))
+	mux.HandleFunc("POST /staff/items/{id}/{act}", a.auth(a.itemAct))
+	mux.HandleFunc("POST /staff/calls/{id}/done", a.need(PermCallDone, a.callDone))
+	mux.HandleFunc("GET /staff/stock", a.need(PermStock, a.stock))
+	mux.HandleFunc("POST /staff/stock/{id}/toggle", a.need(PermStock, a.stockToggle))
+	mux.HandleFunc("GET /staff/counter", a.need(PermCounterView, a.counter))
+	mux.HandleFunc("GET /staff/counter/list", a.poll(a.need(PermCounterView, a.counterList)))
+	mux.HandleFunc("GET /staff/sessions/{id}", a.need(PermBillView, a.sessionDetail))
+	mux.HandleFunc("POST /staff/sessions/{id}/paid", a.need(PermBillPaid, a.sessionPaid))
+	mux.HandleFunc("POST /staff/sessions/{id}/close", a.need(PermBillClose, a.sessionClose))
+	mux.HandleFunc("GET /staff/tables", a.need(PermTablesOrder, a.staffTables))
+	mux.HandleFunc("POST /staff/tables/{id}/open", a.need(PermTablesOrder, a.staffOpenTable))
 }
 
 func (a *App) currentStaff(r *http.Request) *Staff {
@@ -77,7 +76,9 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 	return &s
 }
 
-func (a *App) auth(ownerOnly bool, h func(http.ResponseWriter, *http.Request, *Staff)) http.HandlerFunc {
+// auth only checks that someone is logged in. Routes use need, which also checks the permission;
+// auth alone is for routes that check a permission per action inside the handler.
+func (a *App) auth(h func(http.ResponseWriter, *http.Request, *Staff)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s := a.currentStaff(r)
 		if s == nil {
@@ -92,10 +93,6 @@ func (a *App) auth(ownerOnly bool, h func(http.ResponseWriter, *http.Request, *S
 				next = pageOf(r.Referer())
 			}
 			http.Redirect(w, r, loginURL(next), http.StatusSeeOther)
-			return
-		}
-		if ownerOnly && !s.IsOwner() {
-			http.Error(w, "Only the owner can open this page.", http.StatusForbidden)
 			return
 		}
 		h(w, r, s)
@@ -149,16 +146,6 @@ func safeNext(next string) string {
 		return ""
 	}
 	return next
-}
-
-func staffHome(role string) string {
-	switch role {
-	case "owner":
-		return "/owner"
-	case "cashier":
-		return "/staff/counter"
-	}
-	return "/staff/kitchen"
 }
 
 // Wrong passwords: after loginTries for one phone number, or loginTriesNet from one network,

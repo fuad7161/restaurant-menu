@@ -104,11 +104,34 @@ func staffReason(r *http.Request) string {
 	return clean(r.Header.Get("HX-Prompt"), 120)
 }
 
+// orderActPerm is the permission each order action needs. "undo" is checked inside orderAct:
+// a role can step back its own kind of tap (kitchen: ready, waiter: served) within undoWindow,
+// and order.undo allows both.
+var orderActPerm = map[string]string{
+	"accept": PermOrderAccept, "reject": PermOrderAccept,
+	"ready": PermOrderReady, "served": PermOrderServe,
+}
+
 func (a *App) orderAct(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id, rid := pathID(r, "id"), s.R.ID
+	act := r.PathValue("act")
+	canUndoServed := s.Can(PermOrderUndo) || s.Can(PermOrderServe)
+	canUndoReady := s.Can(PermOrderUndo) || s.Can(PermOrderReady)
+	if perm, ok := orderActPerm[act]; ok {
+		if !s.Can(perm) {
+			refuse(w, r, s, perm)
+			return
+		}
+	} else if act != "undo" {
+		http.NotFound(w, r)
+		return
+	} else if !canUndoServed && !canUndoReady {
+		refuse(w, r, s, PermOrderUndo)
+		return
+	}
 	toast, undo := "", false
 	var err error
-	switch act := r.PathValue("act"); act {
+	switch act {
 	case "accept":
 		mins, _ := strconv.Atoi(r.FormValue("minutes"))
 		if mins < 1 || mins > 240 {
@@ -147,14 +170,19 @@ func (a *App) orderAct(w http.ResponseWriter, r *http.Request, s *Staff) {
 	case "undo":
 		// Step back one status, only shortly after the tap: served -> ready, ready -> cooking.
 		toast = i18n.T(s.Lang, "s_undo_late")
-		res, e := a.db.Exec(`UPDATE orders SET status='ready', served_at=0 WHERE id=? AND restaurant_id=? AND status='served' AND served_at>?`, id, rid, now()-undoWindow)
-		if rows(res, e) == 0 {
-			res, e = a.db.Exec(`UPDATE orders SET status='cooking', ready_at=0 WHERE id=? AND restaurant_id=? AND status='ready' AND ready_at>?`, id, rid, now()-undoWindow)
+		var n int64
+		if canUndoServed {
+			res, e := a.db.Exec(`UPDATE orders SET status='ready', served_at=0 WHERE id=? AND restaurant_id=? AND status='served' AND served_at>?`, id, rid, now()-undoWindow)
+			n, err = rows(res, e), e
 		}
-		if rows(res, e) == 1 {
+		if n == 0 && err == nil && canUndoReady {
+			res, e := a.db.Exec(`UPDATE orders SET status='cooking', ready_at=0 WHERE id=? AND restaurant_id=? AND status='ready' AND ready_at>?`, id, rid, now()-undoWindow)
+			n, err = rows(res, e), e
+		}
+		if n == 1 {
 			toast = i18n.T(s.Lang, "s_undone")
+			a.audit(rid, s.Name, "order step undone", fmt.Sprintf("table %s, order #%d", a.orderTable(id), id))
 		}
-		err = e
 	}
 	if err != nil {
 		serverError(w, err)
@@ -186,9 +214,20 @@ func (a *App) orderTable(orderID int64) string {
 	return label
 }
 
-// itemAct handles guest change requests (approve, decline) and staff voids on order lines.
+// itemActPerm is the permission each order-line action needs.
+var itemActPerm = map[string]string{"approve": PermChangeRequest, "decline": PermChangeRequest, "void": PermBillVoid}
+
 // itemAct handles guest change requests (approve, decline) and staff voids on order lines.
 func (a *App) itemAct(w http.ResponseWriter, r *http.Request, s *Staff) {
+	perm, ok := itemActPerm[r.PathValue("act")]
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	if !s.Can(perm) {
+		refuse(w, r, s, perm)
+		return
+	}
 	id := pathID(r, "id")
 	var oid int64
 	var status, name string

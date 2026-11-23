@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -20,8 +21,9 @@ func (a *App) ownerStaff(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 	name, phone, pass, role := clean(r.FormValue("name"), 40), clean(r.FormValue("phone"), 20), r.FormValue("password"), r.FormValue("role")
-	if !strings.Contains(" kitchen waiter cashier owner ", " "+role+" ") {
-		role = "waiter"
+	if !slices.Contains(staffRoles, role) {
+		back(w, r, "/owner/staff?err=Choose+waiter,+kitchen+or+cashier.")
+		return
 	}
 	if name == "" || len(phone) < 6 || len(pass) < 8 {
 		back(w, r, "/owner/staff?err=Fill+in+every+field.+Password+needs+8+characters.")
@@ -40,8 +42,9 @@ func (a *App) staffDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if id := pathID(r, "id"); id != s.ID {
 		var name string
 		a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
-		// Their logins end with the account (staff_sessions cascade).
-		if res, err := a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID); rows(res, err) == 1 {
+		// Their logins end with the account (staff_sessions cascade). An owner account can't be
+		// removed here: only the platform admin changes who owns a restaurant.
+		if res, err := a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=? AND role!='owner'`, id, s.R.ID); rows(res, err) == 1 {
 			a.audit(s.R.ID, s.Name, "staff removed", name)
 		}
 	}
@@ -50,6 +53,8 @@ func (a *App) staffDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 // staffPassword lets the owner set a new password for a staff member who forgot theirs. It also
 // logs that person out everywhere, so an old password left on a shared phone stops working.
+// Another owner's password can't be set here (that would let one owner take over the other's
+// account); the owner's own password can.
 func (a *App) staffPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
 	id, pass := pathID(r, "id"), r.FormValue("password")
 	if len(pass) < 8 {
@@ -60,7 +65,7 @@ func (a *App) staffPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
 	var name string
 	a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
 	err := a.inTx(func(q database.Querier) error {
-		res, err := q.Exec(`UPDATE staff_users SET password_hash=? WHERE id=? AND restaurant_id=?`, string(hash), id, s.R.ID)
+		res, err := q.Exec(`UPDATE staff_users SET password_hash=? WHERE id=? AND restaurant_id=? AND (role!='owner' OR id=?)`, string(hash), id, s.R.ID, s.ID)
 		if rows(res, err) != 1 {
 			if err == nil {
 				err = fmt.Errorf("staff %d not found", id)

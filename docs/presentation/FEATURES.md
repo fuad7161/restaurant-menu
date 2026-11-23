@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit 1cc0df1 (plus the minimal-ui redesign) on 2026-11-23 -->
+<!-- presentation-sync: last synced at commit eec6acd (plus uncommitted role permissions) on 2026-11-23 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -39,16 +39,16 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | ID | Feature | Where in code |
 | --- | --- | --- |
 | K-01 | Kitchen board with New, Cooking and Ready columns, refreshing every 3 seconds. Large text and buttons; each ticket shows how long it has waited and turns amber, then red, after the limits set in Settings. | `internal/server/kitchen.go` (`boardData`, `ageClass`), `k_board` template |
-| K-02 | Accept an order with a ready time, or reject it with a reason typed into an in-page dialog. | `orderAct`, `app.js` (`ask`) |
+| K-02 | Kitchen accepts an order with a ready time, or rejects it with a reason typed into an in-page dialog. | `orderAct`, `app.js` (`ask`) |
 | K-03 | Approve or decline guest change requests on accepted items. | `itemAct` |
-| K-04 | Waiter calls (waiter, water, tissue) shown on the board; mark done. | `callDone` |
+| K-04 | Waiter calls (waiter, water, tissue) shown on the board for waiters; mark done. | `callDone` |
 | K-05 | Sound alert on the kitchen board (new orders, calls, change requests) and the counter (bill requests). Turned on with one tap. | `web/static/app.js`, `data-alert` |
-| K-06 | Sold out: any staff member switches a dish off and on; guests see it greyed out at once. | `stock`, `stockToggle`, `stock_row` template |
+| K-06 | Sold out: kitchen and waiters switch a dish off and on; guests see it greyed out at once. | `stock`, `stockToggle`, `stock_row` template |
 | K-07 | Take order: a waiter opens a table and orders for guests who do not scan. These orders skip the Accept step. | `internal/server/waiter.go` |
-| K-08 | Counter: all open bills as cards, bill detail, remove an item with a recorded reason. | `internal/server/counter.go` |
-| K-09 | Mark a bill paid by cash, bKash, Nagad or card (recorded, not processed), or close it without payment. | `sessionPaid`, `sessionClose` |
-| K-10 | Light left sidebar for staff; it slides in on phones. Each role starts on its own page. | `shead` in `web/templates/staff.html`, `staffHome` in `auth.go` |
-| K-11 | Undo "Mark ready" or "Mark served" within a minute, from the message that appears. | `orderAct` (`undo`) |
+| K-08 | Counter: all open bills as cards and bill detail. Only the owner removes an item from a bill, with a recorded reason. | `internal/server/counter.go` |
+| K-09 | Cashier marks a bill paid by cash, bKash, Nagad or card (recorded, not processed). Only the owner closes a bill without payment. | `sessionPaid`, `sessionClose` |
+| K-10 | Light left sidebar for staff; it slides in on phones. It shows only the screens that role can open, and each role starts on its own page: kitchen on the Kitchen board, waiter on Take order, cashier on the Counter, owner on the Dashboard. | `shead` in `web/templates/staff.html`, `staffHome` in `perm.go` |
+| K-11 | Undo "Mark ready" (kitchen) or "Mark served" (waiter) within a minute, from the message that appears. Each undo is in the activity log. | `orderAct` (`undo`) |
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |
 | K-14 | My account: change your own password (other devices are logged out) and log out on all devices. | `account`, `accountPassword`, `logoutAll` in `auth.go` |
@@ -65,13 +65,13 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | O-06 | Tables: add tables ("New table" is the first card), switch a table off (hidden from guests). | `internal/server/owner_tables.go` |
 | O-07 | Branded QR codes: round dots, the restaurant's logo or initial in the middle, highest error correction so they still scan. | `internal/qrmark/qrmark.go`, `internal/server/qr.go` |
 | O-08 | Print QR cards for all tables or one table; renew a table's QR so old photos of it stop working. | `tablePrint`, `tableNewQR` |
-| O-09 | Staff accounts with roles: owner, kitchen, waiter, cashier. The owner can set a new password for anyone, which logs that person out everywhere. | `internal/server/owner_staff.go` (`staffPassword`) |
+| O-09 | Staff accounts with the roles kitchen, waiter and cashier. The owner can set a new staff password, which logs that person out everywhere. A restaurant has one owner: the owner can't add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`) |
 | O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
 | O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave`, `withinHours` |
 | O-12 | Ordering network: guests can order only on the restaurant's Wi-Fi. One tap allows the current network; ranges can be typed. | `internal/server/network.go`, `owner_networks` template |
 | O-13 | Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour. | `internal/server/reports.go` (`reports`) |
 | O-14 | Download orders, payments and reviews as CSV for any dates (opens in Excel with Bangla intact). | `reports.go` (`export`) |
-| O-15 | Closing report for any day: money by payment method, bills paid, items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. | `reports.go` (`closing`) |
+| O-15 | Closing report for any day: money by payment method, bills paid, items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. The cashier can open it too. | `reports.go` (`closing`) |
 | O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, took payments, closed bills without payment, rejected orders, or changed staff, passwords or charges. | `internal/server/audit.go` |
 
 ## Accounts and access
@@ -80,6 +80,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | --- | --- | --- |
 | A-01 | Sign up creates a restaurant and its owner account. | `internal/server/auth.go` (`signup`) |
 | A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
+| A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
 
 ## Platform and rules
 
