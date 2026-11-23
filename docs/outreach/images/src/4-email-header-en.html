@@ -1,0 +1,28 @@
+<!doctype html><meta charset=utf-8><link rel=stylesheet href=base.css><style>html,body{width:1200px;height:628px}
+body{background:var(--cream);position:relative}
+.blob{position:absolute;right:-120px;top:-160px;width:720px;height:720px;border-radius:50%;background:var(--brand)}
+.txt{position:absolute;left:64px;top:70px;width:600px}
+.kick{display:inline-block;font:600 18px I;color:var(--brand);background:var(--soft);padding:7px 16px;border-radius:99px}
+h1{font:800 64px/1.04 I;letter-spacing:-2px;margin:22px 0 18px}h1 em{font-style:normal;color:var(--brand)}
+p{font:500 23px/1.45 I;color:#3b4250}
+.foot{position:absolute;left:64px;bottom:52px;display:flex;gap:16px;align-items:center}
+.foot small{font:500 17px I;color:var(--muted)}
+.ph{position:absolute;right:150px;top:40px;transform:scale(.76) rotate(5deg);transform-origin:top center}
+.qrcard{position:absolute;right:48px;bottom:56px;width:170px;background:#fff;border-radius:18px;padding:14px;box-shadow:0 20px 40px -14px rgba(0,0,0,.4);transform:rotate(-6deg);text-align:center;font:600 13px I;color:var(--brand)}
+.qrcard .qr{margin-bottom:6px}
+</style><body>
+<div class="blob"></div>
+<div class="txt"><span class="kick">QR table ordering for restaurants</span>
+<h1>Your menu on every<br>guest's <em>phone.</em></h1>
+<p>Guests scan, order together and see their food cooking. No app, no signup. Bangla and English.</p></div>
+<div class="foot"><div class="brandmark">Bosho <span>বসো</span></div><small>Free demo at your restaurant</small></div>
+<div class="ph"><div class="phone"><div class="screen"><div class="notch"></div><div class="bar"></div>
+<div class="rhead"><div class="logo">ক</div><div><div class="rname">কাচ্চি ঘর</div><div class="rsub">Table 7 · বাংলা | EN</div></div></div>
+<div class="chips"><span class="chip on">জনপ্রিয়</span><span class="chip">বিরিয়ানি</span><span class="chip">কাবাব</span><span class="chip">পানীয়</span></div>
+<div class="item"><img src="../../../../web/static/img/biryani.svg"><div><div class="iname">কাচ্চি বিরিয়ানি</div><span class="tag">জনপ্রিয়</span><div class="price">৳ ৩৮০</div></div><div class="add">+</div></div>
+<div class="item"><img src="../../../../web/static/img/kebab.svg"><div><div class="iname">চিকেন টিক্কা</div><span class="tag">শেফের পছন্দ</span><div class="price">৳ ২৬০</div></div><div class="add">+</div></div>
+<div class="item"><img src="../../../../web/static/img/fish.svg"><div><div class="iname">সর্ষে ইলিশ</div><span class="tag">নতুন</span><div class="price">৳ ৪৫০</div></div><div class="add">+</div></div>
+<div class="item"><img src="../../../../web/static/img/tea.svg"><div><div class="iname">মালাই চা</div><div class="price">৳ ৬০</div></div><div class="add">+</div></div>
+<div class="cartbar"><span>কার্ট · ৩টি আইটেম</span><span>৳ ১,০২০ →</span></div></div></div></div>
+<div class="qrcard"><div class="qr"></div>Scan to order</div>
+<script src="qr.js"></script>

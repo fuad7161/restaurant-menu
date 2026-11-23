@@ -1,0 +1,28 @@
+<!doctype html><meta charset=utf-8><link rel=stylesheet href=base.css><style>html,body{width:1080px;height:1080px}
+body{background:var(--brand);color:#fff;padding:80px 72px}
+h1{font:700 84px/1.05 H}h1 em{font-style:normal;color:var(--gold)}
+.sub{font:500 30px H;opacity:.85;margin-top:14px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:64px}
+.card{background:#fff;color:var(--ink);border-radius:32px;padding:30px 26px 34px;position:relative;height:500px;display:flex;flex-direction:column}
+.n{position:absolute;top:-22px;left:26px;width:54px;height:54px;border-radius:50%;background:var(--gold);color:var(--deep);font:700 30px H;display:grid;place-items:center;box-shadow:0 0 0 6px var(--brand)}
+.vis{height:250px;display:grid;place-items:center;margin:20px 0 18px;background:var(--cream);border-radius:22px}
+.card h3{font:700 36px H}.card p{font:500 22px/1.4 H;color:var(--muted);margin-top:8px}
+.stand{width:150px;background:#fff;border-radius:16px;padding:14px;box-shadow:0 10px 20px -8px rgba(0,0,0,.25);text-align:center}
+.stand small{font:600 15px H;color:var(--brand);display:block;margin-top:8px}
+.mini{width:150px;background:#fff;border-radius:18px;border:5px solid #111;padding:10px}
+.mini .r{height:12px;background:#f1f1f3;border-radius:6px;margin:8px 0}.mini .r.b{background:var(--brand);width:60%}
+.mini img{width:100%;border-radius:10px;background:var(--cream)}
+.ready{font:700 30px H;color:var(--ok);background:var(--oksoft);padding:14px 22px;border-radius:18px;text-align:center}
+.ready img{width:150px;display:block;margin:0 auto 6px}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:52px;font:600 28px H}
+.foot .brandmark{font-size:40px;color:#fff}.foot .brandmark span{color:var(--gold);font-size:38px}
+</style><body>
+<h1>৩ ধাপে অর্ডার,<br><em>ওয়েটারের অপেক্ষা ছাড়া।</em></h1>
+<div class="sub">অতিথি খুশি, কর্মীদের চাপ কম।</div>
+<div class="steps">
+<div class="card"><div class="n">১</div><div class="vis"><div class="stand"><div class="qr"></div><small>টেবিল ৭</small></div></div><h3>স্ক্যান</h3><p>টেবিলের QR-এ ফোন ধরলেই মেনু খুলে যায়।</p></div>
+<div class="card"><div class="n">২</div><div class="vis"><div class="mini"><img src="../../../../web/static/img/thali.svg"><div class="r"></div><div class="r"></div><div class="r b"></div></div></div><h3>অর্ডার</h3><p>পুরো টেবিল মিলে এক কার্টে, নোটসহ।</p></div>
+<div class="card"><div class="n">৩</div><div class="vis"><div class="ready"><img src="../../../../web/static/img/biryani.svg">✓ খাবার তৈরি!</div></div><h3>খাবার হাজির</h3><p>রান্না কতদূর, ফোনেই দেখা যায়।</p></div>
+</div>
+<div class="foot"><div class="brandmark">Bosho <span>বসো</span></div><span>ফ্রি ডেমো দেখতে মেসেজ করুন →</span></div>
+<script src="qr.js"></script>
