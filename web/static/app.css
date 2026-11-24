@@ -435,6 +435,12 @@ dialog.sheet {
 .sidehead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 16px 8px; }
 .side .brand, .stop .brand { min-width: 0; }
 .side .brand b, .stop .brand b { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand b small.branchname { display: block; font-size: .8125rem; font-weight: 500; color: var(--muted, #666); overflow: hidden; text-overflow: ellipsis; }
+.branchsw { margin: 0 12px 8px; }
+.branchsw label { display: grid; gap: 4px; font-size: .8125rem; color: var(--muted, #666); }
+.branchsw select { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 8px; font: inherit; font-size: .9375rem; color: var(--ink); background: var(--bg, #fff); }
+fieldset.checks { border: 0; padding: 0; margin: 0; display: grid; gap: 6px; }
+fieldset.checks label { display: flex; gap: 8px; align-items: center; font-weight: 400; }
 .side nav { display: flex; flex-direction: column; gap: 2px; padding: 4px 12px; flex: 1; }
 .navlabel { margin: 16px 8px 4px; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .side nav a { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: .9375rem; font-weight: 500; }
@@ -698,3 +704,9 @@ body.print { background: #fff; padding: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition: none !important; }
 }
+
+/* Platform admin panel */
+.adminmain { max-width: 1040px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+.adminmain .pagehead { align-items: center; }
+.adminmain a.lrow { color: inherit; text-decoration: none; }
+.adminmain a.lrow:hover { background: var(--subtle); }

@@ -1,6 +1,12 @@
 # Plan: multiple branches
 
-Status: **step 1 built** (businesses under the hood, 24 November 2026); steps 2 to 6 planned. Written 24 November 2026 against commit `504fe35`.
+Status: **built**, steps 1 to 7 (24 November 2026). Written against commit `504fe35`.
+
+Where the build differs from the text below:
+- **Branding (5):** a manager edits only the branch details (address, phone, BIN, review link); the logo, colour and tagline, the business's and a branch's own, are the owner's. Migration `0009` clears branch values that equal the business's, so they follow it.
+- **Discounts (B5):** cashiers can no longer give discounts.
+- **Demo (6):** `DEMO=1` seeds two branches (Dhanmondi, Gulshan, with a Gulshan cashier `01700000004`); the tests keep one branch (`config.DemoBranches`).
+- **Admin panel (7):** migration `0010`, `bosho create-admin EMAIL` (`make create-admin EMAIL=...`), `/admin`.
 
 This plan builds step 3 ("Branches") of `owner-verification-admin-roles.md` on its own and earlier than that plan's order. It follows the decisions already made there: **Business → Branches**, each branch is today's `restaurants` row, the menu is **copied when a branch is created and separate after that** (8.2), and a branch can override the business's logo and colour (8.3).
 
@@ -184,8 +190,9 @@ Each step can go live on its own. Run `presentation-sync` after each step that u
 4. **"All branches" views.** Combined dashboard, reports, closing report, activity log, CSV branch column.
 5. **Business profile and branch overrides.** Business logo and colour, branch override on the branch Profile page.
 6. **Demo with two branches**, and the docs.
+7. **Admin panel, first part** (decision B4): admin accounts, `/admin/login` with email, password and a 6-digit email code, a list of businesses, and per business the branch limit and email verification. Follows section 6 of `owner-verification-admin-roles.md`; the rest of that panel comes later.
 
-Rough size: steps 1 and 2 are the bulk (about 2 to 3 days of work); 3 to 6 are about half a day each.
+Rough size: steps 1 and 2 are the bulk (about 2 to 3 days of work); 3 to 6 are about half a day each; step 7 about a day.
 
 ---
 
@@ -207,20 +214,20 @@ In `flow_test.go`, against PostgreSQL:
 
 - **One person at several branches or businesses** (step 4 of the earlier plan: accounts, memberships, invitations, a password per workplace). Until then, a person who works at two branches needs two phone numbers, or the Manager role at one branch.
 - **One shared menu** with per-branch prices and sold-out. Copy-then-separate covers it for now; a "push this dish to all branches" button is a cheap middle step if owners ask.
-- **Admin panel** for `max_branches` and other limits. Until then, set it with SQL.
+- The rest of the **admin panel** (other limits, feature switches, log in as owner). Step 7 covers the branch limit.
 - Moving stock or orders between branches. Central kitchen.
 - A public page listing all branches of a business (decision 8.16).
 
 ---
 
-## 9. Decisions needed from you
+## 9. Decisions (answered 24 November 2026)
 
-| # | Question | Options | Suggestion |
-| --- | --- | --- | --- |
-| B1 | Build the **Manager role** with branches, or later? | With branches (step 3) · Later | **With branches.** An owner with several branches can't do every task alone. |
-| B2 | **Copy from another branch** when creating one: what is copied? | Menu only · Menu and settings · Ask each time with tick boxes | **Tick boxes:** menu, settings, logo/colour, each on by default |
-| B3 | **Invoice numbers** | Per branch with a code ("GUL-0042") · One series for the whole business | **Per branch with a code.** Each branch prints its own bills, and a branch may have its own BIN. Check with an accountant. |
-| B4 | **Default branch limit** before the admin panel exists | 1 · 3 · No limit | **3**, raised by you with SQL for bigger customers |
-| B5 | Can **cashiers give discounts**? Built on 24 Nov 2026 for owner and cashier; the permission table in `owner-verification-admin-roles.md` says owner and manager only. | Owner, manager and cashier · Owner and manager only | Your call. Many restaurants let the cashier do it; it is logged and in the closing report either way. |
-| B6 | Does the **owner's login land** on "All branches" or on the last branch used? | All branches · Last branch | **Last branch used**, "All branches" for a new login |
-| B7 | Can a **manager see the activity log** of their branch? | Yes · No | **Yes**, their branch only |
+| # | Question | Decision |
+| --- | --- | --- |
+| B1 | Build the **Manager role** with branches, or later? | **With branches.** A manager runs one branch. |
+| B2 | **Copy from another branch** when creating one: what is copied? | **Tick boxes:** menu, settings, logo/colour, each on by default. |
+| B3 | **Invoice numbers** | **Per branch with a code** ("GUL-0042"). |
+| B4 | **Branch limit** | **Set by the platform admin in an admin panel** (step 7 below), 3 by default. |
+| B5 | Who can **give discounts**? | **Owner and manager only.** Cashiers lose it. |
+| B6 | Where does the **owner's login land**? | **"All branches"**, and the owner picks any branch to work in. |
+| B7 | Can a **manager see the activity log**? | **Yes, their branch only.** |

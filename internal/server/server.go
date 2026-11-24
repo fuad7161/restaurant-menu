@@ -56,6 +56,9 @@ func New(cfg config.Config, db *database.DB, photos *storage.Photos, ver *cache.
 	}
 	if cfg.Demo {
 		a.seedDemo()
+		if cfg.DemoBranches {
+			a.seedDemoBranches()
+		}
 	}
 	return a, nil
 }
@@ -99,6 +102,8 @@ func (a *App) Handler() http.Handler {
 	a.staffRoutes(mux)
 	a.emailRoutes(mux)
 	a.ownerRoutes(mux)
+	a.branchRoutes(mux)
+	a.adminRoutes(mux)
 	return a.protect(a.bumpOnWrite(mux))
 }
 

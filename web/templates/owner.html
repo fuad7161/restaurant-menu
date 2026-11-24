@@ -216,7 +216,7 @@
 {{range .Tables}}{{if .Active}}
   <div class="stand">
     {{if $.Staff.R.Logo}}<img class="slogo" src="/uploads/{{$.Staff.R.Logo}}" alt="">{{end}}
-    <div class="sname">{{$.Staff.R.Name}}</div>
+    <div class="sname">{{$.Staff.R.DisplayName}}</div>
     {{if $.Staff.R.Tagline}}<div class="stag">{{$.Staff.R.Tagline}}</div>{{end}}
     <div class="scan">স্ক্যান করে অর্ডার করুন<br><span>Scan to order</span></div>
     <img src="/owner/tables/{{.ID}}/qr.png" alt="">
@@ -239,9 +239,13 @@
       <span class="muted small1">{{.Phone}}</span>
       <span class="badge role-{{.Role}}">{{.Role}}</span>
       {{if .Password}}<details class="pwshow"><summary>Show password</summary><code>{{.Password}}</code></details>
-      {{else if ne .Role "owner"}}<span class="muted small1">Password not saved here. Set a new one below to see it.</span>{{end}}</div>
-    {{if and (ne .ID $.Staff.ID) (ne .Role "owner")}}<form method="post" action="/owner/staff/{{.ID}}/delete" data-confirm="Remove {{.Name}}?"><button class="btn sm ghost">Remove</button></form>{{end}}
-    {{if or (eq .ID $.Staff.ID) (ne .Role "owner")}}<details class="pwreset"><summary>Reset password</summary>
+      {{else if .CanManage}}<span class="muted small1">Password not saved here. Set a new one below to see it.</span>{{end}}</div>
+    {{if and (ne .ID $.Staff.ID) .CanManage}}<form method="post" action="/owner/staff/{{.ID}}/delete" data-confirm="Remove {{.Name}}?"><button class="btn sm ghost">Remove</button></form>{{end}}
+    {{if and $.Staff.MultiBranch (ne .Role "owner")}}<details class="pwreset"><summary>Move to another branch</summary>
+      <form method="post" action="/owner/staff/{{.ID}}/move" class="inline" data-confirm="Move {{.Name}}? They are logged out and work in the new branch from their next login.">
+        <select name="branch" aria-label="Branch for {{.Name}}">{{range $.Staff.Branches}}{{if ne .ID $.Staff.R.ID}}<option value="{{.ID}}">{{.Label}}</option>{{end}}{{end}}</select>
+        <button class="btn sm">Move</button></form></details>{{end}}
+    {{if or (and (eq .ID $.Staff.ID) (eq .Role "owner")) .CanManage}}<details class="pwreset"><summary>Reset password</summary>
       <form method="post" action="/owner/staff/{{.ID}}/password" class="inline">
         <input name="password" type="password" required minlength="8" autocomplete="new-password" aria-label="New password for {{.Name}}" placeholder="New password">
         <button class="btn sm">Set</button></form>
@@ -254,10 +258,10 @@
   <label>Name <input name="name" required maxlength="40"></label>
   <label>Phone number (their login) <input name="phone" required inputmode="tel"></label>
   <label>Password (8 or more characters) <input name="password" type="password" required minlength="8" autocomplete="new-password"></label>
-  <label>Role <select name="role"><option value="waiter">Waiter</option><option value="kitchen">Kitchen</option><option value="cashier">Cashier</option></select></label>
+  <label>Role <select name="role">{{range .Staff.GivableRoles}}<option value="{{.}}">{{title .}}</option>{{end}}</select></label>
   <button class="btn">Add</button>
 </form>
-<p class="muted">You set each staff member's password, and you can look it up here. Staff can't change it themselves. Only you see this page. Each role sees only its own screens. <b>Kitchen</b>: accepts orders, marks them ready, sold-out list. <b>Waiter</b>: takes orders, marks them served, answers calls, sold-out list. <b>Cashier</b>: counter, takes payment, closing report. Only the owner removes items from a bill, closes a bill without payment, and sees sales, menu, tables, staff and settings.</p>
+<p class="muted">You set each staff member's password, and you can look it up here. Staff can't change it themselves. Each role sees only its own screens. <b>Kitchen</b>: accepts orders, marks them ready, sold-out list. <b>Waiter</b>: takes orders, marks them served, answers calls, sold-out list. <b>Cashier</b>: counter, takes payment, closing report. <b>Manager</b>: runs this branch like the owner (menu, tables, staff, bills, discounts, reports), but can't change VAT or service charge, other branches, or managers. Only the owner and managers remove items from a bill, close a bill without payment, and give discounts.</p>
 {{template "sfoot" .}}{{end}}
 
 {{define "owner_settings"}}{{template "shead" .}}
@@ -270,8 +274,10 @@
   <a class="btn ghost" href="/owner/profile">Profile</a></div>
 </section>
 <form method="post" action="/owner/settings" class="card form">
+  {{if .Staff.Can "settings.charges"}}
   <label>VAT % <input name="vat" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.VAT}}"></label>
   <label>Service charge % <input name="service" type="number" step="0.01" min="0" max="100" value="{{.Staff.R.Service}}"></label>
+  {{else}}<p class="muted">VAT {{pct .Staff.R.VAT}}% · service charge {{pct .Staff.R.Service}}%. Only the owner changes these.</p>{{end}}
   <label class="choice"><input type="checkbox" name="is_open" value="1"{{if .Staff.R.IsOpen}} checked{{end}}> Open for orders</label>
   <label class="choice"><input type="checkbox" name="require_accept" value="1"{{if .Staff.R.RequireAccept}} checked{{end}}> Staff must accept each guest order before the kitchen cooks it (recommended: stops fake orders)</label>
   <h2>Opening hours</h2>
@@ -333,15 +339,20 @@
 {{template "sfoot" .}}{{end}}
 
 {{define "owner_profile"}}{{template "shead" .}}
-{{$r := .Staff.R}}
-<div class="pagehead"><h1>Restaurant profile</h1>
-  <a class="btn ghost sm" href="/owner/tables">See it on a table →</a></div>
-<p class="muted">Guests see this logo and colour on every screen after they scan the table QR, and so do your staff screens and the printed QR cards.</p>
+{{$f := .F}}{{$r := .F.P}}
+<div class="pagehead"><h1>{{if eq $f.Action "/owner/business"}}Business profile{{else if .Staff.MultiBranch}}Branch profile · {{.Staff.R.BranchName}}{{else}}Restaurant profile{{end}}</h1>
+  {{if $f.Details}}<a class="btn ghost sm" href="/owner/tables">See it on a table →</a>{{end}}</div>
+{{if eq $f.Action "/owner/business"}}<p class="muted">The name, logo, colour and tagline of every branch. A branch can use its own instead: open it and go to Profile.</p>
+{{else if $f.Brand}}<p class="muted">Guests see this logo and colour on every screen after they scan the table QR, and so do your staff screens and the printed QR cards.</p>{{end}}
 {{if .Saved}}<p class="okmsg">Saved. Guests see the new look on their next refresh.</p>{{end}}
 {{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
 <div class="profile">
   <div>
-    <form method="post" action="/owner/profile" enctype="multipart/form-data" class="card form" id="pform">
+    <form method="post" action="{{$f.Action}}" enctype="multipart/form-data" class="card form" id="pform">
+      {{if $f.Override}}
+      <label class="choice"><input type="checkbox" name="use_business" value="1" id="usebiz"{{if $f.UsesBusiness}} checked{{end}}> Use the business's logo, colour and tagline (<a href="/owner/business">Business profile</a>)</label>
+      {{end}}
+      {{if $f.Brand}}<div id="brandpart">
       <h2>Logo</h2>
       <div class="logoedit">
         <span class="logobox" id="logobox">{{if $r.Logo}}<img src="/uploads/{{$r.Logo}}" alt="Current logo">{{else}}<span>{{initial $r.Name}}</span>{{end}}</span>
@@ -349,10 +360,12 @@
           <input name="logo" type="file" accept="image/jpeg,image/png,image/webp" id="logofile">
           <span class="muted">Square works best. JPEG, PNG or WebP, up to 5 MB.</span></label>
       </div>
+      </div>{{end}}
       <h2>Details</h2>
-      <label>Restaurant name <input name="name" value="{{$r.Name}}" required maxlength="60" id="pname"></label>
-      <label>Tagline <span class="muted">(shown to guests under your logo)</span>
-        <input name="tagline" value="{{$r.Tagline}}" maxlength="80" placeholder="Old Dhaka kacchi since 1998" id="ptag"></label>
+      {{if $f.Name}}<label>{{if eq $f.Action "/owner/business"}}Business name{{else}}Restaurant name{{end}} <input name="name" value="{{$r.Name}}" required maxlength="60" id="pname"></label>{{end}}
+      {{if $f.Brand}}<label>Tagline <span class="muted">(shown to guests under your logo)</span>
+        <input name="tagline" value="{{$r.Tagline}}" maxlength="80" placeholder="Old Dhaka kacchi since 1998" id="ptag"></label>{{end}}
+      {{if $f.Details}}
       <div class="two">
         <label>Address <input name="address" value="{{$r.Address}}" maxlength="120" placeholder="House 12, Road 5, Dhanmondi"></label>
         <label>Phone <input name="phone" value="{{$r.Phone}}" maxlength="20" inputmode="tel" placeholder="01XXXXXXXXX"></label>
@@ -360,6 +373,8 @@
         <label>Google review link (optional) <input name="review_url" value="{{$r.ReviewURL}}" maxlength="300" inputmode="url" placeholder="https://g.page/r/…/review"></label>
         <span class="muted small1">Guests who give 4 or 5 stars are asked to rate you on Google too.</span>
       </div>
+      {{end}}
+      {{if $f.Brand}}
       <h2>Brand colour</h2>
       <p class="muted">Used for buttons, links and selected items. Pages stay white.</p>
       {{$custom := true}}{{range .Swatches}}{{if eq .Hex $r.Color}}{{$custom = false}}{{end}}{{end}}
@@ -372,13 +387,15 @@
           <input type="color" name="custom_color" value="{{$r.Color}}" id="pcolor" aria-label="Pick your own colour"><span>Your own</span></label>
       </div>
       <p class="warn" id="tooLight" hidden>This colour is too light: white text on it would be hard to read. Pick a darker shade.</p>
+      {{else}}<p class="muted">The logo, colour and tagline are set by the owner.</p>{{end}}
       <button class="btn big">Save profile</button>
     </form>
-    {{if $r.Logo}}
-    <form method="post" action="/owner/profile/logo/delete" data-confirm="Remove the logo? Guests will see the first letter of your name instead.">
+    {{if and $f.Brand $r.Logo (not (and $f.Override $f.UsesBusiness))}}
+    <form method="post" action="{{$f.Action}}/logo/delete" data-confirm="Remove the logo? Guests will see {{if $f.Override}}the business's logo{{else}}the first letter of your name{{end}} instead.">
       <button class="btn ghost sm">Remove logo</button></form>
     {{end}}
   </div>
+  {{if $f.Brand}}
   <aside class="pvwrap" aria-label="Preview">
     <div class="pvlabel">Live preview · guest phone</div>
     <div class="pv" id="pv" style="--brand: {{$r.Color}}">
@@ -392,11 +409,18 @@
       <div class="pvitem"><img src="/static/img/kebab.svg" alt=""><div><b>শিক কাবাব</b><em>৳160</em><span class="pvbtn">+ যোগ করুন</span></div></div>
       <div class="pvdock"><span class="on">মেনু</span><span>কার্ট</span><span>অর্ডার</span></div>
     </div>
-  </aside>
+  </aside>{{end}}
 </div>
 <script>
 (function () {
   var pv = document.getElementById('pv'), form = document.getElementById('pform');
+  if (!pv) return;
+  var usebiz = document.getElementById('usebiz');
+  if (usebiz) {
+    var part = function () { document.getElementById('brandpart').hidden = usebiz.checked;
+      document.querySelector('.swatches').hidden = usebiz.checked; };
+    usebiz.addEventListener('change', part); part();
+  }
   var picker = document.getElementById('pcolor'), custom = document.getElementById('pcustom');
   var warn = document.getElementById('tooLight');
   function lum(hex) {
@@ -412,7 +436,8 @@
   }
   form.addEventListener('change', color);
   picker.addEventListener('input', function () { custom.checked = true; color(); });
-  document.getElementById('pname').addEventListener('input', function () { document.getElementById('pvname').textContent = this.value; });
+  var pname = document.getElementById('pname');
+  if (pname) pname.addEventListener('input', function () { document.getElementById('pvname').textContent = this.value; });
   document.getElementById('ptag').addEventListener('input', function () {
     var t = document.getElementById('pvtag'); t.textContent = this.value; t.hidden = !this.value; });
   document.getElementById('logofile').addEventListener('change', function () {
@@ -434,6 +459,7 @@
   <div class="stat"><span>Bills paid</span><b>{{.Bills}}</b></div>
   <div class="stat"><span>Average bill</span><b>{{if .Bills}}{{money (div .Total .Bills)}}{{else}}–{{end}}</b></div>
 </div>
+{{if .Staff.AllBranches}}{{template "by_branch" .ByBranch}}{{end}}
 <div class="two">
   <section class="card">
     <h2>Sales by day</h2>
@@ -462,7 +488,7 @@
     <button class="btn ghost" form="exportform" formaction="/owner/export/payments.csv">Payments</button>
     <button class="btn ghost" form="exportform" formaction="/owner/export/reviews.csv">Reviews</button>
   </div>
-  <p class="muted">Opens in Excel, Google Sheets or LibreOffice. Amounts are in taka.</p>
+  <p class="muted">Opens in Excel, Google Sheets or LibreOffice. Amounts are in taka. {{if .Staff.AllBranches}}Every branch is in the file{{else}}Only {{.Staff.R.DisplayName}} is in the file{{end}}, with a branch column.</p>
 </section>
 {{template "sfoot" .}}{{end}}
 
@@ -470,7 +496,7 @@
 <div class="pagehead noprint"><h1>Closing report</h1>
   <form method="get" class="inline"><input class="dayin" type="date" name="day" value="{{.Day}}" aria-label="Day"><button class="btn sm">Show</button>
   <button class="btn sm ghost" type="button" data-print>Print</button></form></div>
-<h2 class="printonly">Closing report · {{.Staff.R.Name}}</h2>
+<h2 class="printonly">Closing report · {{if .Staff.AllBranches}}{{.Staff.R.BusinessName}}, all branches{{else}}{{.Staff.R.DisplayName}}{{end}}</h2>
 <p class="muted">{{.DayLong}}</p>
 <div class="stats">
   <div class="stat"><span>Taken</span><b>{{money .Total}}</b></div>
@@ -479,6 +505,7 @@
   <div class="stat"><span>Orders rejected</span><b>{{.Rejected}}</b></div>
   <div class="stat"><span>Bills open now</span><b>{{.OpenBills}}</b></div>
 </div>
+{{if .Staff.AllBranches}}{{template "by_branch" .ByBranch}}{{end}}
 <section class="card">
   <h2>By payment method</h2>
   {{range .Methods}}<div class="total"><span>{{.Method}} ({{.Count}})</span><b>{{money .Amount}}</b></div>{{else}}<p class="muted">No payments on this day.</p>{{end}}
@@ -486,28 +513,131 @@
 </section>
 <section class="card">
   <h2>Discounts</h2>
-  {{range .Discounts}}<div class="lrow wrap"><span class="grow">Invoice {{.Invoice}}, table {{.Table}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
+  {{range .Discounts}}<div class="lrow wrap"><span class="grow">{{if $.Staff.AllBranches}}{{.Branch}} · {{end}}Invoice {{.Invoice}}, table {{.Table}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
   {{else}}<p class="muted">No discounts given.</p>{{end}}
   {{if .Discounts}}<div class="total"><span>Total discounts</span><b>{{money .DiscountTotal}}</b></div>{{end}}
 </section>
 <section class="card">
   <h2>Removed from bills by staff</h2>
-  {{range .Removed}}<div class="lrow wrap"><span class="grow">Table {{.Table}}: {{.Qty}} × {{.Item}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
+  {{range .Removed}}<div class="lrow wrap"><span class="grow">{{if $.Staff.AllBranches}}{{.Branch}} · {{end}}Table {{.Table}}: {{.Qty}} × {{.Item}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
   {{else}}<p class="muted">Nothing removed.</p>{{end}}
 </section>
 <section class="card">
   <h2>Closed without payment</h2>
-  {{range .Unpaid}}<div class="lrow wrap"><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}} · {{.At}}</span></div>
+  {{range .Unpaid}}<div class="lrow wrap"><span class="grow">{{if $.Staff.AllBranches}}{{.Branch}} · {{end}}{{.Detail}}</span><span class="muted">{{.Who}} · {{.At}}</span></div>
   {{else}}<p class="muted">None.</p>{{end}}
 </section>
-{{if .OpenBills}}<p class="warn noprint">{{.OpenBills}} bills are still open. Close or take payment for them on the <a href="/staff/counter">Counter</a> before closing.</p>{{end}}
+{{if .OpenBills}}<p class="warn noprint">{{.OpenBills}} bills are still open. Close or take payment for them on the <a href="/staff/counter">Counter</a>{{if .Staff.AllBranches}} of each branch{{end}} before closing.</p>{{end}}
 {{template "sfoot" .}}{{end}}
 
 {{define "owner_activity"}}{{template "shead" .}}
 <h1>Activity log</h1>
 <p class="muted">Who changed prices, removed items, took payments, closed bills without payment, and changed staff or charges. The latest 300 entries.</p>
 <div class="list">
-{{range .Rows}}<div class="lrow wrap"><span class="muted act-at">{{.At}}</span><b>{{.Action}}</b><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}}</span></div>
+{{range .Rows}}<div class="lrow wrap"><span class="muted act-at">{{.At}}</span>{{if $.Staff.AllBranches}}<span class="badge">{{.Branch}}</span>{{end}}<b>{{.Action}}</b><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}}</span></div>
 {{else}}<div class="lrow"><span class="muted">Nothing recorded yet.</span></div>{{end}}
 </div>
+{{template "sfoot" .}}{{end}}
+
+{{define "pick_branch"}}{{template "shead" .}}
+<h1>Pick a branch</h1>
+<p class="muted">You are looking at all branches. This page works on one branch at a time.</p>
+<div class="cgrid">
+  {{range .Staff.Branches}}
+  <form method="post" action="/owner/branch" class="card pcard">
+    <input type="hidden" name="branch" value="{{.ID}}"><input type="hidden" name="next" value="{{$.Next}}">
+    <div class="pbody"><b>{{.Label}}</b>{{if eq .Status "closed"}} <span class="badge">Closed for now</span>{{end}}</div>
+    <button class="btn">Open</button>
+  </form>
+  {{end}}
+</div>
+{{template "sfoot" .}}{{end}}
+
+{{define "owner_branches"}}{{template "shead" .}}
+<div class="pagehead"><h1>Branches</h1><span class="muted">{{.InUse}} of {{.Max}} in use</span></div>
+{{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+{{if eq .Done "added"}}<p class="okmsg">Branch added. Pick it in “Working in” to add its tables and staff.</p>
+{{else if eq .Done "saved"}}<p class="okmsg">Saved.</p>
+{{else if eq .Done "closed"}}<p class="okmsg">Branch closed for now. Guests there see “Temporarily closed”.</p>
+{{else if eq .Done "archived"}}<p class="okmsg">Branch archived. Its staff are logged out and its QR codes no longer work.</p>
+{{else if eq .Done "active"}}<p class="okmsg">Branch open again.</p>{{end}}
+<div class="cgrid">
+  {{range .Rows}}
+  <div class="card pcard{{if eq .Status "archived"}} off{{end}}">
+    <div class="pbody">
+      <span><b>{{if .BranchName}}{{.BranchName}}{{else}}{{$.Staff.R.BusinessName}}{{end}}</b>{{if .Code}} <span class="badge">{{.Code}}</span>{{end}}
+        {{if eq .Status "closed"}} <span class="badge">Closed for now</span>{{else if eq .Status "archived"}} <span class="badge">Archived</span>{{end}}
+        {{if and (eq .ID $.Staff.R.ID) (not $.Staff.AllBranches)}} <span class="badge">Working in</span>{{end}}</span>
+      {{if not .BranchName}}<span class="muted small1">No branch name yet. Give it one so guests and staff can tell your branches apart.</span>{{end}}
+      {{if or .Address .Phone}}<span class="muted small1">{{.Address}}{{if and .Address .Phone}} · {{end}}{{.Phone}}</span>{{end}}
+      <span class="small1">Today {{money .Sales}} · {{.Tables}} tables · {{.People}} staff</span>
+    </div>
+    <details class="pwreset"><summary>Edit</summary>
+      <form method="post" action="/owner/branches/{{.ID}}" class="form">
+        <label>Branch name <input name="branch_name" value="{{.BranchName}}" maxlength="40" placeholder="e.g. Gulshan"></label>
+        <label>Invoice code (up to 6 letters) <input name="code" value="{{.Code}}" maxlength="6" placeholder="e.g. GUL" autocapitalize="characters"></label>
+        <label>Address <input name="address" value="{{.Address}}" maxlength="120"></label>
+        <label>Phone <input name="phone" value="{{.Phone}}" maxlength="20" inputmode="tel"></label>
+        <button class="btn sm">Save</button>
+      </form>
+    </details>
+    <div class="qracts">
+      {{if eq .Status "active"}}
+        <form method="post" action="/owner/branches/{{.ID}}/status" data-confirm="Close this branch for now? Guests can't order there until you open it again."><input type="hidden" name="status" value="closed"><button class="btn sm ghost">Close for now</button></form>
+      {{else}}
+        <form method="post" action="/owner/branches/{{.ID}}/status"><input type="hidden" name="status" value="active"><button class="btn sm">{{if eq .Status "archived"}}Bring back{{else}}Open again{{end}}</button></form>
+      {{end}}
+      {{if ne .Status "archived"}}
+        <form method="post" action="/owner/branches/{{.ID}}/status" data-confirm="Archive this branch? Its staff can't log in and its QR codes stop working. Its sales stay in your reports, and you can bring it back."><input type="hidden" name="status" value="archived"><button class="btn sm ghost">Archive</button></form>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</div>
+<form method="post" action="/owner/branches" class="card form rowform">
+  <h2>Add a branch</h2>
+  <label>Branch name <input name="branch_name" required maxlength="40" placeholder="e.g. Gulshan"></label>
+  <label>Invoice code (up to 6 letters) <input name="code" maxlength="6" placeholder="e.g. GUL" autocapitalize="characters"></label>
+  <label>Address <input name="address" maxlength="120"></label>
+  <label>Phone <input name="phone" maxlength="20" inputmode="tel"></label>
+  <label>Copy from <select name="from"><option value="0">Nothing, start empty</option>
+    {{range .Staff.Branches}}<option value="{{.ID}}"{{if eq .ID $.Staff.R.ID}} selected{{end}}>{{.Label}}</option>{{end}}</select></label>
+  <fieldset class="checks"><legend>What to copy</legend>
+    <label><input type="checkbox" name="copy_menu" value="1" checked> Menu: categories, dishes, prices, photos and options</label>
+    <label><input type="checkbox" name="copy_settings" value="1" checked> Settings: VAT, service charge, hours, ticket colours, accept rule</label>
+    <label><input type="checkbox" name="copy_brand" value="1" checked> Logo, colour and tagline</label>
+  </fieldset>
+  <button class="btn">Add branch</button>
+</form>
+<p class="muted">Tables and staff are not copied: each branch gets its own QR codes and its own people. After copying, each branch's menu is its own: a price changed in one branch stays in that branch. Each branch counts its own invoice numbers; with a code they print as GUL-0042.</p>
+{{template "sfoot" .}}{{end}}
+
+{{/* by_branch is one line per branch with its bills and sales, and the total; takes []branchSales. */}}
+{{define "by_branch"}}<section class="card">
+  <h2>By branch</h2>
+  {{range .}}{{if or .Sales (ne .Status "archived")}}<div class="lrow wrap"><span class="grow"><b>{{.Branch}}</b>{{if eq .Status "closed"}} <span class="badge">Closed for now</span>{{else if eq .Status "archived"}} <span class="badge">Archived</span>{{end}}</span>
+    <span class="muted">{{.Bills}} bills</span><b>{{money .Sales}}</b></div>{{end}}{{end}}
+</section>{{end}}
+
+{{define "dashboard_all"}}{{template "shead" .}}
+<div class="pagehead"><h1>Today, all branches</h1>
+  <div class="qracts"><a class="btn ghost sm" href="/owner/closing">Closing report</a><a class="btn ghost sm" href="/owner/reports">Reports</a></div></div>
+{{if .AwaitingEmail}}<p class="warn"><b>Guests can't order yet.</b> Confirm your email first: open the link we sent{{with .Staff.Email}} to {{.}}{{end}}. <a href="/staff/account">My account</a></p>{{end}}
+<div class="stats">
+  <div class="stat"><span>Sales today</span><b>{{money .Sales}}</b></div>
+  <div class="stat"><span>Bills paid today</span><b>{{.BillsPaid}}</b></div>
+  <div class="stat"><span>Open bills now</span><b>{{.OpenBills}}</b></div>
+</div>
+<div class="cgrid">
+  {{range .Rows}}{{if ne .Status "archived"}}
+  <form method="post" action="/owner/branch" class="card pcard">
+    <input type="hidden" name="branch" value="{{.ID}}"><input type="hidden" name="next" value="/owner">
+    <div class="pbody"><b>{{.Branch}}</b>{{if eq .Status "closed"}} <span class="badge">Closed for now</span>{{end}}
+      <span>{{money .Sales}} · {{.Bills}} bills</span>
+      <span class="muted small1">{{.OpenBills}} open now · rating {{if .Rating.Valid}}{{printf "%.1f" .Rating.Float64}} ★{{else}}–{{end}}</span></div>
+    <button class="btn sm ghost">Open</button>
+  </form>
+  {{end}}{{end}}
+</div>
+<p class="muted">Pick a branch to see its kitchen, counter, menu, tables, staff and settings.</p>
 {{template "sfoot" .}}{{end}}

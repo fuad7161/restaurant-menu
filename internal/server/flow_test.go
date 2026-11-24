@@ -247,7 +247,7 @@ func TestReceiptAndExportNeedPayment(t *testing.T) {
 	staff := newTClient(t, srv)
 	staff.do("POST", "/login", url.Values{"phone": {"01700000000"}, "password": {"demo1234"}})
 	code, body := staff.do("GET", "/owner/export/payments.csv", nil)
-	if code != 200 || !strings.HasPrefix(body, "\xEF\xBB\xBFtime,invoice,table,group,amount,discount,discount reason,method,marked by") {
+	if code != 200 || !strings.HasPrefix(body, "\xEF\xBB\xBFtime,branch,invoice,table,group,amount,discount,discount reason,method,marked by") {
 		t.Errorf("payments export: %d %q", code, body[:min(60, len(body))])
 	}
 	if code, _ := staff.do("GET", "/owner/export/secrets.csv", nil); code != 404 {

@@ -137,10 +137,9 @@ func deviceToken(w http.ResponseWriter, r *http.Request) string {
 
 func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 	c := &gctx{Tok: r.PathValue("tok"), Lang: i18n.Lang(r)}
-	err := a.db.QueryRow(`SELECT t.id,t.label,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
-		FROM tables t JOIN restaurants r ON r.id=t.restaurant_id WHERE t.qr_token=? AND t.is_active`, c.Tok).
-		Scan(append([]any{&c.Tbl.ID, &c.Tbl.Label, &c.R.ID, &c.R.Name, &c.R.VAT, &c.R.Service, &c.R.IsOpen, &c.R.RequireAccept,
-			&c.R.Logo, &c.R.Color, &c.R.Tagline, &c.R.Address, &c.R.Phone, &c.R.Networks}, c.R.extraDest()...)...)
+	err := a.db.QueryRow(`SELECT t.id,t.label,`+restCols+`
+		FROM tables t JOIN restaurants r ON r.id=t.restaurant_id WHERE t.qr_token=? AND t.is_active AND r.status!='archived'`, c.Tok).
+		Scan(append([]any{&c.Tbl.ID, &c.Tbl.Label}, c.R.dest()...)...)
 	if err != nil {
 		http.NotFound(w, r)
 		return nil, false
@@ -179,6 +178,10 @@ func (a *App) gctx(w http.ResponseWriter, r *http.Request) (*gctx, bool) {
 		Scan(&g.ID, &g.Name, &g.Status, &g.IsStaff, &s.ID, &s.Label, &s.Status, &s.OpenedAt, &s.ClosedAt)
 	if err == nil {
 		c.S, c.G = &s, &g
+	}
+	// A branch the owner closed for now takes no orders, from guests or waiters.
+	if c.R.Closed() {
+		c.R.IsOpen = false
 	}
 	// "Take orders only during opening hours": outside them the menu shows as closed to guests.
 	// A waiter ordering for a table is not held to it.

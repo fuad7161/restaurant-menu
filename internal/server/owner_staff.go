@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -19,13 +18,19 @@ type staffRow struct {
 	ID                int64
 	Name, Phone, Role string
 	Password          string
+	CanManage         bool // the viewer may remove them and set their password
 }
 
 func (a *App) ownerStaff(w http.ResponseWriter, r *http.Request, s *Staff) {
 	people := database.List(a.db, `SELECT id,name,phone,role,password_enc FROM staff_users WHERE restaurant_id=? ORDER BY id`,
 		func(r *sql.Rows, p *staffRow) error { return r.Scan(&p.ID, &p.Name, &p.Phone, &p.Role, &p.Password) }, s.R.ID)
 	for i := range people {
-		people[i].Password = a.openPassword(people[i].Password)
+		people[i].CanManage = s.CanManage(people[i].Role)
+		if people[i].CanManage { // a manager never sees a manager's or the owner's password
+			people[i].Password = a.openPassword(people[i].Password)
+		} else {
+			people[i].Password = ""
+		}
 	}
 	w.Header().Set("Cache-Control", "no-store") // the page shows passwords
 	a.render(w, "owner_staff", M{"Staff": s, "Page": "staff", "People": people, "Err": r.URL.Query().Get("err"), "OK": r.URL.Query().Get("ok") != ""})
@@ -33,8 +38,8 @@ func (a *App) ownerStaff(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 	name, phone, pass, role := clean(r.FormValue("name"), 40), clean(r.FormValue("phone"), 20), r.FormValue("password"), r.FormValue("role")
-	if !slices.Contains(staffRoles, role) {
-		back(w, r, "/owner/staff?err=Choose+waiter,+kitchen+or+cashier.")
+	if !s.CanManage(role) {
+		back(w, r, "/owner/staff?err=Choose+one+of+the+roles+in+the+list.")
 		return
 	}
 	if name == "" || len(phone) < 6 || len(pass) < 8 {
@@ -52,12 +57,15 @@ func (a *App) staffCreate(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) staffDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if id := pathID(r, "id"); id != s.ID {
-		var name string
-		a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
+		var name, role string
+		a.db.QueryRow(`SELECT name,role FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name, &role)
 		// Their logins end with the account (staff_sessions cascade). An owner account can't be
-		// removed here: only the platform admin changes who owns a restaurant.
-		if res, err := a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=? AND role!='owner'`, id, s.R.ID); rows(res, err) == 1 {
-			a.audit(s.R.ID, s.Name, "staff removed", name)
+		// removed here: only the platform admin changes who owns a restaurant. A manager removes
+		// only kitchen, waiter and cashier.
+		if s.CanManage(role) {
+			if res, err := a.db.Exec(`DELETE FROM staff_users WHERE id=? AND restaurant_id=? AND role=?`, id, s.R.ID, role); rows(res, err) == 1 {
+				a.audit(s.R.ID, s.Name, "staff removed", name)
+			}
 		}
 	}
 	back(w, r, "/owner/staff")
@@ -78,10 +86,16 @@ func (a *App) staffPassword(w http.ResponseWriter, r *http.Request, s *Staff) {
 	if id == s.ID {
 		sealed = "" // the owner's own password is never kept in a readable form
 	}
-	var name string
-	a.db.QueryRow(`SELECT name FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name)
+	var name, role string
+	a.db.QueryRow(`SELECT name,role FROM staff_users WHERE id=? AND restaurant_id=?`, id, s.R.ID).Scan(&name, &role)
+	// The owner sets their own password here too; nobody sets another owner's, and a manager
+	// sets only kitchen, waiter and cashier passwords.
+	if !s.CanManage(role) && !(id == s.ID && role == "owner") {
+		back(w, r, "/owner/staff?err=The+password+could+not+be+changed.")
+		return
+	}
 	err := a.inTx(func(q database.Querier) error {
-		res, err := q.Exec(`UPDATE staff_users SET password_hash=?, password_enc=? WHERE id=? AND restaurant_id=? AND (role!='owner' OR id=?)`, string(hash), sealed, id, s.R.ID, s.ID)
+		res, err := q.Exec(`UPDATE staff_users SET password_hash=?, password_enc=? WHERE id=? AND restaurant_id=? AND role=?`, string(hash), sealed, id, s.R.ID, role)
 		if rows(res, err) != 1 {
 			if err == nil {
 				err = fmt.Errorf("staff %d not found", id)
@@ -131,6 +145,9 @@ func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 	warn := minutes("warn_minutes", 10)
 	late := max(minutes("late_minutes", 20), warn+1)
 	vat, svc := pctOf("vat"), pctOf("service")
+	if !s.Can(PermCharges) { // a manager can't change VAT or service charge
+		vat, svc = s.R.VAT, s.R.Service
+	}
 	if err := exec(a.db, `UPDATE restaurants SET vat_percent=?,service_percent=?,is_open=?,require_accept=?,open_time=?,close_time=?,last_order=?,warn_minutes=?,late_minutes=?,orders_in_hours=? WHERE id=?`,
 		vat, svc, r.FormValue("is_open") == "1", r.FormValue("require_accept") == "1",
 		hm("open_time"), hm("close_time"), hm("last_order"), warn, late, r.FormValue("orders_in_hours") == "1", s.R.ID); err != nil {
@@ -141,4 +158,39 @@ func (a *App) settingsSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 		a.audit(s.R.ID, s.Name, "charges changed", fmt.Sprintf("VAT %s%% → %s%%, service %s%% → %s%%", pct(s.R.VAT), pct(vat), pct(s.R.Service), pct(svc)))
 	}
 	back(w, r, "/owner/settings?saved=1")
+}
+
+// staffMove moves a person to another branch of the business and logs them out, so their next
+// login opens the new branch. Owner only.
+func (a *App) staffMove(w http.ResponseWriter, r *http.Request, s *Staff) {
+	id := pathID(r, "id")
+	var to int64
+	fmt.Sscan(r.FormValue("branch"), &to)
+	target := ""
+	for _, b := range s.Branches {
+		if b.ID == to {
+			target = b.Label
+		}
+	}
+	var name, role string
+	var from int64
+	err := a.db.QueryRow(`SELECT u.name,u.role,u.restaurant_id FROM staff_users u JOIN restaurants r ON r.id=u.restaurant_id
+		WHERE u.id=? AND r.business_id=?`, id, s.R.BusinessID).Scan(&name, &role, &from)
+	if err != nil || target == "" || role == "owner" {
+		http.NotFound(w, r)
+		return
+	}
+	err = a.inTx(func(q database.Querier) error {
+		if err := exec(q, `UPDATE staff_users SET restaurant_id=? WHERE id=?`, to, id); err != nil {
+			return err
+		}
+		return exec(q, `DELETE FROM staff_sessions WHERE staff_id=?`, id)
+	})
+	if err != nil {
+		serverError(w, err)
+		return
+	}
+	a.audit(from, s.Name, "staff moved", name+" → "+target)
+	a.audit(to, s.Name, "staff moved", name+" → "+target)
+	back(w, r, "/owner/staff")
 }

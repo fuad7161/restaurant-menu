@@ -148,7 +148,14 @@ var templateFuncs = template.FuncMap{
 		}
 		return "/uploads/" + storage.SmallName(name) + " 480w, /uploads/" + name + " 1200w"
 	},
-	"lower":    strings.ToLower,
+	"lower": strings.ToLower,
+	// title capitalises the first letter: "manager" → "Manager".
+	"title": func(s string) string {
+		if s == "" {
+			return s
+		}
+		return strings.ToUpper(s[:1]) + s[1:]
+	},
 	"itemTags": itemTags,
 	"hasTag":   hasTag,
 	"dishTags": func() []string { return dishTags },
@@ -184,6 +191,8 @@ var templateFuncs = template.FuncMap{
 		return s
 	},
 	"list": func(v ...int) []int { return v },
+	// words is list for strings: {{range (words "a" "b")}}
+	"words": func(v ...string) []string { return v },
 	"div": func(a int64, b int) int64 {
 		if b == 0 {
 			return 0

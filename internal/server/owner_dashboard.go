@@ -31,6 +31,7 @@ func (a *App) ownerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /owner/staff", a.need(PermStaffManage, a.staffCreate))
 	mux.HandleFunc("POST /owner/staff/{id}/delete", a.need(PermStaffManage, a.staffDelete))
 	mux.HandleFunc("POST /owner/staff/{id}/password", a.need(PermStaffManage, a.staffPassword))
+	mux.HandleFunc("POST /owner/staff/{id}/move", a.need(PermBranches, a.staffMove))
 	mux.HandleFunc("GET /owner/activity", a.need(PermActivity, a.activity))
 	mux.HandleFunc("GET /owner/reports", a.need(PermReports, a.reports))
 	mux.HandleFunc("GET /owner/closing", a.need(PermClosingReport, a.closing))
@@ -42,6 +43,9 @@ func (a *App) ownerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /owner/profile", a.need(PermProfile, a.profile))
 	mux.HandleFunc("POST /owner/profile", a.need(PermProfile, a.profileSave))
 	mux.HandleFunc("POST /owner/profile/logo/delete", a.need(PermProfile, a.logoDelete))
+	mux.HandleFunc("GET /owner/business", a.need(PermBusiness, a.business))
+	mux.HandleFunc("POST /owner/business", a.need(PermBusiness, a.businessSave))
+	mux.HandleFunc("POST /owner/business/logo/delete", a.need(PermBusiness, a.businessLogoDelete))
 }
 
 type methodRow struct {
@@ -63,6 +67,10 @@ type reviewRow struct {
 }
 
 func (a *App) dashboard(w http.ResponseWriter, r *http.Request, s *Staff) {
+	if s.AllBranches {
+		a.dashboardAll(w, s)
+		return
+	}
 	t := time.Now().In(a.loc)
 	dayStart := time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, a.loc).Unix()
 	rid := s.R.ID
@@ -89,4 +97,19 @@ func (a *App) dashboard(w http.ResponseWriter, r *http.Request, s *Staff) {
 		func(r *sql.Rows, v *reviewRow) error { return r.Scan(&v.Rating, &v.Comment, &v.Table, &v.At) }, rid)
 	a.render(w, "dashboard", M{"Staff": s, "Page": "owner", "AwaitingEmail": a.awaitingEmail(s.R), "Sales": sales, "BillsPaid": bills, "Methods": methods,
 		"OpenBills": openBills, "Tables": tables, "Items": items, "Avg": avg, "Top": top, "Reviews": reviews})
+}
+
+// dashboardAll is the owner's dashboard in "All branches" mode: today's sales, bills, open bills
+// and rating for each branch side by side, and the totals.
+func (a *App) dashboardAll(w http.ResponseWriter, s *Staff) {
+	rows := a.salesByBranch(s.R.BusinessID, a.dayStart(), now()+1)
+	var sales int64
+	var bills, open int
+	for _, b := range rows {
+		sales += b.Sales
+		bills += b.Bills
+		open += b.OpenBills
+	}
+	a.render(w, "dashboard_all", M{"Staff": s, "Page": "owner", "AwaitingEmail": a.awaitingEmail(s.R),
+		"Rows": rows, "Sales": sales, "BillsPaid": bills, "OpenBills": open})
 }

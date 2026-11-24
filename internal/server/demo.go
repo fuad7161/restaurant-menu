@@ -63,3 +63,36 @@ func (a *App) seedDemo() {
 		}
 	}
 }
+
+// seedDemoBranches makes the demo a business with two branches: the first is named Dhanmondi, and
+// a second, Gulshan, gets a copy of its menu and settings, two tables and a cashier (01700000004).
+func (a *App) seedDemoBranches() {
+	var first, bid int64
+	var n int
+	a.db.QueryRow(`SELECT id,business_id,(SELECT COUNT(*) FROM restaurants) FROM restaurants WHERE slug='demo'`).Scan(&first, &bid, &n)
+	if first == 0 || n > 1 {
+		return
+	}
+	a.db.Exec(`UPDATE restaurants SET branch_name='Dhanmondi',branch_code='DHN' WHERE id=?`, first)
+	err := a.inTx(func(q database.Querier) error {
+		rid, err := database.InsertID(q, `INSERT INTO restaurants(business_id,name,branch_name,branch_code,slug,vat_percent,service_percent,sort_order,created_at)
+			VALUES(?,'Demo Kitchen','Gulshan','GUL','demo-gulshan',5,10,1,?)`, bid, now())
+		if err != nil {
+			return err
+		}
+		for _, l := range []string{"1", "2"} {
+			if err := exec(q, `INSERT INTO tables(restaurant_id,label,qr_token) VALUES(?,?,?)`, rid, l, "demo-gulshan-"+l); err != nil {
+				return err
+			}
+		}
+		hash, _ := bcrypt.GenerateFromPassword([]byte("demo1234"), bcrypt.DefaultCost)
+		if err := exec(q, `INSERT INTO staff_users(restaurant_id,name,phone,password_hash,password_enc,role) VALUES(?,'Gulshan Cashier','01700000004',?,?,'cashier')`,
+			rid, string(hash), a.sealPassword("demo1234")); err != nil {
+			return err
+		}
+		return copyMenuTo(q, first, rid)
+	})
+	if err != nil {
+		log.Println("demo branches:", err)
+	}
+}

@@ -1,5 +1,10 @@
 package server
 
+import (
+	"fmt"
+	"strconv"
+)
+
 type Restaurant struct {
 	ID            int64
 	Name          string
@@ -23,6 +28,39 @@ type Restaurant struct {
 	BusinessName           string
 	BranchName, BranchCode string // "Gulshan", "GUL"; empty for a one-branch business
 	Status                 string // active | closed | archived
+}
+
+// Closed reports whether the owner has closed this branch for now: guests can't order, staff can
+// still log in.
+func (r Restaurant) Closed() bool { return r.Status == "closed" }
+
+// InvoiceLabel is how an invoice number is printed: "GUL-0042" when the branch has a code, or "42".
+func (r Restaurant) InvoiceLabel(n int64) string {
+	if r.BranchCode == "" {
+		return strconv.FormatInt(n, 10)
+	}
+	return fmt.Sprintf("%s-%04d", r.BranchCode, n)
+}
+
+// restCols reads a whole restaurant (alias r) into the fields returned by dest.
+// The name is the business's, and the logo, colour and tagline are the branch's own when it
+// overrides them, else the business's.
+const restCols = `r.id,(SELECT b.name FROM businesses b WHERE b.id=r.business_id),r.vat_percent,r.service_percent,r.is_open,r.require_accept,
+	COALESCE(NULLIF(r.logo,''),(SELECT b.logo FROM businesses b WHERE b.id=r.business_id),''),
+	COALESCE(NULLIF(r.brand_color,''),(SELECT b.brand_color FROM businesses b WHERE b.id=r.business_id),'#8f1d21'),
+	COALESCE(NULLIF(r.tagline,''),(SELECT b.tagline FROM businesses b WHERE b.id=r.business_id),''),
+	r.address,r.phone,r.order_networks,` + restExtraCols
+
+func (r *Restaurant) dest() []any {
+	return append([]any{&r.ID, &r.Name, &r.VAT, &r.Service, &r.IsOpen, &r.RequireAccept,
+		&r.Logo, &r.Color, &r.Tagline, &r.Address, &r.Phone, &r.Networks}, r.extraDest()...)
+}
+
+// Branch is one entry of an owner's branch switcher.
+type Branch struct {
+	ID          int64
+	Label, Code string // Label: the branch name, or the restaurant name when it has none
+	Status      string
 }
 
 // DisplayName is what guests and bills show: "Kacchi Ghar · Gulshan", or just the business name

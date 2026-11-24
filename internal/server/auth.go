@@ -21,7 +21,13 @@ type Staff struct {
 	EmailVerified     bool
 	R                 Restaurant
 	Lang              string // service screens: "en" or "bn" (see i18n.StaffLang)
+	// Owners work across every branch of their business (docs/plans/multi-branch.md).
+	Branches    []Branch // owner only: the business's branches that are not archived, for the switcher
+	AllBranches bool     // owner in "All branches" mode; R is then just a branch for the page layout
 }
+
+// MultiBranch reports whether this owner has more than one branch to switch between.
+func (s *Staff) MultiBranch() bool { return len(s.Branches) > 1 }
 
 func (a *App) staffRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
@@ -69,13 +75,37 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 		return nil
 	}
 	var s Staff
-	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,COALESCE(u.email,''),u.email_verified_at>0,r.id,r.name,r.vat_percent,r.service_percent,r.is_open,r.require_accept,r.logo,r.brand_color,r.tagline,r.address,r.phone,r.order_networks,`+restExtraCols+`
-		FROM staff_sessions ss JOIN staff_users u ON u.id=ss.staff_id JOIN restaurants r ON r.id=u.restaurant_id
-		WHERE ss.token=? AND ss.expires_at>?`, c.Value, now()).
-		Scan(append([]any{&s.ID, &s.Name, &s.Phone, &s.Role, &s.Email, &s.EmailVerified, &s.R.ID, &s.R.Name, &s.R.VAT, &s.R.Service, &s.R.IsOpen, &s.R.RequireAccept,
-			&s.R.Logo, &s.R.Color, &s.R.Tagline, &s.R.Address, &s.R.Phone, &s.R.Networks}, s.R.extraDest()...)...)
+	var homeID, branchID int64
+	err = a.db.QueryRow(`SELECT u.id,u.name,u.phone,u.role,COALESCE(u.email,''),u.email_verified_at>0,u.restaurant_id,ss.branch_id
+		FROM staff_sessions ss JOIN staff_users u ON u.id=ss.staff_id WHERE ss.token=? AND ss.expires_at>?`, c.Value, now()).
+		Scan(&s.ID, &s.Name, &s.Phone, &s.Role, &s.Email, &s.EmailVerified, &homeID, &branchID)
 	if err != nil {
 		return nil
+	}
+	// Staff work in their own branch. The owner works in the branch chosen on this login, which
+	// must be one of their business's branches; with none chosen and several to choose from,
+	// they are in "All branches" mode.
+	rid := homeID
+	if s.Role == "owner" {
+		s.Branches = a.branchesOf(homeID)
+		rid = 0
+		for _, b := range s.Branches {
+			if b.ID == branchID {
+				rid = b.ID
+			}
+		}
+		if rid == 0 && len(s.Branches) > 0 {
+			rid, s.AllBranches = s.Branches[0].ID, len(s.Branches) > 1
+		}
+		if rid == 0 {
+			rid = homeID
+		}
+	}
+	if err := a.db.QueryRow(`SELECT `+restCols+` FROM restaurants r WHERE r.id=?`, rid).Scan(s.R.dest()...); err != nil {
+		return nil
+	}
+	if s.R.Status == "archived" && s.Role != "owner" {
+		return nil // an archived branch's staff can't work
 	}
 	if !a.cfg.EmailVerify {
 		// Email verification is switched off (EMAIL_VERIFY is not 1): treat every email as confirmed,
@@ -89,6 +119,13 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 // auth only checks that someone is logged in. Routes use need, which also checks the permission;
 // auth alone is for routes that check a permission per action inside the handler.
 func (a *App) auth(h func(http.ResponseWriter, *http.Request, *Staff)) http.HandlerFunc {
+	return a.authFor("", h)
+}
+
+// authFor is auth for a route that needs perm. An owner in "All branches" mode is asked to pick a
+// branch first, unless perm works across branches (allBranchPerms), so no page ever acts on a
+// branch the owner did not choose.
+func (a *App) authFor(perm string, h func(http.ResponseWriter, *http.Request, *Staff)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s := a.currentStaff(r)
 		if s == nil {
@@ -103,6 +140,10 @@ func (a *App) auth(h func(http.ResponseWriter, *http.Request, *Staff)) http.Hand
 				next = pageOf(r.Referer())
 			}
 			http.Redirect(w, r, loginURL(next), http.StatusSeeOther)
+			return
+		}
+		if s.AllBranches && !allBranchPerms[perm] {
+			a.pickBranch(w, r, s)
 			return
 		}
 		h(w, r, s)
@@ -179,8 +220,8 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var id int64
-	var hash, role string
-	err := a.db.QueryRow(`SELECT id,password_hash,role FROM staff_users WHERE phone=?`, phone).Scan(&id, &hash, &role)
+	var hash, role, status string
+	err := a.db.QueryRow(`SELECT u.id,u.password_hash,u.role,r.status FROM staff_users u JOIN restaurants r ON r.id=u.restaurant_id WHERE u.phone=?`, phone).Scan(&id, &hash, &role, &status)
 	if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(r.FormValue("password"))) != nil {
 		a.limits.hit(phoneKey, loginTries, loginLock)
 		a.limits.hit(ipKey, loginTriesNet, loginLock)
@@ -189,6 +230,11 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.limits.reset(phoneKey)
+	if status == "archived" && role != "owner" {
+		m["Err"] = "This branch is no longer in use. Ask the owner."
+		a.render(w, "login", m)
+		return
+	}
 	a.startStaffSession(w, r, id)
 	to := safeNext(r.FormValue("next"))
 	if to == "" {

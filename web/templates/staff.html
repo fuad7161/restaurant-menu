@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="{{themecolor $c}}">
-<title>{{if .}}{{with .Staff}}{{.R.Name}} · {{end}}{{end}}Bosho</title>
+<title>{{if .}}{{with .Staff}}{{.R.DisplayName}} · {{end}}{{end}}Bosho</title>
 {{if .}}{{with .Staff}}<link rel="manifest" href="{{asset "manifest.webmanifest"}}">
 <link rel="apple-touch-icon" href="{{asset "img/icon-192.png"}}">
 <meta name="apple-mobile-web-app-capable" content="yes">{{end}}{{end}}
@@ -191,14 +191,22 @@
      Wide screens: the sidebar stays open on the left and the top bar is hidden. */}}
 <header class="stop">
   <button class="menubtn" type="button" aria-label="{{t $L "s_open_menu"}}" aria-controls="snav" aria-expanded="false" onclick="toggleNav(true)">{{template "si_menu"}}</button>
-  <a class="brand" href="{{.Staff.Home}}">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
+  <a class="brand" href="{{.Staff.Home}}">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}{{if and .Staff.R.BranchName (not .Staff.AllBranches)}}<small class="branchname">{{.Staff.R.BranchName}}</small>{{end}}</b></a>
 </header>
 <div class="scrim" onclick="toggleNav(false)"></div>
 <aside id="snav" class="side" aria-label="{{t $L "s_main_menu"}}">
   <div class="sidehead">
-    <a class="brand" href="{{.Staff.Home}}">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}</b></a>
+    <a class="brand" href="{{.Staff.Home}}">{{template "rmark" .Staff.R}}<b>{{.Staff.R.Name}}{{if and .Staff.R.BranchName (not .Staff.AllBranches)}}<small class="branchname">{{.Staff.R.BranchName}}</small>{{end}}</b></a>
     <button class="menubtn close" type="button" aria-label="{{t $L "s_close_menu"}}" onclick="toggleNav(false)">{{template "si_close"}}</button>
   </div>
+  {{if .Staff.MultiBranch}}<form class="branchsw" method="post" action="/owner/branch">
+    <label>{{t $L "s_working_in"}}
+      <select name="branch" onchange="this.form.requestSubmit()">
+        <option value="all"{{if .Staff.AllBranches}} selected{{end}}>{{t $L "s_all_branches"}}</option>
+        {{range .Staff.Branches}}<option value="{{.ID}}"{{if and (not $.Staff.AllBranches) (eq .ID $.Staff.R.ID)}} selected{{end}}>{{.Label}}{{if eq .Status "closed"}} (closed){{end}}</option>{{end}}
+      </select></label>
+    <noscript><button class="btn sm">Go</button></noscript>
+  </form>{{end}}
   <nav>
     <p class="navlabel">{{t $L "s_service"}}</p>
     {{if .Staff.Can "kitchen.view"}}<a class="{{if eq .Page "kitchen"}}on{{end}}" href="/staff/kitchen">{{template "si_kitchen"}}{{t $L "s_kitchen"}}</a>{{end}}
@@ -207,7 +215,7 @@
     {{if .Staff.Can "menu.sold_out"}}<a class="{{if eq .Page "stock"}}on{{end}}" href="/staff/stock">{{template "si_stock"}}{{t $L "s_sold_out"}}</a>{{end}}
     {{if and (.Staff.Can "reports.closing") (not (.Staff.Can "dashboard.view"))}}<a class="{{if eq .Page "reports"}}on{{end}}" href="/owner/closing">{{template "si_chart"}}{{t $L "s_closing"}}</a>{{end}}
     {{if .Staff.Can "dashboard.view"}}
-    <p class="navlabel">{{t $L "s_owner"}}</p>
+    <p class="navlabel">{{if eq .Staff.Role "manager"}}{{t $L "s_manager"}}{{else}}{{t $L "s_owner"}}{{end}}</p>
     <a class="{{if eq .Page "owner"}}on{{end}}" href="/owner">{{template "si_chart"}}{{t $L "s_dashboard"}}</a>
     <a class="{{if eq .Page "menu"}}on{{end}}" href="/owner/menu">{{template "si_menu_book"}}{{t $L "s_menu"}}</a>
     <a class="{{if eq .Page "qr"}}on{{end}}" href="/owner/tables">{{template "si_qr"}}{{t $L "s_tables_qr"}}</a>
@@ -217,6 +225,8 @@
     <a class="{{if eq .Page "reports"}}on{{end}}" href="/owner/reports">{{template "si_chart"}}{{t $L "s_reports"}}</a>
     <a class="{{if eq .Page "activity"}}on{{end}}" href="/owner/activity">{{template "si_menu_book"}}{{t $L "s_activity"}}</a>
     {{end}}
+    {{if .Staff.Can "branch.manage"}}<a class="{{if eq .Page "branches"}}on{{end}}" href="/owner/branches">{{template "si_store"}}{{t $L "s_branches"}}</a>{{end}}
+    {{if and .Staff.MultiBranch (.Staff.Can "business.profile")}}<a class="{{if eq .Page "business"}}on{{end}}" href="/owner/business">{{template "si_store"}}{{t $L "s_business"}}</a>{{end}}
     <a class="{{if eq .Page "account"}}on{{end}}" href="/staff/account">{{template "si_people"}}{{t $L "s_account"}}</a>
   </nav>
   <a class="langsw" href="/staff/lang?l={{if eq $L "bn"}}en{{else}}bn{{end}}" lang="{{if eq $L "bn"}}en{{else}}bn{{end}}">{{t $L "s_lang_switch"}}</a>
@@ -248,7 +258,7 @@
 <div class="pagehead"><h1>{{t $L "s_kitchen"}}</h1>
   <button class="btn ghost sm" id="soundbtn" data-on="{{t $L "s_sound_is_on"}}" onclick="enableSound(this)">{{t $L "s_sound_on"}}</button></div>
 <p class="warn wakenote" hidden>{{t $L "s_wake_note"}}</p>
-{{if not .Staff.R.IsOpen}}<p class="warn">{{t $L "s_closed_warn"}}</p>{{end}}
+{{if .Staff.R.Closed}}<p class="warn">{{t $L "s_branch_closed_warn"}}</p>{{else if not .Staff.R.IsOpen}}<p class="warn">{{t $L "s_closed_warn"}}</p>{{end}}
 {{template "k_board" .}}
 {{template "sfoot" .}}{{end}}
 
@@ -399,9 +409,9 @@
 <body class="print">
 <p class="noprint"><button class="btn" type="button" data-print>🖨 {{t $L "s_print"}}</button> <a href="/staff/sessions/{{.B.ID}}">{{t $L "back"}}</a></p>
 <section class="bill receipt slip">
-  <p class="rhead"><b>{{$r.Name}}</b>{{if $r.Address}}<br>{{$r.Address}}{{end}}{{if $r.Phone}}<br>{{$r.Phone}}{{end}}{{if $r.BIN}}<br>{{t $L "bin"}}: {{$r.BIN}}{{end}}</p>
+  <p class="rhead"><b>{{$r.DisplayName}}</b>{{if $r.Address}}<br>{{$r.Address}}{{end}}{{if $r.Phone}}<br>{{$r.Phone}}{{end}}{{if $r.BIN}}<br>{{t $L "bin"}}: {{$r.BIN}}{{end}}</p>
   <h2>{{if .Bill.InvoiceNo}}{{t $L "receipt_title"}}{{else}}{{t $L "bill"}}{{end}}</h2>
-  <p class="rmeta">{{if .Bill.InvoiceNo}}{{tf $L "invoice_no" .Bill.InvoiceNo}} · {{end}}{{tf $L "s_table_group" .B.Table .B.Group}}<br>{{.At}}</p>
+  <p class="rmeta">{{if .Bill.InvoiceNo}}{{tf $L "invoice_no" ($r.InvoiceLabel .Bill.InvoiceNo)}} · {{end}}{{tf $L "s_table_group" .B.Table .B.Group}}<br>{{.At}}</p>
   {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $L .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
   <div class="total line"><span>{{t $L "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
   {{if .Bill.Discount}}<div class="total"><span>{{t $L "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>{{end}}

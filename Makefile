@@ -1,4 +1,4 @@
-.PHONY: up down logs build run test fmt psql backup restore-check loadtest
+.PHONY: up down logs build run test fmt psql backup restore-check loadtest create-admin
 
 # The laptop's Wi-Fi address, found fresh on every start, so QR codes keep working when the router gives a new IP.
 LAN_IP := $(shell ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p')
@@ -28,6 +28,9 @@ test:
 
 fmt:
 	gofmt -w cmd internal web
+
+create-admin: ## add a platform admin, or set a new password for one: make create-admin EMAIL=you@example.com
+	@set -a; [ -f .env ] && . ./.env; set +a; go run ./cmd/bosho create-admin "$(EMAIL)"
 
 psql:      ## open a shell on the online database (needs psql installed)
 	@set -a; . ./.env; set +a; psql "$$DATABASE_URL"

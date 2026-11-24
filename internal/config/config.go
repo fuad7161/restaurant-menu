@@ -11,6 +11,9 @@ type Config struct {
 	BaseURL     string // public address printed into QR codes; empty means "use the request host"
 	DatabaseURL string // PostgreSQL connection string
 	Demo        bool   // seed a sample restaurant when the database is empty
+	// DemoBranches gives the sample restaurant a second branch, to show the branch switcher and
+	// the all-branches reports. DEMO=1 sets both; tests seed one branch only.
+	DemoBranches bool
 
 	S3Endpoint  string // S3-compatible host[:port], for example s3.us-east-005.backblazeb2.com
 	S3AccessKey string
@@ -38,18 +41,19 @@ type Config struct {
 
 func Load() Config {
 	return Config{
-		Addr:        env("ADDR", ":8081"),
-		BaseURL:     strings.TrimRight(os.Getenv("BASE_URL"), "/"),
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		Demo:        os.Getenv("DEMO") == "1",
-		S3Endpoint:  os.Getenv("S3_ENDPOINT"),
-		S3AccessKey: os.Getenv("S3_ACCESS_KEY"),
-		S3SecretKey: os.Getenv("S3_SECRET_KEY"),
-		S3Bucket:    env("S3_BUCKET", "bosho-photos"),
-		S3Region:    os.Getenv("S3_REGION"),
-		S3UseSSL:    os.Getenv("S3_USE_SSL") != "0",
-		RedisURL:    os.Getenv("REDIS_URL"),
-		TrustProxy:  os.Getenv("TRUST_PROXY") == "1",
+		Addr:         env("ADDR", ":8081"),
+		BaseURL:      strings.TrimRight(os.Getenv("BASE_URL"), "/"),
+		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		Demo:         os.Getenv("DEMO") == "1",
+		DemoBranches: os.Getenv("DEMO") == "1",
+		S3Endpoint:   os.Getenv("S3_ENDPOINT"),
+		S3AccessKey:  os.Getenv("S3_ACCESS_KEY"),
+		S3SecretKey:  os.Getenv("S3_SECRET_KEY"),
+		S3Bucket:     env("S3_BUCKET", "bosho-photos"),
+		S3Region:     os.Getenv("S3_REGION"),
+		S3UseSSL:     os.Getenv("S3_USE_SSL") != "0",
+		RedisURL:     os.Getenv("REDIS_URL"),
+		TrustProxy:   os.Getenv("TRUST_PROXY") == "1",
 
 		BrevoAPIKey:  os.Getenv("BREVO_API_KEY"),
 		SMTPHost:     os.Getenv("SMTP_HOST"),

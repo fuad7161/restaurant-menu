@@ -2,13 +2,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,6 +27,10 @@ func main() {
 	// writes through the same handler.
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	cfg := config.Load()
+	if len(os.Args) > 1 && os.Args[1] == "create-admin" {
+		createAdmin(cfg)
+		return
+	}
 	if cfg.DatabaseURL == "" || cfg.S3Endpoint == "" {
 		log.Fatal("DATABASE_URL and S3_ENDPOINT must be set (copy .env.example to .env and fill it in)")
 	}
@@ -84,4 +91,30 @@ func main() {
 	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatal(err)
 	}
+}
+
+// createAdmin adds a platform admin, or sets a new password for one: bosho create-admin EMAIL.
+// The password is read from ADMIN_PASSWORD, or typed in (it shows on the screen).
+func createAdmin(cfg config.Config) {
+	if len(os.Args) != 3 || cfg.DatabaseURL == "" {
+		log.Fatal("usage: DATABASE_URL=... bosho create-admin you@example.com")
+	}
+	pass := os.Getenv("ADMIN_PASSWORD")
+	if pass == "" {
+		fmt.Fprint(os.Stderr, "Password for "+os.Args[2]+" (12 or more characters): ")
+		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		pass = strings.TrimRight(line, "\r\n")
+	}
+	db, err := database.Open(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+	if err := db.Migrate(); err != nil {
+		log.Fatal(err)
+	}
+	if err := server.CreateAdmin(db, os.Args[2], pass); err != nil {
+		log.Fatal("create-admin: ", err)
+	}
+	fmt.Println("Admin ready:", os.Args[2], "- log in at /admin/login")
 }

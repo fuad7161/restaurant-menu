@@ -1,0 +1,93 @@
+{{/* Platform admin panel (internal/server/admin.go). Admin pages pass .Admin, never .Staff. */}}
+
+{{define "admin_login"}}{{template "phead"}}
+<body class="plain">
+<main>
+  <div class="authwrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho admin</b></a>
+    <form method="post" action="/admin/login" class="card form authform">
+      <h1>Admin login</h1>
+      <p class="sub">We email you a 6-digit code after the password.</p>
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>Email <input name="email" type="email" value="{{.Email}}" required autocomplete="username"></label>
+      <label>Password <input name="password" type="password" required autocomplete="current-password"></label>
+      <button class="btn big">Continue</button>
+    </form>
+  </div>
+</main>
+</body></html>{{end}}
+
+{{define "admin_code"}}{{template "phead"}}
+<body class="plain">
+<main>
+  <div class="authwrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true">ব</span><b>Bosho admin</b></a>
+    <form method="post" action="/admin/code" class="card form authform">
+      <h1>Enter the code</h1>
+      <p class="sub">We emailed you a 6-digit code. It expires in 10 minutes.</p>
+      {{if .Err}}<p class="warn" role="alert">{{.Err}}</p>{{end}}
+      <label>Code <input name="code" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" autofocus></label>
+      <button class="btn big">Log in</button>
+      <p class="muted authfoot"><a href="/admin/login">Start again</a></p>
+    </form>
+  </div>
+</main>
+</body></html>{{end}}
+
+{{define "ahead"}}{{template "phead"}}
+<body class="plain admin">
+<main class="adminmain">
+<header class="pagehead"><a class="brand" href="/admin"><span class="mark" aria-hidden="true">ব</span><b>Bosho admin</b></a>
+  <form method="post" action="/admin/logout" class="inline"><span class="muted">{{.Admin.Email}}</span> <button class="btn sm ghost">Log out</button></form></header>
+{{end}}
+
+{{define "admin_home"}}{{template "ahead" .}}
+<div class="stats">
+  <div class="stat"><span>Businesses</span><b>{{.Businesses}}</b></div>
+  <div class="stat"><span>Branches in use</span><b>{{.BranchCount}}</b></div>
+  <div class="stat"><span>Email verification (EMAIL_VERIFY)</span><b>{{if .EmailVerify}}On{{else}}Off{{end}}</b></div>
+</div>
+<form method="get" class="rowform"><label>Search <input type="search" name="q" value="{{.Q}}" placeholder="Business, owner, phone or email"></label><button class="btn">Search</button></form>
+<div class="list">
+{{range .Rows}}<a class="lrow wrap" href="/admin/businesses/{{.ID}}">
+  <span class="grow"><b>{{.Name}}</b><br><span class="muted small1">{{.Owner}} · {{.Phone}}{{if .Email}} · {{.Email}}{{if .Verified}} ✓{{else}} (not confirmed){{end}}{{end}}</span></span>
+  <span class="muted">{{.Branches}} of {{.Max}} branches</span>
+  <span class="muted">{{.OrdersToday}} orders today · {{.Orders}} in all</span>
+  <span class="muted small1">since {{ago .Created}}</span></a>
+{{else}}<div class="lrow"><span class="muted">No businesses{{if .Q}} match “{{.Q}}”{{end}}.</span></div>{{end}}
+</div>
+</main></body></html>{{end}}
+
+{{define "admin_business"}}{{template "ahead" .}}
+{{$b := .B}}
+<p><a href="/admin">← All businesses</a></p>
+<h1>{{$b.Name}}</h1>
+<p class="muted">Owner: {{$b.Owner}} · {{$b.Phone}}{{if $b.Email}} · {{$b.Email}}{{if $b.Verified}} (confirmed){{else}} (not confirmed){{end}}{{end}} · signed up {{ago $b.Created}}</p>
+{{if .Saved}}<p class="okmsg">Saved.</p>{{end}}
+{{if .Err}}<p class="warn">{{.Err}}</p>{{end}}
+<div class="two">
+  <form method="post" action="/admin/businesses/{{$b.ID}}/branches" class="card form">
+    <h2>Branch limit</h2>
+    <p class="muted">{{$b.Branches}} branches in use. A lower limit never closes a branch; it only stops new ones.</p>
+    <label>Branches allowed <input name="max_branches" type="number" min="1" max="100" value="{{$b.Max}}" required></label>
+    <button class="btn">Save</button>
+  </form>
+  <form method="post" action="/admin/businesses/{{$b.ID}}/verify" class="card form">
+    <h2>Email verification</h2>
+    <p class="muted">Must the owner confirm their email before guests can order? “Platform setting” follows EMAIL_VERIFY, which is now {{if .EmailVerify}}on{{else}}off: nobody waits, whatever is chosen here{{end}}.</p>
+    {{range $v := (words "global" "required" "off")}}<label class="choice"><input type="radio" name="verify" value="{{$v}}"{{if eq $v $b.Verify}} checked{{end}}>
+      {{if eq $v "global"}}Platform setting{{else if eq $v "required"}}Always required{{else}}Never required{{end}}</label>{{end}}
+    {{if eq $b.Verify "mixed"}}<p class="warn">Its branches have different settings. Saving sets all of them.</p>{{end}}
+    <button class="btn">Save</button>
+  </form>
+</div>
+<section class="card">
+  <h2>Branches</h2>
+  {{range .Branches}}<div class="lrow wrap"><span class="grow"><b>{{.Label}}</b>{{if .Code}} <span class="badge">{{.Code}}</span>{{end}}</span><span class="muted">{{.Status}}</span></div>{{end}}
+</section>
+<section class="card">
+  <h2>Admin changes</h2>
+  {{range .Log}}<div class="lrow wrap"><span class="muted">{{ago .At}}</span><b>{{.Action}}</b><span class="grow">{{.Detail}}</span><span class="muted">{{.Who}}</span></div>
+  {{else}}<p class="muted">No changes by an admin yet.</p>{{end}}
+</section>
+</main></body></html>{{end}}

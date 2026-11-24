@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="{{themecolor .R.Color}}">
-<title>{{.R.Name}}</title>
+<title>{{.R.DisplayName}}</title>
 <link rel="stylesheet" href="{{asset "fonts/fonts.css"}}">
 <link rel="stylesheet" href="{{asset "app.css"}}">
 <style>{{theme .R.Color}}</style>
@@ -15,7 +15,7 @@
 {{template "ui" .Lang}}
 <header class="gtop"><div class="in">
   {{template "rmark" .R}}
-  <div class="who"><strong>{{.R.Name}}</strong>
+  <div class="who"><strong>{{.R.DisplayName}}</strong>
   <span class="tbl">{{t .Lang "table"}} <b>{{.Tbl.Label}}</b>{{if .S}} · {{t .Lang "group"}} <b>{{.S.Label}}</b>{{end}}</span></div>
   <a class="lang" href="/t/{{.Tok}}/lang?l={{if eq .Lang "bn"}}en{{else}}bn{{end}}">{{if eq .Lang "bn"}}English{{else}}বাংলা{{end}}</a>
 </div></header>
@@ -61,7 +61,7 @@
   {{if .Hours}}<p class="muted hours">{{.Hours}}</p>{{end}}
   <h1>{{t .Lang "welcome"}}</h1>
   {{if .LastCall}}<p class="warn">⏰ {{.LastCall}}</p>{{end}}
-  {{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{end}}
+  {{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{else if .R.Closed}}<p class="warn">{{t .Lang "temp_closed"}}</p>{{end}}
   <form method="post" action="/t/{{.Tok}}/enter">
     <label>{{t .Lang "your_name"}}
       <input name="name" required maxlength="30" autocomplete="given-name" autofocus></label>
@@ -101,7 +101,7 @@
 {{define "dishpic"}}{{if .It.Photo}}<img src="/uploads/{{small .It.Photo}}" alt="" loading="lazy" width="480" height="480">{{else}}<img class="art" src="/static/img/{{.Art}}.svg" alt="" loading="lazy" width="120" height="100">{{end}}{{end}}
 
 {{define "guest_menu"}}{{template "ghead" .}}
-{{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{else if not .R.IsOpen}}<p class="warn">{{t .Lang "closed_now"}}</p>{{end}}
+{{if .R.NotReady}}<p class="warn">{{t .Lang "not_ready_yet"}}</p>{{else if .R.Closed}}<p class="warn">{{t .Lang "temp_closed"}}</p>{{else if not .R.IsOpen}}<p class="warn">{{t .Lang "closed_now"}}</p>{{end}}
 {{if ne .S.Status "open"}}<p class="warn">{{t .Lang "not_ordering"}}</p>{{end}}
 {{if .LastCall}}<p class="warn">⏰ {{.LastCall}}</p>{{end}}
 <div class="menutools">
@@ -295,7 +295,7 @@
 {{if .Sent}}<div class="sentbox" role="status">✓ {{.Sent}}</div>{{end}}
 {{if .Flash}}<p class="okmsg">{{.Flash}}</p>{{end}}
 {{if .Paid}}<div class="paidbox"><h1>✓ {{t .Lang "paid"}}</h1><p>{{t .Lang "thanks"}}</p>
-  {{if or .R.Address .R.Phone}}<p class="contact">{{.R.Name}}{{if .R.Address}} · {{.R.Address}}{{end}}{{if .R.Phone}} · <a href="tel:{{.R.Phone}}">{{.R.Phone}}</a>{{end}}</p>{{end}}</div>
+  {{if or .R.Address .R.Phone}}<p class="contact">{{.R.DisplayName}}{{if .R.Address}} · {{.R.Address}}{{end}}{{if .R.Phone}} · <a href="tel:{{.R.Phone}}">{{.R.Phone}}</a>{{end}}</p>{{end}}</div>
   <p><a class="btn ghost big" href="/t/{{.Tok}}/receipt">🧾 {{t .Lang "receipt"}}</a></p>{{end}}
 {{if not .Orders}}<div class="card empty"><p class="muted">{{t .Lang "no_orders"}}</p><a class="btn" href="/t/{{.Tok}}">{{t .Lang "menu"}}</a></div>{{end}}
 
@@ -393,8 +393,8 @@
 <p class="noprint"><a href="/t/{{.Tok}}/orders">← {{t .Lang "back"}}</a></p>
 <section class="bill receipt">
   <h2>{{t .Lang "receipt_title"}}</h2>
-  <p class="rhead"><b>{{.R.Name}}</b>{{if .R.Address}}<br>{{.R.Address}}{{end}}{{if .R.Phone}}<br>{{.R.Phone}}{{end}}{{if .R.BIN}}<br>{{t .Lang "bin"}}: {{.R.BIN}}{{end}}</p>
-  <p class="rmeta muted">{{if .Bill.InvoiceNo}}{{tf .Lang "invoice_no" .Bill.InvoiceNo}} · {{end}}{{t .Lang "table"}} {{.Tbl.Label}} · {{t .Lang "group"}} {{.S.Label}}<br>{{.PaidAt}}{{if not .Bill.InvoiceNo}} · #{{.Ref}}{{end}}</p>
+  <p class="rhead"><b>{{.R.DisplayName}}</b>{{if .R.Address}}<br>{{.R.Address}}{{end}}{{if .R.Phone}}<br>{{.R.Phone}}{{end}}{{if .R.BIN}}<br>{{t .Lang "bin"}}: {{.R.BIN}}{{end}}</p>
+  <p class="rmeta muted">{{if .Bill.InvoiceNo}}{{tf .Lang "invoice_no" (.R.InvoiceLabel .Bill.InvoiceNo)}} · {{end}}{{t .Lang "table"}} {{.Tbl.Label}} · {{t .Lang "group"}} {{.S.Label}}<br>{{.PaidAt}}{{if not .Bill.InvoiceNo}} · #{{.Ref}}{{end}}</p>
   {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $.Lang .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
   <div class="total line"><span>{{t .Lang "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
   {{if .Bill.Discount}}<div class="total"><span>{{t .Lang "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>{{end}}
