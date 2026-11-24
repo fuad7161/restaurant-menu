@@ -178,10 +178,27 @@ func (a *App) bill(sid int64, r Restaurant) Bill {
 	for _, l := range b.Lines {
 		b.Subtotal += l.Amount
 	}
-	b.Service = money.Percent(b.Subtotal, r.Service)
-	b.VAT = money.Percent(b.Subtotal, r.VAT)
-	b.Total = b.Subtotal + b.Service + b.VAT
+	var amount int64
+	a.db.QueryRow(`SELECT discount_percent,discount_amount,discount_reason,discount_by,invoice_no FROM table_sessions WHERE id=?`, sid).
+		Scan(&b.DiscountPercent, &amount, &b.DiscountReason, &b.DiscountBy, &b.InvoiceNo)
+	b.Discount, b.Service, b.VAT, b.Total = billTotals(b.Subtotal, b.DiscountPercent, amount, r)
 	return b
+}
+
+// billTotals works out a bill from its subtotal: the discount (a percent, or else a fixed amount,
+// never more than the subtotal) comes off first, then service charge and VAT on what is left.
+// The counter list uses it too, so both always agree.
+func billTotals(subtotal int64, discPercent float64, discAmount int64, r Restaurant) (discount, service, vat, total int64) {
+	if discPercent > 0 {
+		discount = money.Percent(subtotal, discPercent)
+	} else {
+		discount = discAmount
+	}
+	discount = max(0, min(discount, subtotal))
+	base := subtotal - discount
+	service = money.Percent(base, r.Service)
+	vat = money.Percent(base, r.VAT)
+	return discount, service, vat, base + service + vat
 }
 
 // estimateMinutes: longest prep time in the order plus 3 minutes per order already cooking.

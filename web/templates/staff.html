@@ -357,11 +357,28 @@
 {{end}}
 <section class="card bill">
   <div class="total"><span>{{t $L "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  {{if .Bill.Discount}}<div class="total"><span>{{t $L "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>
+  <p class="muted small">{{tf $L "s_disc_by" .Bill.DiscountBy .Bill.DiscountReason}}</p>{{end}}
   <div class="total"><span>{{t $L "service_charge"}} ({{pct .Staff.R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>
   <div class="total"><span>{{t $L "vat"}} ({{pct .Staff.R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>
   <div class="total grand"><span>{{t $L "total"}}</span><b>{{money .Bill.Total}}</b></div>
+  {{if .Bill.Lines}}<p><a class="btn ghost sm" href="/staff/sessions/{{.B.ID}}/print" target="_blank">🖨 {{t $L "s_print_bill"}}</a></p>{{end}}
 </section>
 {{if or (eq .B.Status "open") (eq .B.Status "bill_requested")}}
+{{if and (.Staff.Can "bill.discount") .Bill.Lines}}<form method="post" action="/staff/sessions/{{.B.ID}}/discount" class="card form">
+  <h2>{{t $L "discount"}}</h2>
+  <p class="muted">{{t $L "s_disc_help"}}</p>
+  {{if eq .Err "discount"}}<p class="warn">{{t $L "s_disc_bad"}}</p>{{else if eq .Err "reason"}}<p class="warn">{{t $L "s_disc_need_why"}}</p>{{end}}
+  <div class="methods">
+    <label><input type="radio" name="kind" value="percent"{{if or .Bill.DiscountPercent (not .Bill.Discount)}} checked{{end}}> {{t $L "s_disc_percent"}}</label>
+    <label><input type="radio" name="kind" value="amount"{{if and .Bill.Discount (not .Bill.DiscountPercent)}} checked{{end}}> {{t $L "s_disc_amount"}}</label>
+  </div>
+  <label>{{t $L "s_disc_value"}} <input name="value" type="number" step="0.01" min="0" inputmode="decimal" required
+    value="{{if .Bill.DiscountPercent}}{{pct .Bill.DiscountPercent}}{{else if .Bill.Discount}}{{taka .Bill.Discount}}{{end}}"></label>
+  <label>{{t $L "s_disc_reason"}} <input name="reason" maxlength="120" required value="{{.Bill.DiscountReason}}" placeholder="{{t $L "s_disc_reason_ph"}}"></label>
+  <button class="btn">{{t $L "s_disc_apply"}}</button>
+  {{if .Bill.Discount}}<button class="btn ghost" name="remove" value="1" formnovalidate>{{t $L "s_disc_remove"}}</button>{{end}}
+</form>{{end}}
 {{if .Staff.Can "bill.mark_paid"}}<form method="post" action="/staff/sessions/{{.B.ID}}/paid" class="card form">
   <h2>{{t $L "s_take_payment"}}</h2>
   <div class="methods">
@@ -377,6 +394,24 @@
 </form>{{end}}
 {{end}}
 {{template "sfoot" .}}{{end}}
+
+{{define "staff_bill"}}{{template "phead" .}}{{$L := .Staff.Lang}}{{$r := .Staff.R}}
+<body class="print">
+<p class="noprint"><button class="btn" type="button" data-print>🖨 {{t $L "s_print"}}</button> <a href="/staff/sessions/{{.B.ID}}">{{t $L "back"}}</a></p>
+<section class="bill receipt slip">
+  <p class="rhead"><b>{{$r.Name}}</b>{{if $r.Address}}<br>{{$r.Address}}{{end}}{{if $r.Phone}}<br>{{$r.Phone}}{{end}}{{if $r.BIN}}<br>{{t $L "bin"}}: {{$r.BIN}}{{end}}</p>
+  <h2>{{if .Bill.InvoiceNo}}{{t $L "receipt_title"}}{{else}}{{t $L "bill"}}{{end}}</h2>
+  <p class="rmeta">{{if .Bill.InvoiceNo}}{{tf $L "invoice_no" .Bill.InvoiceNo}} · {{end}}{{tf $L "s_table_group" .B.Table .B.Group}}<br>{{.At}}</p>
+  {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $L .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
+  <div class="total line"><span>{{t $L "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  {{if .Bill.Discount}}<div class="total"><span>{{t $L "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>{{end}}
+  {{if .Bill.Service}}<div class="total"><span>{{t $L "service_charge"}} ({{pct $r.Service}}%)</span><span>{{money .Bill.Service}}</span></div>{{end}}
+  {{if .Bill.VAT}}<div class="total"><span>{{t $L "vat"}} ({{pct $r.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>{{end}}
+  <div class="total grand"><span>{{t $L "total"}}</span><b>{{money .Bill.Total}}</b></div>
+  {{if .Method}}<div class="total"><span>{{t $L "paid_by"}}</span><span>{{.Method}}</span></div>{{else}}<p class="rmeta">{{t $L "s_not_paid"}}</p>{{end}}
+  <p class="rthanks">{{t $L "thanks"}}</p>
+</section>
+</body></html>{{end}}
 
 {{define "staff_tables"}}{{template "shead" .}}{{$L := .Staff.Lang}}
 <h1>{{t $L "s_tables_title"}}</h1>

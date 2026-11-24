@@ -1,6 +1,6 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 7d77861 (plus uncommitted owner email and staff passwords) on 2026-11-24 -->
+<!-- presentation-sync: last synced at commit 4cbdcd9 (plus uncommitted discounts and printed bills) on 2026-11-24 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
@@ -59,15 +59,15 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 ## 7. The counter and the floor
 
 - Every open bill as a card; remove an item with a recorded reason [K-08].
-- Mark paid by cash, bKash, Nagad or card [K-09].
-- Mark a dish sold out and guests see it at once [K-06].
-- Staff sidebar, each role lands on its own page [K-10].
+- Discount with a written reason, then mark paid by cash, bKash, Nagad or card (recorded, not processed) [K-15, K-09].
+- Print the bill with the VAT number (BIN) and a running invoice number [K-16].
+- Mark a dish sold out and guests see it at once; each role lands on its own page [K-06, K-10].
 
 ## 8. The owner's view
 
 - Today: sales, bills paid, open bills, average rating; takings by method for the cash drawer [O-01, O-02].
 - Reports by day, dish and hour, with CSV export for the accountant [O-13, O-14].
-- Closing report each night: what was taken, removed or left unpaid [O-15].
+- Closing report each night: what was taken, discounted, removed or left unpaid [O-15].
 - Activity log of every price change, removal and payment [O-16]. Picture: reports screenshot. (screenshot needs retaking)
 
 ## 9. Set up in an afternoon
@@ -102,7 +102,7 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 
 ## 13. What comes next
 
-- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, discounts, kitchen ticket printing, subscription billing, multiple branches.
+- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, kitchen ticket printing, subscription billing, multiple branches.
 
 ## 14. Business plan
 
@@ -136,6 +136,7 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 | K-01 to K-05 | 6 |
 | K-06 to K-10 | 7 (K-07 also 5) |
 | K-11 to K-13 | 6 |
+| K-15, K-16 | 7 |
 | O-01 to O-03 | 8 |
 | O-13 to O-16 | 8 |
 | O-04 to O-10 | 9 (O-07 also 1, O-08 also 10) |

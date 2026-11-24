@@ -48,10 +48,10 @@ Each item is marked:
 2. **Refunds and failed-payment handling.** Later, with 1.
 3. **Split bill.** Later, with 1.
 4. **Partial and mixed payments.** Later.
-5. **Discounts and complimentary items.** Later. For now, removing an item with a reason is recorded in the activity log.
+5. **Discounts and complimentary items.** Done. The cashier or owner gives a percent or taka discount with a reason on the bill page; it is in the activity log, the closing report and the payments CSV. A free item is still an item removed with a reason.
 6. **Tips.** Later, with 1.
 7. **Digital receipt.** Done (frontend work).
-8. **VAT invoice format.** Your step first: check the current NBR rules and the restaurant's BIN with an accountant. The receipt can then get the required fields.
+8. **VAT invoice format.** Partly. The BIN (on Profile) and a running invoice number per restaurant are on the guest receipt and the counter's printed bill. Your step: check the current NBR rules (Mushak forms) with an accountant for any other required fields.
 9. **End-of-day closing report.** Done. On "Reports", then "Closing report", for any day: money by payment method, bills paid, items removed by staff, orders rejected, groups closed without payment, bills still open. It can be printed.
 
 ## 4. Kitchen and staff (must)

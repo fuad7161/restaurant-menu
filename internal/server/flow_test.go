@@ -16,6 +16,7 @@ import (
 
 	"bosho/internal/config"
 	"bosho/internal/database"
+	"bosho/internal/money"
 )
 
 // These tests run the real app against PostgreSQL. They need TEST_DATABASE_URL, for example a
@@ -246,7 +247,7 @@ func TestReceiptAndExportNeedPayment(t *testing.T) {
 	staff := newTClient(t, srv)
 	staff.do("POST", "/login", url.Values{"phone": {"01700000000"}, "password": {"demo1234"}})
 	code, body := staff.do("GET", "/owner/export/payments.csv", nil)
-	if code != 200 || !strings.HasPrefix(body, "\xEF\xBB\xBFtime,table,group,amount,method,marked by") {
+	if code != 200 || !strings.HasPrefix(body, "\xEF\xBB\xBFtime,invoice,table,group,amount,discount,discount reason,method,marked by") {
 		t.Errorf("payments export: %d %q", code, body[:min(60, len(body))])
 	}
 	if code, _ := staff.do("GET", "/owner/export/secrets.csv", nil); code != 404 {
@@ -254,5 +255,73 @@ func TestReceiptAndExportNeedPayment(t *testing.T) {
 	}
 	if b := staff.get("/owner/closing"); !regexp.MustCompile(`Closing report`).MatchString(b) {
 		t.Error("closing report does not render")
+	}
+}
+
+func TestDiscountAndInvoice(t *testing.T) {
+	a, srv := testApp(t)
+	g := newTClient(t, srv)
+	g.get("/t/demo-table-3")
+	g.do("POST", "/t/demo-table-3/enter", url.Values{"name": {"Nila"}, "choice": {"new"}})
+	g.post("/t/demo-table-3/cart/add", url.Values{"item_id": {itemID(t, a, "Borhani")}, "from": {"card"}, "qty": {"2"}})
+	g.do("POST", "/t/demo-table-3/order", url.Values{})
+	var sid int64
+	a.db.QueryRow(`SELECT session_id FROM orders ORDER BY id DESC LIMIT 1`).Scan(&sid)
+	if sid == 0 {
+		t.Fatal("no order placed")
+	}
+	var sub int64
+	a.db.QueryRow(`SELECT SUM(quantity*unit_price) FROM order_items i JOIN orders o ON o.id=i.order_id WHERE o.session_id=?`, sid).Scan(&sub)
+
+	staff := newTClient(t, srv)
+	staff.do("POST", "/login", url.Values{"phone": {"01700000000"}, "password": {"demo1234"}})
+	path := fmt.Sprintf("/staff/sessions/%d", sid)
+
+	// A discount needs a reason and a sensible value.
+	staff.do("POST", path+"/discount", url.Values{"kind": {"percent"}, "value": {"10"}})
+	staff.do("POST", path+"/discount", url.Values{"kind": {"percent"}, "value": {"150"}, "reason": {"x"}})
+	var p float64
+	a.db.QueryRow(`SELECT discount_percent FROM table_sessions WHERE id=?`, sid).Scan(&p)
+	if p != 0 {
+		t.Fatalf("discount saved without a reason or over 100%%: %v", p)
+	}
+	staff.do("POST", path+"/discount", url.Values{"kind": {"percent"}, "value": {"10"}, "reason": {"regular guest"}})
+
+	// Demo charges: service 10%, VAT 5%, both on the discounted subtotal.
+	disc := sub / 10
+	base := sub - disc
+	want := base + base/10 + base/20
+	if b := a.bill(sid, Restaurant{Service: 10, VAT: 5}); b.Discount != disc || b.Total != want {
+		t.Fatalf("bill: discount %d total %d, want %d and %d", b.Discount, b.Total, disc, want)
+	}
+	if page := staff.get(path); !strings.Contains(page, "Remove discount") || !strings.Contains(page, "regular guest") {
+		t.Error("bill page does not show the discount and its form")
+	}
+	if !strings.Contains(g.get("/t/demo-table-3/orders"), "−৳") {
+		t.Error("guest bill does not show the discount")
+	}
+
+	a.db.Exec(`UPDATE restaurants SET bin='000123456-0101'`)
+	staff.do("POST", path+"/paid", url.Values{"method": {"cash"}})
+	var amount, pdisc, inv int64
+	a.db.QueryRow(`SELECT amount,discount FROM payments WHERE session_id=?`, sid).Scan(&amount, &pdisc)
+	a.db.QueryRow(`SELECT invoice_no FROM table_sessions WHERE id=?`, sid).Scan(&inv)
+	if amount != want || pdisc != disc || inv == 0 {
+		t.Fatalf("payment %d discount %d invoice %d, want %d, %d and a number", amount, pdisc, inv, want, disc)
+	}
+	slip := staff.get(path + "/print")
+	for _, s := range []string{fmt.Sprintf("Invoice #%d", inv), "000123456-0101", money.Format(want)} {
+		if !strings.Contains(slip, s) {
+			t.Errorf("printed receipt does not show %q", s)
+		}
+	}
+	if !strings.Contains(staff.get("/owner/closing"), "regular guest") {
+		t.Error("closing report does not list the discount")
+	}
+	// A paid bill's discount can't be changed any more.
+	staff.do("POST", path+"/discount", url.Values{"remove": {"1"}})
+	a.db.QueryRow(`SELECT discount_percent FROM table_sessions WHERE id=?`, sid).Scan(&p)
+	if p != 10 {
+		t.Errorf("discount changed after payment: %v", p)
 	}
 }

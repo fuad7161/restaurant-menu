@@ -356,6 +356,7 @@
       <div class="two">
         <label>Address <input name="address" value="{{$r.Address}}" maxlength="120" placeholder="House 12, Road 5, Dhanmondi"></label>
         <label>Phone <input name="phone" value="{{$r.Phone}}" maxlength="20" inputmode="tel" placeholder="01XXXXXXXXX"></label>
+        <label>VAT registration number, BIN (optional) <input name="bin" value="{{$r.BIN}}" maxlength="30" placeholder="000123456-0101"><small class="muted">Printed on bills and receipts.</small></label>
         <label>Google review link (optional) <input name="review_url" value="{{$r.ReviewURL}}" maxlength="300" inputmode="url" placeholder="https://g.page/r/…/review"></label>
         <span class="muted small1">Guests who give 4 or 5 stars are asked to rate you on Google too.</span>
       </div>
@@ -474,6 +475,7 @@
 <div class="stats">
   <div class="stat"><span>Taken</span><b>{{money .Total}}</b></div>
   <div class="stat"><span>Bills paid</span><b>{{.Bills}}</b></div>
+  <div class="stat"><span>Discounts</span><b>{{money .DiscountTotal}}</b></div>
   <div class="stat"><span>Orders rejected</span><b>{{.Rejected}}</b></div>
   <div class="stat"><span>Bills open now</span><b>{{.OpenBills}}</b></div>
 </div>
@@ -481,6 +483,12 @@
   <h2>By payment method</h2>
   {{range .Methods}}<div class="total"><span>{{.Method}} ({{.Count}})</span><b>{{money .Amount}}</b></div>{{else}}<p class="muted">No payments on this day.</p>{{end}}
   <p class="muted">Count the cash drawer against the cash line. bKash, Nagad and card are what staff marked; check them against the statements.</p>
+</section>
+<section class="card">
+  <h2>Discounts</h2>
+  {{range .Discounts}}<div class="lrow wrap"><span class="grow">Invoice {{.Invoice}}, table {{.Table}} · <i>{{.Reason}}</i></span><span class="muted">{{.Who}}</span><b>{{money .Amount}}</b></div>
+  {{else}}<p class="muted">No discounts given.</p>{{end}}
+  {{if .Discounts}}<div class="total"><span>Total discounts</span><b>{{money .DiscountTotal}}</b></div>{{end}}
 </section>
 <section class="card">
   <h2>Removed from bills by staff</h2>

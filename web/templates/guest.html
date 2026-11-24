@@ -342,6 +342,7 @@
   <h2>{{t .Lang "bill"}}</h2>
   {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $.Lang .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
   <div class="total line"><span>{{t .Lang "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  {{if .Bill.Discount}}<div class="total"><span>{{t .Lang "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>{{end}}
   {{if .Bill.Service}}<div class="total"><span>{{t .Lang "service_charge"}} ({{pct .R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>{{end}}
   {{if .Bill.VAT}}<div class="total"><span>{{t .Lang "vat"}} ({{pct .R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>{{end}}
   <div class="total grand"><span>{{t .Lang "total"}}</span><b>{{money .Bill.Total}}</b></div>
@@ -392,10 +393,11 @@
 <p class="noprint"><a href="/t/{{.Tok}}/orders">← {{t .Lang "back"}}</a></p>
 <section class="bill receipt">
   <h2>{{t .Lang "receipt_title"}}</h2>
-  <p class="rhead"><b>{{.R.Name}}</b>{{if .R.Address}}<br>{{.R.Address}}{{end}}{{if .R.Phone}}<br>{{.R.Phone}}{{end}}</p>
-  <p class="rmeta muted">{{t .Lang "table"}} {{.Tbl.Label}} · {{t .Lang "group"}} {{.S.Label}}<br>{{.PaidAt}} · #{{.Ref}}</p>
+  <p class="rhead"><b>{{.R.Name}}</b>{{if .R.Address}}<br>{{.R.Address}}{{end}}{{if .R.Phone}}<br>{{.R.Phone}}{{end}}{{if .R.BIN}}<br>{{t .Lang "bin"}}: {{.R.BIN}}{{end}}</p>
+  <p class="rmeta muted">{{if .Bill.InvoiceNo}}{{tf .Lang "invoice_no" .Bill.InvoiceNo}} · {{end}}{{t .Lang "table"}} {{.Tbl.Label}} · {{t .Lang "group"}} {{.S.Label}}<br>{{.PaidAt}}{{if not .Bill.InvoiceNo}} · #{{.Ref}}{{end}}</p>
   {{range .Bill.Lines}}<div class="total"><span>{{.Qty}} × {{pick $.Lang .NameBn .NameEn}}</span><span>{{money .Amount}}</span></div>{{end}}
   <div class="total line"><span>{{t .Lang "subtotal"}}</span><span>{{money .Bill.Subtotal}}</span></div>
+  {{if .Bill.Discount}}<div class="total"><span>{{t .Lang "discount"}}{{if .Bill.DiscountPercent}} ({{pct .Bill.DiscountPercent}}%){{end}}</span><span>−{{money .Bill.Discount}}</span></div>{{end}}
   {{if .Bill.Service}}<div class="total"><span>{{t .Lang "service_charge"}} ({{pct .R.Service}}%)</span><span>{{money .Bill.Service}}</span></div>{{end}}
   {{if .Bill.VAT}}<div class="total"><span>{{t .Lang "vat"}} ({{pct .R.VAT}}%)</span><span>{{money .Bill.VAT}}</span></div>{{end}}
   <div class="total grand"><span>{{t .Lang "total"}}</span><b>{{money .Bill.Total}}</b></div>

@@ -57,6 +57,8 @@ func (a *App) staffRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /staff/sessions/{id}", a.need(PermBillView, a.sessionDetail))
 	mux.HandleFunc("POST /staff/sessions/{id}/paid", a.need(PermBillPaid, a.sessionPaid))
 	mux.HandleFunc("POST /staff/sessions/{id}/close", a.need(PermBillClose, a.sessionClose))
+	mux.HandleFunc("POST /staff/sessions/{id}/discount", a.need(PermBillDiscount, a.sessionDiscount))
+	mux.HandleFunc("GET /staff/sessions/{id}/print", a.need(PermBillView, a.sessionPrint))
 	mux.HandleFunc("GET /staff/tables", a.need(PermTablesOrder, a.staffTables))
 	mux.HandleFunc("POST /staff/tables/{id}/open", a.need(PermTablesOrder, a.staffOpenTable))
 }

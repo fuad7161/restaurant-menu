@@ -22,12 +22,13 @@ const (
 	PermCallDone      = "call.done"
 	PermStock         = "menu.sold_out"
 
-	PermCounterView = "bill.counter"
-	PermBillView    = "bill.view"
-	PermBillPaid    = "bill.mark_paid"
-	PermBillVoid    = "bill.remove_item"
-	PermBillClose   = "bill.close_unpaid"
-	PermTablesOrder = "tables.order_for_guest"
+	PermCounterView  = "bill.counter"
+	PermBillView     = "bill.view"
+	PermBillPaid     = "bill.mark_paid"
+	PermBillVoid     = "bill.remove_item"
+	PermBillClose    = "bill.close_unpaid"
+	PermBillDiscount = "bill.discount" // a discount with a reason, recorded in the activity log
+	PermTablesOrder  = "tables.order_for_guest"
 
 	PermDashboard     = "dashboard.view"
 	PermMenuEdit      = "menu.edit"
@@ -45,12 +46,12 @@ const (
 var rolePerms = map[string]map[string]bool{
 	"owner": set(PermAccount, PermOwnPassword, PermOwnEmail, PermKitchenView, PermOrderAccept, PermOrderReady, PermOrderServe, PermOrderUndo,
 		PermChangeRequest, PermCallDone, PermStock, PermCounterView, PermBillView, PermBillPaid, PermBillVoid,
-		PermBillClose, PermTablesOrder, PermDashboard, PermMenuEdit, PermTablesManage, PermStaffManage,
+		PermBillClose, PermBillDiscount, PermTablesOrder, PermDashboard, PermMenuEdit, PermTablesManage, PermStaffManage,
 		PermActivity, PermReports, PermClosingReport, PermSettings, PermNetworks, PermProfile),
 	"kitchen": set(PermAccount, PermKitchenView, PermOrderAccept, PermOrderReady, PermChangeRequest, PermStock),
 	"waiter": set(PermAccount, PermKitchenView, PermOrderServe, PermChangeRequest, PermCallDone, PermStock,
 		PermBillView, PermTablesOrder),
-	"cashier": set(PermAccount, PermCounterView, PermBillView, PermBillPaid, PermClosingReport),
+	"cashier": set(PermAccount, PermCounterView, PermBillView, PermBillPaid, PermBillDiscount, PermClosingReport),
 }
 
 // staffRoles are the roles an owner may give when adding a person. Owners are not on it: a

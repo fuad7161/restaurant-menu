@@ -121,7 +121,7 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 | Kitchen / waiter | `/staff/kitchen` | New, Cooking, Ready columns with amber and red waiting times; kitchen accepts with a ready time, rejects and marks ready; waiter marks served and answers calls; each can undo their own tap; change requests, sound alert, keeps the screen on |
 | Waiter | `/staff/tables` | Order on behalf of guests who do not scan |
 | Kitchen / waiter | `/staff/stock` | Mark dishes sold out |
-| Cashier | `/staff/counter`, `/owner/closing` | Open bills, mark paid, closing report (the owner also removes items with a reason and closes without payment) |
+| Cashier | `/staff/counter`, `/owner/closing` | Open bills, discounts with a reason, mark paid, printed bill and receipt with BIN and invoice number, closing report (the owner also removes items with a reason and closes without payment) |
 | Owner | `/owner` | Sales today, best sellers, reviews, menu (descriptions, tags, featured, option groups), tables and printable QR cards, staff (kitchen, waiter, cashier; the owner sets and can look up their passwords), settings (charges, hours, orders only in hours, ticket colours), reports with CSV export, closing report, activity log |
 | Any staff | `/staff/account` | Log out on all devices; the owner also changes their own password and email here |
 | Owner | `/forgot`, `/reset`, `/verify-email` | Forgot password by email link, and email confirmation |
@@ -135,13 +135,14 @@ Queries are written with `?` placeholders; `internal/database` rewrites them to 
 - Every query is filtered by restaurant, so one installation serves many restaurants.
 - A dish with options is added from its sheet only; required option groups must be chosen, and the server checks the rules and prices again.
 - Staff service screens (sidebar, kitchen, counter, take order, sold out) switch between English and Bangla; owner pages are English.
-- Money and access changes are recorded in the activity log: price changes, removed items, payments, groups closed without payment, staff and password changes.
+- A discount (percent or taka, with a reason) comes off the subtotal before service charge and VAT. Each paid bill gets the restaurant's next invoice number.
+- Money and access changes are recorded in the activity log: price changes, removed items, discounts, payments, groups closed without payment, staff and password changes.
 - Each role does only its own tasks, and the server checks it on every request (`internal/server/perm.go`). One owner per restaurant: an owner can't add, remove or reset another owner.
 - Login locks for 15 minutes after 5 wrong passwords; guest phones are limited to 60 taps a minute; posts from other websites are refused.
 - Every write is checked; multi-step changes (paying, closing, removing items) run in one transaction. A background job tidies idle groups, old carts and calls every 10 minutes.
 
 ## Not built yet
 
-Online payment, split bill, tips, discounts, kitchen ticket printing, subscription billing, allergen information, dark mode, kiosk mode for table tablets, built-in HTTPS (Fly provides it; elsewhere put a reverse proxy such as Caddy in front). Screens refresh by polling every 3 to 4 seconds. See `docs/missing-features.md` for the full list and status.
+Online payment, split bill, tips, kitchen ticket printing, subscription billing, allergen information, dark mode, kiosk mode for table tablets, built-in HTTPS (Fly provides it; elsewhere put a reverse proxy such as Caddy in front). Screens refresh by polling every 3 to 4 seconds. See `docs/missing-features.md` for the full list and status.
 # restaurant-menu
 # restaurant-menu

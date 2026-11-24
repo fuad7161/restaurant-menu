@@ -380,6 +380,7 @@ dialog.sheet {
 .receipt .rhead { text-align: center; margin: 0 0 8px; }
 .receipt .rmeta { text-align: center; margin: 0 0 16px; font-size: .9375rem; }
 .receipt .rthanks { text-align: center; margin: 16px 0 0; color: var(--muted); }
+.slip { max-width: 380px; margin: 0 auto; }
 
 /* ---------- plain pages: home, login, signup ---------- */
 .topnav { display: flex; align-items: center; gap: 24px; min-height: 72px; border-bottom: 1px solid var(--line); }
@@ -649,6 +650,8 @@ body.print { background: #fff; padding: 16px; }
   .noprint, .netbar, .toasts { display: none !important; }
   .printonly { display: block; }
   body.print { padding: 0; }
+  .slip { max-width: none; }
+  .slip .total { font-size: 11pt; }
   .stand, .stand * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body.guest .gtop, body.guest .bar { display: none !important; }
   body.staff { padding-left: 0; }

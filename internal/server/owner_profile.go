@@ -44,9 +44,12 @@ func (a *App) profileSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 		}
 		review = ""
 	}
-	a.db.Exec(`UPDATE restaurants SET name=?,brand_color=?,tagline=?,address=?,phone=?,review_url=? WHERE id=?`,
+	if err := exec(a.db, `UPDATE restaurants SET name=?,brand_color=?,tagline=?,address=?,phone=?,review_url=?,bin=? WHERE id=?`,
 		name, color, clean(r.FormValue("tagline"), 80), clean(r.FormValue("address"), 120),
-		clean(r.FormValue("phone"), 20), review, s.R.ID)
+		clean(r.FormValue("phone"), 20), review, clean(r.FormValue("bin"), 30), s.R.ID); err != nil {
+		serverError(w, err)
+		return
+	}
 	if _, _, err := r.FormFile("logo"); err == nil {
 		if logo := a.savePhoto(r, "logo"); logo != "" {
 			a.db.Exec(`UPDATE restaurants SET logo=? WHERE id=?`, logo, s.R.ID)

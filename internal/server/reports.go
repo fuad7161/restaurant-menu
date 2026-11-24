@@ -123,6 +123,22 @@ func (a *App) closing(w http.ResponseWriter, r *http.Request, s *Staff) {
 		func(rs *sql.Rows, x *removedRow) error {
 			return rs.Scan(&x.Who, &x.Item, &x.Reason, &x.Table, &x.Qty, &x.Amount)
 		}, rid, start, end)
+	type discountRow struct {
+		Invoice       int64
+		Table, Reason string
+		Who           string
+		Amount        int64
+	}
+	discounts := database.List(a.db, `SELECT s.invoice_no,t.label,s.discount_reason,s.discount_by,p.discount
+		FROM payments p JOIN table_sessions s ON s.id=p.session_id JOIN tables t ON t.id=s.table_id
+		WHERE p.restaurant_id=? AND p.created_at>=? AND p.created_at<? AND p.discount>0 ORDER BY p.id`,
+		func(rs *sql.Rows, x *discountRow) error {
+			return rs.Scan(&x.Invoice, &x.Table, &x.Reason, &x.Who, &x.Amount)
+		}, rid, start, end)
+	var discountTotal int64
+	for _, d := range discounts {
+		discountTotal += d.Amount
+	}
 	var rejected int
 	a.db.QueryRow(`SELECT COUNT(*) FROM orders WHERE restaurant_id=? AND placed_at>=? AND placed_at<? AND status='rejected'`, rid, start, end).Scan(&rejected)
 	unpaid := database.List(a.db, `SELECT staff_name,action,detail,created_at FROM audit_log
@@ -136,7 +152,8 @@ func (a *App) closing(w http.ResponseWriter, r *http.Request, s *Staff) {
 	var openBills int
 	a.db.QueryRow(`SELECT COUNT(*) FROM table_sessions WHERE restaurant_id=? AND status IN ('open','bill_requested')`, rid).Scan(&openBills)
 	a.render(w, "owner_closing", M{"Staff": s, "Page": "reports", "Day": day.Format("2006-01-02"), "DayLong": day.Format("Monday, 2 January 2006"),
-		"Methods": methods, "Total": total, "Bills": bills, "Removed": removed, "Rejected": rejected, "Unpaid": unpaid, "OpenBills": openBills})
+		"Methods": methods, "Total": total, "Bills": bills, "Removed": removed, "Rejected": rejected,
+		"Discounts": discounts, "DiscountTotal": discountTotal, "Unpaid": unpaid, "OpenBills": openBills})
 }
 
 // export downloads orders, payments or reviews as a CSV file for a spreadsheet or an accountant.
@@ -165,8 +182,8 @@ func (a *App) export(w http.ResponseWriter, r *http.Request, s *Staff) {
 			FROM order_items i JOIN orders o ON o.id=i.order_id JOIN table_sessions s ON s.id=o.session_id JOIN tables t ON t.id=s.table_id
 			WHERE o.restaurant_id=? AND o.placed_at>=? AND o.placed_at<? ORDER BY o.id,i.id`
 	case "payments.csv":
-		head = []string{"time", "table", "group", "amount", "method", "marked by"}
-		query = `SELECT p.created_at,t.label,s.group_label,p.amount,p.method,p.marked_by
+		head = []string{"time", "invoice", "table", "group", "amount", "discount", "discount reason", "method", "marked by"}
+		query = `SELECT p.created_at,s.invoice_no::TEXT,t.label,s.group_label,p.amount,p.discount,s.discount_reason,p.method,p.marked_by
 			FROM payments p JOIN table_sessions s ON s.id=p.session_id JOIN tables t ON t.id=s.table_id
 			WHERE p.restaurant_id=? AND p.created_at>=? AND p.created_at<? ORDER BY p.id`
 	case "reviews.csv":

@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit 7d77861 (plus uncommitted owner email and staff passwords) on 2026-11-24 -->
+<!-- presentation-sync: last synced at commit 4cbdcd9 (plus uncommitted discounts and printed bills) on 2026-11-24 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -24,14 +24,14 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | G-10 | Live order status (Received, Cooking, Ready, Served) with an estimated ready time as a range and a progress bar. When food is ready the phone vibrates, beeps if it can and shows "Ready" in the tab title. | `guest_orders.go` (`liveData`), `queries.go` (`estimateMinutes`), `web/static/app.js` (`checkReady`) |
 | G-11 | Change or cancel an item freely until the kitchen accepts; after that, send a change request that staff approve or decline. | `gItemChange` |
 | G-12 | Call a waiter, ask for water or tissue, without shouting across the room. The button shows when it was called and when staff answered, and pauses for a minute against repeated taps. | `gCall`, `callButtons` |
-| G-13 | Ask for the bill: itemised, with VAT and service charge. Can be withdrawn. | `gBill`, `queries.go` (`bill`) |
+| G-13 | Ask for the bill: itemised, with any discount the counter gave, VAT and service charge. Can be withdrawn. | `gBill`, `queries.go` (`bill`) |
 | G-14 | Paid screen, then a review: 1 to 5 stars for the visit with a comment, plus optional stars for each dish eaten. One review per group. Guests who give 4 or 5 stars are offered the restaurant's Google review page (when the owner set its link). | `gReview`, `liveData` |
 | G-15 | Off-site screen when the restaurant allows ordering only on its Wi-Fi and the guest is elsewhere. | `guest_offsite` template, `network.go` |
 | G-16 | Dish sheet: tapping a dish opens a large photo, the full description, option groups with rules ("Size: required, choose 1", "up to 3"), a note, a quantity picker and an Add button showing the live total. The server checks the choices and prices again. | `gDish`, `chosenOptions`, `g_sheet` template, `app.js` |
 | G-17 | Search the menu in Bangla or English, and a category bar that highlights the section on screen. | `guest_menu` template, `app.js` |
 | G-18 | "Goes well with" suggestions under the cart: dishes often ordered with what is in it, then best sellers. | `guest_cart.go` (`suggestions`) |
 | G-19 | Opening hours on the welcome and menu screens, and a "last orders at …" notice in the 30 minutes before. | `guest.go` (`hoursInfo`) |
-| G-20 | Receipt after paying, to print or save as a PDF: items, VAT, service charge, total, payment method and time. | `gReceipt`, `guest_receipt` template |
+| G-20 | Receipt after paying, to print or save as a PDF: the restaurant's VAT number (BIN) when set, the invoice number, items, discount, VAT, service charge, total, payment method and time. | `gReceipt`, `guest_receipt` template |
 | G-21 | A privacy note on the welcome screen: only the typed name is kept, no phone number, no account. | `guest_enter` template |
 
 ## Kitchen and floor staff (`/staff/...`)
@@ -52,6 +52,8 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |
 | K-14 | My account: log out on all devices. The owner also changes their own password there (other devices are logged out) and sets their email. Staff can't change their password; the owner sets it. | `account`, `accountPassword`, `logoutAll` in `auth.go`, `accountEmail` in `email.go` |
+| K-15 | Discount on a bill: the cashier or the owner takes a percent or a taka amount off, with a reason that must be written. It comes off before service charge and VAT, can be changed or removed until the bill is paid, and every change goes into the activity log. | `internal/server/counter.go` (`sessionDiscount`), `billTotals` in `queries.go` |
+| K-16 | Printed bill from the counter, sized for a receipt printer or A4: before payment the bill for the table, after payment the receipt. It shows the restaurant's VAT number (BIN) and, once paid, an invoice number that counts up 1, 2, 3 per restaurant. | `sessionPrint`, `sessionPaid` in `counter.go`, `staff_bill` template |
 
 ## Owner (`/owner/...`)
 
@@ -66,13 +68,13 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | O-07 | Branded QR codes: round dots, the restaurant's logo or initial in the middle, highest error correction so they still scan. | `internal/qrmark/qrmark.go`, `internal/server/qr.go` |
 | O-08 | Print QR cards for all tables or one table; renew a table's QR so old photos of it stop working. | `tablePrint`, `tableNewQR` |
 | O-09 | Staff accounts with the roles kitchen, waiter and cashier. The owner sets each staff password, can look it up again on the Staff page (stored encrypted), and can change it at any time, which logs that person out everywhere. A restaurant has one owner: the owner can't add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`), `secret.go` |
-| O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
+| O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, VAT registration number (BIN) for bills and receipts, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
 | O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave`, `withinHours` |
 | O-12 | Ordering network: guests can order only on the restaurant's Wi-Fi. One tap allows the current network; ranges can be typed. | `internal/server/network.go`, `owner_networks` template |
 | O-13 | Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour. | `internal/server/reports.go` (`reports`) |
-| O-14 | Download orders, payments and reviews as CSV for any dates (opens in Excel with Bangla intact). | `reports.go` (`export`) |
-| O-15 | Closing report for any day: money by payment method, bills paid, items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. The cashier can open it too. | `reports.go` (`closing`) |
-| O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, took payments, closed bills without payment, rejected orders, or changed staff, passwords or charges. | `internal/server/audit.go` |
+| O-14 | Download orders, payments (with invoice number and discount) and reviews as CSV for any dates (opens in Excel with Bangla intact). | `reports.go` (`export`) |
+| O-15 | Closing report for any day: money by payment method, bills paid, discounts given (who, why, how much), items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. The cashier can open it too. | `reports.go` (`closing`) |
+| O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, gave or removed discounts, took payments, closed bills without payment, rejected orders, or changed staff, passwords or charges. | `internal/server/audit.go` |
 
 ## Accounts and access
 
@@ -80,7 +82,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | --- | --- | --- |
 | A-01 | Sign up creates a restaurant and its owner account, with the owner's email. | `internal/server/auth.go` (`signup`) |
 | A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
-| A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
+| A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment and gives discounts. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
 | A-04 | Forgot password for owners: a link by email that works once for 1 hour and logs out every device. The page never says whether an account exists. Staff ask their owner instead. | `internal/server/email.go` (`forgot`, `resetSave`), `internal/mail` |
 | A-05 | Email confirmation: the owner gets a link at signup (valid 24 hours; send again once a minute, 5 a day). Off by default, and while off no link is sent and nothing waits on it (the per-restaurant override is ignored too); when switched on, an unconfirmed owner can set up but guests see "Not taking orders yet". Emails go through Brevo, Gmail (SMTP) or Resend, or into the log when none is set. | `email.go` (`verifyEmail`, `awaitingEmail`), `EMAIL_VERIFY` |
 
@@ -104,7 +106,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 
 ## Not built yet
 
-Online payment (bKash, Nagad, card gateway), split bill, tips, discounts, kitchen ticket printing, subscription billing, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
+Online payment (bKash, Nagad, card gateway), split bill, tips, kitchen ticket printing, subscription billing, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
 
 ## Removed
 

@@ -38,6 +38,8 @@ var routeAccess = []struct {
 	{"GET", "/staff/counter/list", "owner cashier"},
 	{"GET", "/staff/sessions/999999", "owner cashier waiter"},
 	{"POST", "/staff/sessions/999999/paid", "owner cashier"},
+	{"POST", "/staff/sessions/999999/discount", "owner cashier"},
+	{"GET", "/staff/sessions/999999/print", "owner cashier waiter"},
 	{"POST", "/staff/sessions/999999/close", "owner"},
 	{"GET", "/staff/tables", "owner waiter"},
 	{"POST", "/staff/tables/999999/open", "owner waiter"},
