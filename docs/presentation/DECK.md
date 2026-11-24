@@ -6,7 +6,7 @@ The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (
 
 **Length:** 16 slides, about 12 minutes plus a 3-minute live demo.
 **Audience:** restaurant owners and investors. Plain words, no code on slides except slide 12.
-**Look:** the app's own style. White page, Inter font, sindoor maroon `#8f1d21` as the one accent, thin grey borders, no decoration. Bangla title next to English.
+**Look:** the app's own style. Warm paper-toned page lightly tinted with the brand colour, white cards, Inter font, sindoor maroon `#8f1d21` as the one accent, thin warm borders, no decoration. Bangla title next to English.
 **Each slide:** one title that states the point, at most 4 bullets or one picture, speaker notes underneath.
 
 ---

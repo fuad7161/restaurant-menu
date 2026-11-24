@@ -62,7 +62,7 @@ func usableColor(s string) bool {
 
 // themeCSS turns a restaurant's brand colour into the accent variables app.css reads: the colour
 // itself (buttons, links, selected states), a darker shade for hover, and a light tint for
-// selected backgrounds. The page itself stays neutral.
+// selected backgrounds. app.css also mixes a little of it into the page background.
 // Anything invalid falls back to the default, so the output is always safe to put in a <style>.
 func themeCSS(color string) template.CSS {
 	if !usableColor(color) {
