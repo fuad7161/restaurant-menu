@@ -75,6 +75,11 @@ func (a *App) currentStaff(r *http.Request) *Staff {
 	if err != nil {
 		return nil
 	}
+	if !a.cfg.EmailVerify {
+		// Email verification is switched off (EMAIL_VERIFY is not 1): treat every email as confirmed,
+		// so no banner, no "Send it again" and no waiting. Nothing is written to the database.
+		s.EmailVerified = true
+	}
 	s.Lang = i18n.StaffLang(r)
 	return &s
 }
@@ -233,9 +238,11 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database error", 500)
 		return
 	}
-	a.limits.hit(fmt.Sprintf("verifymail:%d", sid), 1, time.Minute)
-	a.limits.hit(fmt.Sprintf("verifymailday:%d", sid), 5, 24*time.Hour)
-	a.sendLink(r, sid, name, email, "verify")
+	if a.cfg.EmailVerify {
+		a.limits.hit(fmt.Sprintf("verifymail:%d", sid), 1, time.Minute)
+		a.limits.hit(fmt.Sprintf("verifymailday:%d", sid), 5, 24*time.Hour)
+		a.sendLink(r, sid, name, email, "verify")
+	}
 	a.startStaffSession(w, r, sid)
 	http.Redirect(w, r, "/owner", http.StatusSeeOther)
 }

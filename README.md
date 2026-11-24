@@ -49,7 +49,7 @@ Tables are created by the migrations on the first start. Any S3-compatible store
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | empty, `587` | SMTP server for owner emails (confirm email, forgot password). Gmail: `smtp.gmail.com`, your Gmail address, and an [app password](https://myaccount.google.com/apppasswords) (needs 2-Step Verification) |
 | `RESEND_API_KEY` | empty | Resend instead of SMTP, once you have your own domain. With neither set, emails are printed in the log |
 | `EMAIL_FROM` | `Bosho <SMTP_USER>` | Sender name and address. With Gmail it must be your Gmail address |
-| `EMAIL_VERIFY` | off | `1`: guests can't order until the owner confirms their email; owners can still set up. A restaurant can override it (`restaurants.verify_email`: `global`, `required`, `off`) |
+| `EMAIL_VERIFY` | off | `1`: guests can't order until the owner confirms their email; owners can still set up. A restaurant can override it (`restaurants.verify_email`: `global`, `required`, `off`). Off: no confirmation link is sent and the per-restaurant override is ignored |
 | `PASSWORD_KEY` | stored in the database | 32 bytes in base64 (`openssl rand -base64 32`); encrypts the staff passwords the owner can look up. Don't change it once set |
 | `TRUST_PROXY` | off | `1` when a reverse proxy (Cloudflare, Fly, Render, nginx) sits in front: guest addresses are then read from `X-Forwarded-For`. Needed for **Ordering network**; leave off otherwise, or anyone could fake their address |
 

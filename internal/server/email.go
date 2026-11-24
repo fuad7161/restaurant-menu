@@ -37,9 +37,12 @@ func (a *App) emailRoutes(mux *http.ServeMux) {
 
 // awaitingEmail reports whether this restaurant must wait for its owner to confirm their email
 // before guests can order: the platform setting (EMAIL_VERIFY) or the restaurant's own override.
+// EMAIL_VERIFY is the master switch: while it is off, no restaurant waits, even one set to "required".
 func (a *App) awaitingEmail(r Restaurant) bool {
-	need := r.VerifyEmail == "required" || (r.VerifyEmail != "off" && a.cfg.EmailVerify)
-	return need && !r.OwnerVerified
+	if !a.cfg.EmailVerify {
+		return false
+	}
+	return r.VerifyEmail != "off" && !r.OwnerVerified
 }
 
 // validEmail returns the address in a normal form, or "" when it isn't one.
@@ -231,6 +234,10 @@ func (a *App) accountEmail(w http.ResponseWriter, r *http.Request, s *Staff) {
 		return
 	}
 	a.audit(s.R.ID, s.Name, "email changed", email)
+	if !a.cfg.EmailVerify {
+		back(w, r, "/staff/account")
+		return
+	}
 	a.limits.hit("verifymail:"+fmt.Sprint(s.ID), 1, time.Minute)
 	a.limits.hit("verifymailday:"+fmt.Sprint(s.ID), 5, 24*time.Hour)
 	if a.sendLink(r, s.ID, s.Name, email, "verify") != nil {

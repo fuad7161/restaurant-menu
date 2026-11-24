@@ -27,7 +27,7 @@ type Config struct {
 	SMTPHost, SMTPPort, SMTPUser, SMTPPassword string
 	ResendAPIKey                               string
 	EmailFrom                                  string // for example "Bosho <you@gmail.com>"
-	EmailVerify                                bool   // owners must confirm their email before guests can order (EMAIL_VERIFY=1); off by default
+	EmailVerify                                bool   // owners must confirm their email before guests can order (EMAIL_VERIFY=1); off by default, and then nothing is checked or sent
 
 	// PasswordKey encrypts the staff passwords the owner can look up (32 bytes, base64). Empty:
 	// the app makes one and keeps it in the database.

@@ -56,8 +56,21 @@ func signupOwner(c *tclient) {
 		"email": {"rahim@example.com"}, "password": {"firstpass1"}})
 }
 
+func TestSignupWithVerificationOffSendsNothing(t *testing.T) {
+	a, fm, c := mailApp(t)
+	signupOwner(c)
+	if fm.count() != 0 {
+		t.Fatalf("%d emails sent while verification is off", fm.count())
+	}
+	a.db.Exec(`UPDATE restaurants SET verify_email='required'`)
+	if body := c.get("/owner"); strings.Contains(body, "Confirm your email") {
+		t.Fatal("the dashboard asks to confirm the email while verification is off")
+	}
+}
+
 func TestSignupSendsAVerifyLinkThatWorksOnce(t *testing.T) {
 	a, fm, c := mailApp(t)
+	a.cfg.EmailVerify = true
 	signupOwner(c)
 	link := fm.lastLink(t)
 	if !strings.HasPrefix(link, "/verify-email?") {
@@ -144,10 +157,11 @@ func TestOwnerSeesStaffPasswords(t *testing.T) {
 func TestUnconfirmedOwnerCantTakeGuestOrders(t *testing.T) {
 	a, _, c := mailApp(t)
 	// The demo restaurant's owner has no confirmed email. Verification off: guests can order.
+	a.db.Exec(`UPDATE restaurants SET verify_email='required'`)
 	if body := c.get("/t/demo-table-1"); notReady(body) {
 		t.Fatal("blocked while verification is off")
 	}
-	a.db.Exec(`UPDATE restaurants SET verify_email='required'`)
+	a.cfg.EmailVerify = true
 	if body := c.get("/t/demo-table-1"); !notReady(body) {
 		t.Fatal("the table page doesn't say orders aren't taken yet")
 	}
