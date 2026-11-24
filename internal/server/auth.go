@@ -225,7 +225,13 @@ func (a *App) signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback()
-	rid, err := database.InsertID(tx, `INSERT INTO restaurants(name,slug,created_at) VALUES(?,?,?)`, rest, randToken(6), now())
+	// A new owner starts a business with its first branch (docs/plans/multi-branch.md).
+	bid, err := database.InsertID(tx, `INSERT INTO businesses(name,created_at) VALUES(?,?)`, rest, now())
+	if err != nil {
+		http.Error(w, "database error", 500)
+		return
+	}
+	rid, err := database.InsertID(tx, `INSERT INTO restaurants(business_id,name,slug,created_at) VALUES(?,?,?,?)`, bid, rest, randToken(6), now())
 	if err != nil {
 		http.Error(w, "database error", 500)
 		return

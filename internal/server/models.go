@@ -18,14 +18,33 @@ type Restaurant struct {
 	VerifyEmail                    string // global | required | off: must the owner confirm their email (set by the platform admin)
 	OwnerVerified                  bool   // an owner of this restaurant has confirmed their email
 	NotReady                       bool   // guests: closed because the owner hasn't confirmed their email yet
+	// branches (docs/plans/multi-branch.md): this restaurant is one branch of a business
+	BusinessID             int64
+	BusinessName           string
+	BranchName, BranchCode string // "Gulshan", "GUL"; empty for a one-branch business
+	Status                 string // active | closed | archived
+}
+
+// DisplayName is what guests and bills show: "Kacchi Ghar · Gulshan", or just the business name
+// when the branch has no name of its own.
+func (r Restaurant) DisplayName() string {
+	if r.BranchName == "" {
+		return r.Name
+	}
+	return r.BusinessName + " · " + r.BranchName
 }
 
 // restExtraCols are the restaurant columns read into the fields after Networks (see extraDest).
+// The owner belongs to the whole business, so a branch without an owner row of its own still
+// finds them through business_id.
 const restExtraCols = `r.open_time,r.close_time,r.last_order,r.warn_minutes,r.late_minutes,r.orders_in_hours,r.review_url,r.bin,r.verify_email,
-	EXISTS(SELECT 1 FROM staff_users o WHERE o.restaurant_id=r.id AND o.role='owner' AND o.email_verified_at>0)`
+	EXISTS(SELECT 1 FROM staff_users o JOIN restaurants ob ON ob.id=o.restaurant_id
+		WHERE ob.business_id=r.business_id AND o.role='owner' AND o.email_verified_at>0),
+	r.business_id,(SELECT b.name FROM businesses b WHERE b.id=r.business_id),r.branch_name,r.branch_code,r.status`
 
 func (r *Restaurant) extraDest() []any {
-	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes, &r.OrdersInHours, &r.ReviewURL, &r.BIN, &r.VerifyEmail, &r.OwnerVerified}
+	return []any{&r.OpenTime, &r.CloseTime, &r.LastOrder, &r.WarnMinutes, &r.LateMinutes, &r.OrdersInHours, &r.ReviewURL, &r.BIN, &r.VerifyEmail, &r.OwnerVerified,
+		&r.BusinessID, &r.BusinessName, &r.BranchName, &r.BranchCode, &r.Status}
 }
 
 type Table struct {

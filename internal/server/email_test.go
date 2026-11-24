@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"bosho/internal/database"
 	"bosho/internal/mail"
 )
 
@@ -209,5 +210,30 @@ func TestValidEmail(t *testing.T) {
 		if got := validEmail(in); got != want {
 			t.Errorf("validEmail(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// The owner belongs to the whole business: a second branch, with no owner row of its own, takes
+// guest orders once the owner has confirmed their email (docs/plans/multi-branch.md, 5.4).
+func TestOwnerEmailCountsForEveryBranch(t *testing.T) {
+	a, fm, c := mailApp(t)
+	a.cfg.EmailVerify = true
+	signupOwner(c)
+	var bid int64
+	a.db.QueryRow(`SELECT business_id FROM restaurants WHERE name='Kacchi Ghar'`).Scan(&bid)
+	rid, err := database.InsertID(a.db, `INSERT INTO restaurants(business_id,name,branch_name,slug,created_at) VALUES(?,'Kacchi Ghar','Gulshan','kg-gulshan',?)`, bid, now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.db.Exec(`INSERT INTO tables(restaurant_id,label,qr_token) VALUES(?,'1','gulshan-1')`, rid)
+
+	jar, _ := cookiejar.New(nil)
+	guest := &tclient{t, &http.Client{Jar: jar}, c.url}
+	if !notReady(guest.get("/t/gulshan-1")) {
+		t.Fatal("the second branch takes orders before the owner confirmed their email")
+	}
+	c.get(fm.lastLink(t))
+	if notReady(guest.get("/t/gulshan-1")) {
+		t.Fatal("the second branch still waits after the owner confirmed their email")
 	}
 }

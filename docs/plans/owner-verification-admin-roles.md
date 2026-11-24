@@ -580,7 +580,7 @@ Each step can go live on its own. Run `presentation-sync` after each one.
    - Per-person permissions.
    - Turning a job off.
    - Tests.
-3. **Branches:** businesses table, create a branch, copy the menu, branch switcher, branch-limited staff, combined reports.
+3. **Branches:** businesses table, create a branch, copy the menu, branch switcher, branch-limited staff, combined reports. Detailed plan, built ahead of step 2: `docs/plans/multi-branch.md`.
 4. **Staff at several restaurants:** invitations, a password per workplace (5.4), the "where are you working" step and the workplace switcher.
 5. ✅ **Email:** sending (Gmail SMTP now; Resend once there's a domain; the log when neither is set), owner email at signup, verification link, **forgot password**, verification off by default (`EMAIL_VERIFY`, and `restaurants.verify_email` per restaurant). Still to do: the admin panel switch for it (step 6), and an email field for staff if ever needed.
 6. **Admin panel:**

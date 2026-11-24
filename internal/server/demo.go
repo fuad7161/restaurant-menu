@@ -15,7 +15,12 @@ func (a *App) seedDemo() {
 		return
 	}
 	hash, _ := bcrypt.GenerateFromPassword([]byte("demo1234"), bcrypt.DefaultCost)
-	rid, err := database.InsertID(a.db, `INSERT INTO restaurants(name,slug,vat_percent,service_percent,created_at) VALUES('Demo Kitchen','demo',5,10,?)`, now())
+	bid, err := database.InsertID(a.db, `INSERT INTO businesses(name,created_at) VALUES('Demo Kitchen',?)`, now())
+	if err != nil {
+		log.Println("demo data:", err)
+		return
+	}
+	rid, err := database.InsertID(a.db, `INSERT INTO restaurants(business_id,name,slug,vat_percent,service_percent,created_at) VALUES(?,'Demo Kitchen','demo',5,10,?)`, bid, now())
 	if err != nil {
 		log.Println("demo data:", err)
 		return

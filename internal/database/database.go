@@ -135,7 +135,11 @@ func List[T any](q Querier, query string, scan func(*sql.Rows, *T) error, args .
 }
 
 // Migrate applies every migrations/*.sql file that has not run yet, in file-name order.
-func (d *DB) Migrate() error {
+func (d *DB) Migrate() error { return d.migrate("") }
+
+// migrate applies the migrations whose file names sort before `before` ("" = all of them).
+// Tests use it to load data into an older schema and then check the next migration.
+func (d *DB) migrate(before string) error {
 	if _, err := d.pool.Exec(`CREATE TABLE IF NOT EXISTS schema_migrations(name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT now())`); err != nil {
 		return err
 	}
@@ -145,6 +149,9 @@ func (d *DB) Migrate() error {
 	}
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 	for _, e := range entries {
+		if before != "" && e.Name() >= before {
+			break
+		}
 		var done bool
 		if err := d.pool.QueryRow(`SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE name=$1)`, e.Name()).Scan(&done); err != nil {
 			return err

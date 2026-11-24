@@ -57,6 +57,7 @@ func (a *App) profileSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 			errMsg = "The logo could not be saved. Use a JPEG, PNG or WebP image."
 		}
 	}
+	a.syncOneBranchBusiness(s.R.ID)
 	if errMsg != "" {
 		http.Redirect(w, r, "/owner/profile?err="+urlQuery(errMsg), http.StatusSeeOther)
 		return
@@ -66,5 +67,15 @@ func (a *App) profileSave(w http.ResponseWriter, r *http.Request, s *Staff) {
 
 func (a *App) logoDelete(w http.ResponseWriter, r *http.Request, s *Staff) {
 	a.db.Exec(`UPDATE restaurants SET logo='' WHERE id=?`, s.R.ID)
+	a.syncOneBranchBusiness(s.R.ID)
 	back(w, r, "/owner/profile?saved=1")
+}
+
+// syncOneBranchBusiness copies a branch's name, logo, colour and tagline to its business when the
+// business has only this branch, so the business stays named and branded like the restaurant the
+// owner edits on the Profile page. A business with several branches has its own profile.
+func (a *App) syncOneBranchBusiness(branchID int64) {
+	a.db.Exec(`UPDATE businesses b SET name=r.name,logo=r.logo,brand_color=r.brand_color,tagline=r.tagline
+		FROM restaurants r WHERE r.id=? AND b.id=r.business_id
+		AND (SELECT COUNT(*) FROM restaurants x WHERE x.business_id=b.id)=1`, branchID)
 }
