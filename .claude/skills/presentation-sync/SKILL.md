@@ -1,6 +1,6 @@
 ---
 name: presentation-sync
-description: Keep Bosho's presentation context (docs/presentation/FEATURES.md and DECK.md) and the README feature sections in step with the code. Use after any change that adds, removes or changes what a guest, staff member or owner can do, or changes the stack, deploy or rules (routes, handlers in internal/server, templates in web/templates, migrations, config, i18n texts, Makefile, Dockerfile, fly.toml). Also use when the user asks to update, check or refresh the feature list, the deck, the presentation or the pitch, or asks "is the presentation up to date".
+description: Keep Bosho's presentation context (docs/presentation/FEATURES.md and DECK.md), the feature guide (docs/feature-guide.md) and the README feature sections in step with the code. Use after any change that adds, removes or changes what a guest, staff member or owner can do, or changes the stack, deploy or rules (routes, handlers in internal/server, templates in web/templates, migrations, config, i18n texts, Makefile, Dockerfile, fly.toml). Also use when the user asks to update, check or refresh the feature list, the feature guide, the workflows, the deck, the presentation or the pitch, or asks "is the presentation up to date".
 ---
 
 # Presentation sync
@@ -10,7 +10,9 @@ Bosho's presentation material lives in two files that must always describe the c
 - `docs/presentation/FEATURES.md`: the feature list. Source of truth. Every feature has a stable ID (`G-` guest, `K-` kitchen and floor staff, `O-` owner, `A-` accounts, `P-` platform) and a "Where in code" column.
 - `docs/presentation/DECK.md`: the slide-by-slide outline. Slides cite feature IDs in brackets, and the "Feature → slide map" at the bottom says which slides each ID appears on.
 
-Both files carry a marker on line 3: `<!-- presentation-sync: last synced at commit <sha> on <date> -->`.
+- `docs/feature-guide.md`: the long, plain-language guide for owners and sales: every role's features, the workflows from start to end, what is built in and what is not built yet. It has no IDs; it follows `FEATURES.md`.
+
+`FEATURES.md` and `DECK.md` carry a marker on line 3: `<!-- presentation-sync: last synced at commit <sha> on <date> -->`.
 
 The README's "Screens", "Rules built in" and "Not built yet" sections say the same things in shorter form and must not contradict `FEATURES.md`.
 
@@ -52,9 +54,15 @@ The README's "Screens", "Rules built in" and "Not built yet" sections say the sa
    - When a screen's look changed, add `(screenshot needs retaking)` after the slide's "Picture:" line.
    - Keep the deck at about 15 slides and each slide at 4 bullets or fewer. Update the marker.
 
-6. **Update the README** "Screens", "Rules built in" and "Not built yet" sections if they now disagree with `FEATURES.md`. Do not rewrite other README sections unless the change made them wrong.
+6. **Update `docs/feature-guide.md`.**
+   - Put each new or changed feature under every role that can use it (section 1 to 6), and change or add the workflow steps in section 7 that it touches. A new kind of task gets its own lettered workflow.
+   - A removed feature comes off every section and workflow.
+   - Keep "Built in behind the scenes" and "Not built yet" in step with `FEATURES.md`.
+   - Update the "Written against commit" line near the top to the current short sha and date.
 
-7. **Check.**
+7. **Update the README** "Screens", "Rules built in" and "Not built yet" sections if they now disagree with `FEATURES.md`. Do not rewrite other README sections unless the change made them wrong.
+
+8. **Check.**
    - Every ID cited in `DECK.md` exists in `FEATURES.md`, and every ID in the map exists:
      ```sh
      comm -23 <(grep -o '[GKOAP]-[0-9][0-9]' docs/presentation/DECK.md | sort -u) \
@@ -64,7 +72,7 @@ The README's "Screens", "Rules built in" and "Not built yet" sections say the sa
    - Every route in `grep -rhn 'HandleFunc("' internal/server/*.go` belongs to some feature, unless it is plumbing (`/healthz`, `/static/`, `/uploads/`, polling fragments, `/logout`).
    - Every path in "Where in code" still exists.
 
-8. **Report** to the user in a few lines: which IDs changed, were added or removed, which slides were edited, and which screenshots need retaking. If nothing user-visible changed, say so and only move the markers forward.
+9. **Report** to the user in a few lines: which IDs changed, were added or removed, which slides were edited, and which screenshots need retaking. If nothing user-visible changed, say so and only move the markers forward.
 
 ## Writing rules
 
