@@ -1,2 +1,0 @@
-// decorative QR-like pattern (not scannable)
-document.querySelectorAll('.qr').forEach(el=>{let s=7;const r=()=>((s=s*16807%2147483647)/2147483647);let h='';for(let y=0;y<21;y++)for(let x=0;x<21;x++){const f=(a,b)=>x>=a&&x<a+7&&y>=b&&y<b+7;let on;const fd=[[0,0],[14,0],[0,14]].find(([a,b])=>f(a,b));if(fd){const dx=x-fd[0],dy=y-fd[1];on=dx==0||dy==0||dx==6||dy==6||(dx>=2&&dx<=4&&dy>=2&&dy<=4)}else if((x==7||y==7||x==13&&y<8||y==13&&x<8))on=false;else on=r()>.5;h+=on?'<i></i>':'<b></b>'}el.innerHTML=h})

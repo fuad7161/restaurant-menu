@@ -4,4 +4,10 @@ bin/
 old-sqlite-data/
 backups/
 .noneedingit/
-docs/marketing/*.mp4
+
+# Promotion stays on this laptop, not on GitHub: the repo is for the code.
+# Posters, videos, outreach emails and contact lists, Gmail password.
+marketing/
+outreach/
+docs/marketing/
+docs/outreach/
