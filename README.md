@@ -2,7 +2,7 @@
 
 QR table ordering for restaurants. A guest scans the QR on the table, orders from the phone browser, watches the order status, asks for the bill, and leaves a review.
 
-Go + htmx. Data, photos and Redis are free online services, so only the app runs locally (or in Docker). The product plan is in `qr-table-ordering-plan.md`.
+Go + htmx. Data, photos and Redis are free online services, so only the app runs locally (or in Docker).
 
 ## Start
 
