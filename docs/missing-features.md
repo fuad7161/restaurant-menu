@@ -83,7 +83,7 @@ Each item is marked:
 ## 7. Owner and business (should)
 
 1. **Sales reports.** Done. The "Reports" page shows the last 7, 30 or 90 days: sales and bills per day, the average bill, sales per dish and orders per hour.
-2. **Multiple branches.** Later.
+2. **Multiple branches.** Done (`docs/plans/multi-branch.md`): a business with branches, a Branches page that copies the menu and settings, a branch switcher with "All branches" reports, a Manager role per branch, invoice codes per branch, and a platform admin panel (`/admin`) that sets the branch limit. Still later: one person at several branches, a shared menu across branches, the rest of the admin panel.
 3. **Data export (CSV).** Done. Orders (one line per dish), payments and reviews for any date range, from the Reports page. Files open in Excel with Bangla intact.
 4. **Subscription billing.** Later. Needs online payment.
 5. **POS export or API.** Later. The CSV export covers accountants for now.

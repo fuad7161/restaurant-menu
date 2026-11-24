@@ -2,7 +2,7 @@
 
 QR table ordering for restaurants. A guest scans the QR code on the table, orders from their phone's browser, follows the order while it cooks, asks for the bill and leaves a review. No app to install, no signup for guests.
 
-This guide lists everything Bosho does, role by role, and then walks through each workflow from start to end. Written against commit `9607a4c` (2026-11-24).
+This guide lists everything Bosho does, role by role, and then walks through each workflow from start to end. Written against commit `474ad5d` plus the uncommitted multi-branch work (2026-11-24).
 
 ---
 
@@ -13,10 +13,12 @@ This guide lists everything Bosho does, role by role, and then walks through eac
 | **Guest** | Their own phone, after scanning the table QR | Menu | Order, track food, call staff, ask for the bill, review |
 | **Kitchen** | Tablet in the kitchen | Kitchen board | Accept or reject orders, cook, mark ready, mark dishes sold out |
 | **Waiter** | Phone or tablet on the floor | Take order | Order for guests who don't scan, serve food, answer calls |
-| **Cashier** | Counter tablet or computer | Counter | Discounts, take payment, print bills, closing report |
-| **Owner** | Any device | Dashboard | Everything above, plus menu, tables, staff, settings, reports |
+| **Cashier** | Counter tablet or computer | Counter | Take payment, print bills, closing report |
+| **Manager** | Any device | Dashboard | Runs one branch: everything above, plus discounts, menu, tables, staff, settings, reports |
+| **Owner** | Any device | Dashboard ("All branches" when there are several) | Everything, in every branch of the business, plus branches, VAT and service charge, branding |
+| **Platform admin** | `/admin`, a separate login | Business list | Sets each business's branch limit and email verification |
 
-Each role sees only the screens it may use, and the server checks the role on every action, so hiding a button is never the only protection.
+Each role sees only the screens it may use, and the server checks the role on every action, so hiding a button is never the only protection. Everyone except the owner and the platform admin works in exactly one branch, and every staff screen shows that branch's name.
 
 ---
 
@@ -24,7 +26,8 @@ Each role sees only the screens it may use, and the server checks the role on ev
 
 ### Getting in
 - Scan the table QR and the restaurant's menu opens, already knowing the table.
-- The restaurant's own branding on every screen: logo, brand colour, tagline, address, phone.
+- The restaurant's own branding on every screen: logo, brand colour, tagline, address, phone. In a business with several branches the header reads "Kacchi Ghar · Gulshan", with that branch's address and phone.
+- A branch the owner has closed for now shows "Temporarily closed" and takes no orders. The QR code of an archived branch no longer opens.
 - Bangla or English, switchable at any time.
 - Opening hours are shown, with a "last orders at …" notice in the last 30 minutes before.
 - A privacy note: only the name the guest types is kept. No phone number, no account.
@@ -60,7 +63,7 @@ Each role sees only the screens it may use, and the server checks the role on ev
 
 ### Bill, payment and review
 - Ask for the bill: itemised, with any discount, VAT and service charge. Can be withdrawn to keep ordering.
-- After the cashier marks it paid, the guest sees a receipt to print or save as a PDF. It shows the restaurant's VAT number (BIN), the invoice number, items, discount, charges, total, payment method and time.
+- After the cashier marks it paid, the guest sees a receipt to print or save as a PDF. It shows the branch's VAT number (BIN), the invoice number (with the branch's code, such as GUL-0042), items, discount, charges, total, payment method and time.
 - Review: 1 to 5 stars for the visit with a comment, plus optional stars for each dish. Guests who give 4 or 5 stars are offered the restaurant's Google review page.
 
 ---
@@ -95,21 +98,46 @@ Each role sees only the screens it may use, and the server checks the role on ev
 
 - **Counter**: every open bill as a card. Bills where guests asked to pay come first, with a sound alert.
 - **Bill detail**: every order and item, subtotal, discount, service charge, VAT and total.
-- **Discount**: a percent or a taka amount with a required reason. It comes off the subtotal before service charge and VAT, can be changed or removed until the bill is paid, and is recorded in the activity log.
 - **Take payment**: mark paid by cash, bKash, Nagad or card. The method is recorded; no money moves through Bosho. Tapping twice records only one payment.
 - **Print bill**: for a receipt printer or A4. Before payment it prints the table's bill; after payment, the receipt with the BIN and invoice number.
-- Each paid bill gets the restaurant's next invoice number (1, 2, 3 …).
+- Each paid bill gets the branch's next invoice number (1, 2, 3 …), printed with the branch's code when it has one ("GUL-0042").
+- Discounts are given by the owner or a manager, not the cashier.
 - **Closing report** for any day.
 - Bangla or English.
 
 ---
 
-## 5. Owner
+## 5. Manager
 
-The owner can do everything the other roles can, plus the following.
+A manager runs one branch. They can do everything the owner does in that branch (section 6), except:
+- No branch switcher, no "All branches" views, no Branches page, no Business profile.
+- They can't change VAT or service charge (Settings shows them, read only).
+- They can't change the logo, colour or tagline; on Profile they edit the branch's address, phone, BIN and Google review link.
+- On Staff they add, remove and set passwords for kitchen, waiter and cashier only, never for a manager or the owner, and they don't see those passwords.
+- The activity log, reports and closing report show their branch only.
+
+On a bill, a manager can give a **discount** (a percent or a taka amount with a required reason; it comes off the subtotal before service charge and VAT, can be changed or removed until the bill is paid, and is recorded in the activity log), remove an item, and close a bill without payment.
+
+---
+
+## 6. Owner
+
+The owner can do everything the other roles can, in every branch of the business, plus the following.
+
+### Branches
+- **Branches page**: every branch with its status, today's sales, tables and staff, and how many branches the plan allows (set by the platform admin; 3 by default).
+- **Add a branch**: name, invoice code (up to 6 letters, such as GUL), address, phone. Optionally copy from another branch, with tick boxes: the menu (categories, dishes, prices, photos, options), the settings (VAT, service charge, hours, ticket colours, accept rule), and the logo, colour and tagline. Tables and staff are never copied. After the copy each branch's menu is its own.
+- **Edit** a branch's name, code, address and phone.
+- **Close for now**: guests see "Temporarily closed"; staff can still log in.
+- **Archive**: the branch is hidden, its QR codes and staff logins stop working, and its sales stay in the reports. Refused while it has open bills, and for the last branch in use. **Bring back** an archived branch at any time (if the limit allows).
+- **Branch switcher** at the top of the sidebar: "All branches" or any branch. A new login starts in "All branches". The kitchen board, counter, menu, tables, staff, settings and profile work on one branch, so in "All branches" they first ask which branch.
+- **Move a staff member** to another branch from the Staff page; they are logged out and work in the new branch from their next login.
+
+### Dashboard
 
 ### Dashboard
 - Today: sales, bills paid, open bills, average rating.
+- In "All branches": today's sales, bills, open bills and rating of each branch side by side, with the totals; tap a branch to open it.
 - Today's takings by payment method, to check against the cash drawer.
 - Best sellers of the last 30 days, and the latest reviews.
 - A get-started checklist for a new restaurant: profile, menu, tables, VAT, kitchen screen.
@@ -126,17 +154,18 @@ The owner can do everything the other roles can, plus the following.
 - Renew a table's QR code, so old photos of it stop working.
 
 ### Staff
-- Add kitchen, waiter and cashier accounts.
+- Add manager, kitchen, waiter and cashier accounts in the branch being worked on.
 - Set each staff member's password, look it up again later (it is stored encrypted), or change it, which logs that person out everywhere.
-- One owner per restaurant.
+- One owner per business.
 
 ### Profile
-- Name, logo, brand colour (12 ready colours, all easy to read), tagline, address, phone.
-- VAT registration number (BIN) for bills and receipts.
-- Google review link.
+- Logo, brand colour (12 ready colours, all easy to read), tagline, and with one branch the restaurant name.
+- For each branch: address, phone, VAT registration number (BIN) for bills and receipts, and Google review link.
+- With several branches, the **Business profile** holds the name, logo, colour and tagline of every branch, and a branch's Profile can use the business's branding or its own.
 
 ### Settings
-- VAT % and service charge %.
+Each branch has its own settings.
+- VAT % and service charge % (owner only).
 - Open or closed for orders.
 - Staff must accept each guest order (on by default, which stops fake orders).
 - Opening hours shown to guests, and an option to take guest orders only during those hours.
@@ -147,34 +176,43 @@ The owner can do everything the other roles can, plus the following.
 - Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour.
 - CSV downloads for any dates: orders, payments (with invoice number and discount) and reviews. They open in Excel with Bangla intact.
 - **Closing report**: money by payment method, bills paid, discounts, items removed by staff, rejected orders, groups closed without payment, bills still open. Printable.
-- **Activity log**: price changes, deleted dishes, items removed from bills, discounts, payments, bills closed without payment, rejected orders, and changes to staff, passwords and charges.
+- **Activity log**: price changes, deleted dishes, items removed from bills, discounts, payments, bills closed without payment, rejected orders, changes to staff, passwords and charges, and branches added, closed or archived.
+- In "All branches", the reports, closing report and activity log cover every branch: sales by branch, dishes counted across branches, and a branch column. Every CSV has a branch column.
 
-### Owner-only actions on a bill
+### Owner and manager actions on a bill
+- Give a discount, with a reason.
 - Remove an item from a bill, with a recorded reason.
 - Close a bill without payment (for example, guests who scanned and left).
 
 ---
 
-## 6. Accounts and access (all staff)
+## 7. Accounts and access (all staff)
 
-- **Sign up** creates a restaurant and its owner account, with the owner's email.
+- **Sign up** creates a business, its first branch and the owner account, with the owner's email.
 - Staff log in with phone number and password. Five wrong passwords lock that number for 15 minutes.
 - **My account**: log out on all devices. The owner also changes their own password and email there.
 - **Forgot password** (owner): an emailed link that works once, for 1 hour, and logs out every device. Staff ask their owner instead.
-- **Email confirmation** (owner): off by default. When switched on, the owner can set up the restaurant, but guests can't order until the email is confirmed.
+- **Email confirmation** (owner): off by default. When switched on, the owner can set up the restaurant, but guests can't order until the email is confirmed. It counts for every branch of the business.
+- Staff of an archived branch can't log in.
+
+### Platform admin
+- A separate login at `/admin`: email, password, then a 6-digit code sent to that email (it expires in 10 minutes; 5 wrong codes mean starting again). Admin sessions last 12 hours. A restaurant login never opens it.
+- The first admin is added on the server with `make create-admin EMAIL=you@example.com`.
+- **Business list**: every business with its owner, phone, email (confirmed or not), branches in use and allowed, orders today and in all; search by name, owner, phone or email.
+- **Per business**: the number of branches allowed (a lower limit never closes a branch, it only stops new ones), and email confirmation (platform setting, always, or never). Every change is logged with the value before and after.
 
 ---
 
-## 7. Workflows, start to end
+## 8. Workflows, start to end
 
 ### A. A new restaurant gets set up (owner)
-1. Owner opens `/signup` and enters the restaurant name, their name, phone, email and password.
+1. Owner opens `/signup` and enters the restaurant name, their name, phone, email and password. This makes a business with one branch.
 2. The dashboard opens with a get-started checklist.
 3. **Profile**: logo, brand colour, tagline, address, phone, BIN, Google review link.
 4. **Settings**: VAT %, service charge %, opening hours, accept rule, ticket colour timings, and optionally Wi-Fi-only ordering.
 5. **Menu**: add categories, then dishes with photos, prices, tags and options.
 6. **Tables**: add tables and print the QR cards; place one card on each table.
-7. **Staff**: add kitchen, waiter and cashier accounts and give them their passwords.
+7. **Staff**: add manager, kitchen, waiter and cashier accounts and give them their passwords.
 8. Open the Kitchen board on the kitchen tablet and turn on its sound.
 
 ### B. A guest dines (the main flow)
@@ -188,7 +226,7 @@ The owner can do everything the other roles can, plus the following.
 8. **Waiter** serves the food and taps **Mark served**.
 9. The guest can order more rounds, which are added to the same bill.
 10. The guest taps **Ask for the bill**. The counter hears an alert and the bill moves to the top.
-11. **Cashier** opens the bill, adds a discount if needed (with a reason), prints the bill if the guest wants paper, and marks it paid with the method used.
+11. **Cashier** opens the bill (the owner or a manager adds a discount if needed, with a reason), prints the bill if the guest wants paper, and marks it paid with the method used.
 12. The guest's phone shows the receipt with the invoice number, then the review form.
 13. A guest who gives 4 or 5 stars is offered the restaurant's Google review page.
 
@@ -200,7 +238,7 @@ The owner can do everything the other roles can, plus the following.
 ### D. A guest changes their mind
 1. **Before the kitchen accepts:** the guest changes or cancels the item themselves.
 2. **After the kitchen accepts:** the guest sends a change request. Kitchen or waiter approves or declines it, and the guest sees the answer.
-3. **After serving:** only the owner can remove the item, with a recorded reason. It appears in the closing report and the activity log.
+3. **After serving:** only the owner or a manager can remove the item, with a recorded reason. It appears in the closing report and the activity log.
 
 ### E. Calling a waiter
 1. The guest taps **Call waiter**, **Water** or **Tissue**.
@@ -213,15 +251,15 @@ The owner can do everything the other roles can, plus the following.
 3. Switch it back on when it is available again.
 
 ### G. A table leaves without paying
-1. **Owner** opens the bill and taps **Close without payment**.
+1. **Owner** or **manager** opens the bill and taps **Close without payment**.
 2. Unserved orders are cancelled.
 3. It is recorded in the activity log and in that day's closing report.
 
-### H. End of the day (cashier or owner)
+### H. End of the day (cashier, manager or owner)
 1. Check the Counter: any bills still open must be paid or closed.
 2. Open **Closing report**: money by payment method, bills paid, discounts, items removed, rejected orders, unpaid closures.
 3. Count the cash drawer against the cash line; check bKash, Nagad and card against their statements.
-4. Print the report.
+4. Print the report. The owner can also open it in "All branches" for a line per branch and the total.
 
 ### I. Weekly or monthly review (owner)
 1. **Reports**: sales per day, average bill, best and worst dishes, busiest hours.
@@ -229,20 +267,42 @@ The owner can do everything the other roles can, plus the following.
 3. Download CSVs for the accountant.
 4. **Activity log**: check price changes, discounts and removed items.
 
-### J. Staff changes (owner)
-1. **New staff**: Staff → add a name, phone, role and password, then tell them the password.
+### J. Staff changes (owner or manager)
+1. **New staff**: Staff → add a name, phone, role and password, then tell them the password. A manager adds kitchen, waiter and cashier only.
 2. **Forgotten staff password**: look it up on the Staff page, or set a new one.
 3. **Someone leaves**: remove their account; they are logged out everywhere.
 4. **Owner forgets their password**: "Forgot password?" on the login page sends a reset link by email.
+5. **Someone moves branch** (owner): Staff → Move to another branch. They are logged out and land in the new branch at their next login.
 
 ### K. Security incidents
 1. **QR photo shared outside**: Tables → renew that table's QR, then print the new card.
 2. **Fake orders from outside**: keep "staff must accept" on, and switch on Wi-Fi-only ordering.
 3. **Lost phone or tablet**: My account → log out on all devices, or the owner changes that person's password.
 
+
+### L. Opening a new branch (owner)
+1. **Branches** → Add a branch: name (for example Gulshan), invoice code (GUL), address, phone.
+2. Choose the branch to copy from and tick what to copy: menu, settings, logo and colour.
+3. If the platform's limit is reached, the page says so; the platform admin can raise it.
+4. In the sidebar switcher pick the new branch, then add its **tables** and print their QR cards.
+5. Add its **staff**, usually a **manager** first, who then adds the kitchen, waiter and cashier accounts.
+6. Optionally set its own BIN, Google review link and, in Profile, its own logo or colour.
+7. Give the first branch a name too on the Branches page, so guests and staff can tell them apart.
+
+### M. Running several branches day to day (owner)
+1. Log in: the dashboard shows today for every branch side by side.
+2. Tap a branch (or use the switcher) to work in it: its kitchen, counter, menu and settings.
+3. Switch back to "All branches" for the combined reports, closing report and activity log.
+4. Close a branch for a day with **Close for now**; archive one that shuts for good.
+
+### N. Raising a business's branch limit (platform admin)
+1. Log in at `/admin` with email and password, then the 6-digit code from the email.
+2. Find the business in the list and open it.
+3. Set **Branches allowed** and save. The change is in that business's admin log.
+
 ---
 
-## 8. Built in behind the scenes
+## 9. Built in behind the scenes
 
 - **Money is exact**: amounts are stored in poisha, and prices, discounts, VAT and service charge are always worked out on the server. A dish's name and price are copied onto each order, so old bills never change.
 - **The bill belongs to a group, not a table**, so two groups at one table get separate bills.
@@ -250,12 +310,12 @@ The owner can do everything the other roles can, plus the following.
 - **Fast on slow phones**: the app serves its own fonts, files are cached, and photos come in two sizes.
 - **Safe writes**: money changes are saved all at once or not at all, a second tap changes nothing, and a cleanup job runs every 10 minutes.
 - **Security**: guest phones are limited to 60 taps a minute, logins lock after 5 wrong passwords, posts from other websites are refused, and strict security headers are set.
-- **Many restaurants on one installation**: each restaurant's data is kept apart.
+- **Many restaurants on one installation**: each business and each of its branches is kept apart; an owner can't open another business's branch, and staff can't open another branch's bills.
 - **Keeps working when parts fail**: the app runs on if photo storage or Redis is down.
 - **Operations**: request logs, a time limit on every request, a database backup command with a restore check, a busy-evening load test, and automatic tests on every push.
 
 ---
 
-## 9. Not built yet
+## 10. Not built yet
 
-Online payment (bKash, Nagad or card through a payment gateway), split bill, tips, kitchen ticket printing, subscription billing, live push updates (screens refresh every 3 to 4 seconds instead), allergen information, dark mode, table tablet (kiosk) mode, multiple branches.
+Online payment (bKash, Nagad or card through a payment gateway), split bill, tips, kitchen ticket printing, subscription billing, live push updates (screens refresh every 3 to 4 seconds instead), allergen information, dark mode, table tablet (kiosk) mode, one person working at several branches (until then they need a login per branch), one shared menu across branches (each branch's menu is separate after the copy), and the rest of the admin panel (other limits, feature switches, logging in as an owner to help).

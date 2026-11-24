@@ -1,11 +1,11 @@
 # Bosho (বসো): Presentation Format
 
-<!-- presentation-sync: last synced at commit 4cbdcd9 (plus uncommitted discounts and printed bills) on 2026-11-24 -->
+<!-- presentation-sync: last synced at commit 474ad5d (plus uncommitted multi-branch steps 2 to 7) on 2026-11-24 -->
 
 The slide-by-slide outline for presenting Bosho. Facts come from `FEATURES.md` (feature IDs in brackets), `qr-table-ordering-plan.md` (business plan) and `global-qr-ordering-research.md` (market). Do not put a claim on a slide that is not in one of those three.
 
-**Length:** 15 slides, about 12 minutes plus a 3-minute live demo.
-**Audience:** restaurant owners and investors. Plain words, no code on slides except slide 11.
+**Length:** 16 slides, about 12 minutes plus a 3-minute live demo.
+**Audience:** restaurant owners and investors. Plain words, no code on slides except slide 12.
 **Look:** the app's own style. White page, Inter font, sindoor maroon `#8f1d21` as the one accent, thin grey borders, no decoration. Bangla title next to English.
 **Each slide:** one title that states the point, at most 4 bullets or one picture, speaker notes underneath.
 
@@ -59,8 +59,8 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 ## 7. The counter and the floor
 
 - Every open bill as a card; remove an item with a recorded reason [K-08].
-- Discount with a written reason, then mark paid by cash, bKash, Nagad or card (recorded, not processed) [K-15, K-09].
-- Print the bill with the VAT number (BIN) and a running invoice number [K-16].
+- Discount with a written reason (owner or manager), then mark paid by cash, bKash, Nagad or card (recorded, not processed) [K-15, K-09].
+- Print the bill with the VAT number (BIN) and each branch's own invoice number, such as GUL-0042 [K-16].
 - Mark a dish sold out and guests see it at once; each role lands on its own page [K-06, K-10].
 
 ## 8. The owner's view
@@ -70,29 +70,36 @@ Picture: a row of 6 phone screenshots. (screenshot needs retaking)
 - Closing report each night: what was taken, discounted, removed or left unpaid [O-15].
 - Activity log of every price change, removal and payment [O-16]. Picture: reports screenshot. (screenshot needs retaking)
 
-## 9. Set up in an afternoon
+## 9. Many branches, one business
+
+- Add a branch in minutes, copying the menu, settings and branding from another; close it for a day or archive it [O-17].
+- Switch between branches, or see all of them at once: today's sales, reports, closing report, activity log [O-18, O-01, O-13, O-15, O-16].
+- A manager runs each branch; only the owner changes VAT, service charge and branding [A-06, O-09, O-10, O-11].
+- Guests see "Kacchi Ghar · Gulshan", and each branch prints its own invoices [G-02, G-22, K-16]. Picture: Branches page with the switcher. (screenshot needs retaking)
+
+## 10. Set up in an afternoon
 
 - Get-started checklist on the first login [O-04].
-- Menu with photos, descriptions, tags and option rules [O-05], tables [O-06], staff with roles, each doing only its own tasks [O-09, A-03].
+- Menu with photos, descriptions, tags and option rules [O-05], tables [O-06], staff with roles (manager, kitchen, waiter, cashier), each doing only its own tasks [O-09, A-03].
 - Logo and brand colour on every guest screen and QR card [O-10, G-02, O-07].
 - Print the QR cards and put them on the tables [O-08].
 
-## 10. No fake orders
+## 11. No fake orders
 
 - Staff accept each guest order before it is cooked (on by default) [O-11].
 - Order only on the restaurant's Wi-Fi, set with one tap [O-12, G-15].
 - Renew a table's QR so an old photo stops working [O-08].
 - Prices and totals are always computed on the server; guest taps are rate-limited and other websites cannot post [P-03, P-12].
 
-## 11. How it is built
+## 12. How it is built
 
 Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Supabase), photos (Backblaze B2), Redis change counter (Upstash).
-- One installation serves many restaurants [P-02].
+- One installation serves many restaurants, each with its branches [P-02].
 - Screens that refresh skip the database when nothing changed [P-05].
 - Free online services, deploys with Docker or Fly.io [P-06, P-07].
 - Built for weak internet and slow phones; checked writes, nightly backups, load-tested [P-09, P-10, P-11, P-13].
 
-## 12. How it compares
+## 13. How it compares
 
 - QR ordering is proven abroad (China, Korea, Australia, UK, US); guests resisted only when it was forced on them.
 - Bosho keeps the waiter and paper option (hybrid), shows every charge up front, needs no guest signup.
@@ -100,11 +107,11 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 
 *Source:* research, Summary, sections 1 and 4.
 
-## 13. What comes next
+## 14. What comes next
 
-- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, kitchen ticket printing, subscription billing, multiple branches.
+- From "Not built yet" in `FEATURES.md`: online payment (bKash, Nagad, card), split bill, tips, kitchen ticket printing, subscription billing, one person working at several branches, a shared menu across branches.
 
-## 14. Business plan
+## 15. Business plan
 
 - First customers: mid-range restaurants and cafes in Dhaka.
 - Pilot free with 3 to 5 restaurants, then a flat monthly fee per outlet (suggested 1,500 to 3,000 taka, tiered by tables; still to be tested with owners).
@@ -112,10 +119,10 @@ Picture: a diagram. Phone browser → Go server (htmx pages) → PostgreSQL (Sup
 
 *Source:* plan, Summary and section 5. The plan's architecture section (6) predates the Go build; take tech facts from `FEATURES.md`, not the plan.
 
-## 15. Live demo and ask
+## 16. Live demo and ask
 
 - Demo script: owner logs in → shows the menu → guest scans table 1 on a phone → places an order → kitchen accepts → guest sees the ready time → guest asks for the bill → counter marks it paid → guest leaves a review → dashboard shows the sale.
-- Demo data: `DEMO=1`, owner phone `01700000000`, guest link `/t/demo-table-1` [P-08].
+- Demo data: `DEMO=1`, owner phone `01700000000` (starts in "All branches": Dhanmondi and Gulshan), guest links `/t/demo-table-1` and `/t/demo-gulshan-1` [P-08].
 - The ask: pilot restaurants / funding / feedback (fill in per audience).
 
 ---
@@ -126,27 +133,30 @@ Used by the `presentation-sync` skill to find slides that a feature change affec
 
 | Feature IDs | Slides |
 | --- | --- |
-| G-01 to G-07 | 3, 4 |
+| G-01 to G-07 | 3, 4 (G-02 also 9, 10) |
 | G-08, G-11, P-04 | 5 |
 | G-09, G-10, G-12, G-13, G-14 | 4 |
 | G-16 to G-18, G-20 | 4 |
 | G-19 | (not on a slide) |
-| G-02 | 9 |
-| G-15 | 10 |
+| G-15 | 11 |
+| G-22 | 9 |
 | K-01 to K-05 | 6 |
 | K-06 to K-10 | 7 (K-07 also 5) |
 | K-11 to K-13 | 6 |
-| K-15, K-16 | 7 |
-| O-01 to O-03 | 8 |
-| O-13 to O-16 | 8 |
-| O-04 to O-10 | 9 (O-07 also 1, O-08 also 10) |
-| O-11, O-12 | 10 |
-| A-01, A-02 | 9 |
-| A-03 | 9 |
-| A-04, A-05 | (not on a slide) |
-| P-01 to P-07 | 11 (P-03 also 10) |
-| P-09, P-10, P-11, P-13 | 11 |
-| P-12 | 10 |
+| K-15 | 7 |
+| K-16 | 7, 9 |
+| O-01 to O-03 | 8 (O-01 also 9) |
+| O-13 to O-16 | 8 (O-13, O-15, O-16 also 9) |
+| O-04 to O-10 | 10 (O-07 also 1, O-08 also 11, O-09 and O-10 also 9) |
+| O-11, O-12 | 11 (O-11 also 9) |
+| O-17, O-18 | 9 |
+| A-01, A-02 | 10 |
+| A-03 | 10 |
+| A-06 | 9 |
+| A-04, A-05, A-07 | (not on a slide) |
+| P-01 to P-07 | 12 (P-03 also 11) |
+| P-09, P-10, P-11, P-13 | 12 |
+| P-12 | 11 |
 | G-21, K-14 | (not on a slide) |
-| P-08 | 15 |
-| Not built yet | 13 |
+| P-08 | 16 |
+| Not built yet | 14 |

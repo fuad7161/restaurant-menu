@@ -1,6 +1,6 @@
 # Bosho (বসো): Feature List
 
-<!-- presentation-sync: last synced at commit 4cbdcd9 (plus uncommitted discounts and printed bills) on 2026-11-24 -->
+<!-- presentation-sync: last synced at commit 474ad5d (plus uncommitted multi-branch steps 2 to 7) on 2026-11-24 -->
 
 This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
@@ -13,7 +13,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | ID | Feature | Where in code |
 | --- | --- | --- |
 | G-01 | Scan the table QR and the restaurant's menu opens, already knowing the table. No app, no signup. | `internal/server/guest.go` (`gLanding`, `gEnter`) |
-| G-02 | Restaurant branding on every guest screen: logo or initial mark, brand colour as the accent on a clean white page, tagline, address, phone. | `web/templates/guest.html` (`ghead`, `rmark`), `internal/server/theme.go` |
+| G-02 | Restaurant branding on every guest screen: logo or initial mark, brand colour as the accent on a clean white page, tagline, address, phone. In a business with several branches the header reads "Kacchi Ghar · Gulshan": the business's branding (or the branch's own, when the owner set one) with the branch's name, address and phone. | `web/templates/guest.html` (`ghead`, `rmark`), `internal/server/theme.go`, `Restaurant.DisplayName` in `models.go` |
 | G-03 | Bangla and English, switchable at any time. | `internal/i18n/i18n.go`, `gLang` |
 | G-04 | Menu by category with photos, short descriptions, prices in taka and tags (Popular, Chef's pick, New, Vegetarian, spice level). A "Recommended" row shows the owner's featured dishes. A line says which charges (VAT, service) come on top. Sold-out dishes are greyed out. | `internal/server/queries.go` (`menu`, `bestSellers`), `guest.go` (`infoData`), `guest_menu` template |
 | G-05 | One cart shared by the whole group. Every item shows who added it. | `internal/server/guest_cart.go` |
@@ -33,6 +33,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | G-19 | Opening hours on the welcome and menu screens, and a "last orders at …" notice in the 30 minutes before. | `guest.go` (`hoursInfo`) |
 | G-20 | Receipt after paying, to print or save as a PDF: the restaurant's VAT number (BIN) when set, the invoice number, items, discount, VAT, service charge, total, payment method and time. | `gReceipt`, `guest_receipt` template |
 | G-21 | A privacy note on the welcome screen: only the typed name is kept, no phone number, no account. | `guest_enter` template |
+| G-22 | A branch the owner closed for now shows "Temporarily closed" and takes no orders; the QR code of an archived branch no longer opens. | `gctx` in `guest.go`, i18n `temp_closed` |
 
 ## Kitchen and floor staff (`/staff/...`)
 
@@ -45,21 +46,21 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | K-05 | Sound alert on the kitchen board (new orders, calls, change requests) and the counter (bill requests). Turned on with one tap. | `web/static/app.js`, `data-alert` |
 | K-06 | Sold out: kitchen and waiters switch a dish off and on; guests see it greyed out at once. | `stock`, `stockToggle`, `stock_row` template |
 | K-07 | Take order: a waiter opens a table and orders for guests who do not scan. These orders skip the Accept step. | `internal/server/waiter.go` |
-| K-08 | Counter: all open bills as cards and bill detail. Only the owner removes an item from a bill, with a recorded reason. | `internal/server/counter.go` |
-| K-09 | Cashier marks a bill paid by cash, bKash, Nagad or card (recorded, not processed). Only the owner closes a bill without payment. | `sessionPaid`, `sessionClose` |
-| K-10 | Light left sidebar for staff; it slides in on phones. It shows only the screens that role can open, and each role starts on its own page: kitchen on the Kitchen board, waiter on Take order, cashier on the Counter, owner on the Dashboard. | `shead` in `web/templates/staff.html`, `staffHome` in `perm.go` |
+| K-08 | Counter: all open bills as cards and bill detail. Only the owner or a manager removes an item from a bill, with a recorded reason. | `internal/server/counter.go` |
+| K-09 | Cashier marks a bill paid by cash, bKash, Nagad or card (recorded, not processed). Only the owner or a manager closes a bill without payment. | `sessionPaid`, `sessionClose` |
+| K-10 | Light left sidebar for staff; it slides in on phones. It shows only the screens that role can open, with the branch name under the restaurant name, and each role starts on its own page: kitchen on the Kitchen board, waiter on Take order, cashier on the Counter, owner and manager on the Dashboard. | `shead` in `web/templates/staff.html`, `staffHome` in `perm.go` |
 | K-11 | Undo "Mark ready" (kitchen) or "Mark served" (waiter) within a minute, from the message that appears. Each undo is in the activity log. | `orderAct` (`undo`) |
 | K-12 | Kitchen and counter screens keep the tablet awake where the browser allows it (otherwise a note says how), and staff screens can be installed on the home screen. | `app.js`, `web/static/manifest.webmanifest` |
 | K-13 | Staff service screens (sidebar, kitchen, counter, take order, sold out) in Bangla or English, switched in the sidebar. Owner pages stay English. | `staffLang` in `auth.go`, `internal/i18n` |
 | K-14 | My account: log out on all devices. The owner also changes their own password there (other devices are logged out) and sets their email. Staff can't change their password; the owner sets it. | `account`, `accountPassword`, `logoutAll` in `auth.go`, `accountEmail` in `email.go` |
-| K-15 | Discount on a bill: the cashier or the owner takes a percent or a taka amount off, with a reason that must be written. It comes off before service charge and VAT, can be changed or removed until the bill is paid, and every change goes into the activity log. | `internal/server/counter.go` (`sessionDiscount`), `billTotals` in `queries.go` |
-| K-16 | Printed bill from the counter, sized for a receipt printer or A4: before payment the bill for the table, after payment the receipt. It shows the restaurant's VAT number (BIN) and, once paid, an invoice number that counts up 1, 2, 3 per restaurant. | `sessionPrint`, `sessionPaid` in `counter.go`, `staff_bill` template |
+| K-15 | Discount on a bill: the owner or a manager takes a percent or a taka amount off, with a reason that must be written. It comes off before service charge and VAT, can be changed or removed until the bill is paid, and every change goes into the activity log. Cashiers can't give discounts. | `internal/server/counter.go` (`sessionDiscount`), `billTotals` in `queries.go` |
+| K-16 | Printed bill from the counter, sized for a receipt printer or A4: before payment the bill for the table, after payment the receipt. It shows the branch's name, address and VAT number (BIN) and, once paid, an invoice number that each branch counts on its own (1, 2, 3), printed with the branch's code when it has one ("GUL-0042"). | `sessionPrint`, `sessionPaid` in `counter.go`, `staff_bill` template, `Restaurant.InvoiceLabel` |
 
 ## Owner (`/owner/...`)
 
 | ID | Feature | Where in code |
 | --- | --- | --- |
-| O-01 | Dashboard for today: sales, bills paid, open bills, average rating. | `internal/server/owner_dashboard.go`, `dashboard` template |
+| O-01 | Dashboard for today: sales, bills paid, open bills, average rating. In "All branches" mode: today's sales, bills, open bills and rating for each branch side by side, with the totals. | `internal/server/owner_dashboard.go` (`dashboard`, `dashboardAll`), `dashboard` and `dashboard_all` templates |
 | O-02 | Today's takings by payment method, to check against the cash drawer. | `dashboard` |
 | O-03 | Best sellers over the last 30 days and the latest reviews as cards. | `dashboard` |
 | O-04 | Get-started checklist for a new restaurant (profile, menu, tables, VAT, kitchen screen). | `dashboard` template |
@@ -67,37 +68,41 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 | O-06 | Tables: add tables ("New table" is the first card), switch a table off (hidden from guests). | `internal/server/owner_tables.go` |
 | O-07 | Branded QR codes: round dots, the restaurant's logo or initial in the middle, highest error correction so they still scan. | `internal/qrmark/qrmark.go`, `internal/server/qr.go` |
 | O-08 | Print QR cards for all tables or one table; renew a table's QR so old photos of it stop working. | `tablePrint`, `tableNewQR` |
-| O-09 | Staff accounts with the roles kitchen, waiter and cashier. The owner sets each staff password, can look it up again on the Staff page (stored encrypted), and can change it at any time, which logs that person out everywhere. A restaurant has one owner: the owner can't add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`), `secret.go` |
-| O-10 | Profile: name, logo upload, brand colour from 12 ready swatches (all readable), tagline, address, phone, VAT registration number (BIN) for bills and receipts, Google review link. | `internal/server/owner_profile.go`, `theme.go` |
-| O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. | `settings`, `settingsSave`, `withinHours` |
+| O-09 | Staff accounts with the roles manager, kitchen, waiter and cashier, each in one branch. The owner sets each staff password, can look it up again on the Staff page (stored encrypted), and can change it at any time, which logs that person out everywhere. A manager does the same for kitchen, waiter and cashier only, and never sees a manager's or the owner's password. The owner can move a person to another branch (they are logged out). A business has one owner: nobody can add, remove or reset another owner. | `internal/server/owner_staff.go` (`staffPassword`, `staffMove`), `secret.go`, `GivableRoles` in `perm.go` |
+| O-10 | Profile: logo upload, brand colour from 12 ready swatches (all readable), tagline, and the branch's address, phone, VAT registration number (BIN) for bills and receipts and Google review link. With one branch the owner edits the name and branding here; with several, a Business profile page holds the name and branding of every branch, and each branch can use the business's or its own. A manager edits only the branch details. | `internal/server/owner_profile.go`, `theme.go` |
+| O-11 | Settings: VAT %, service charge %, open or closed for orders, staff must accept each guest order (stops fake orders), opening hours shown to guests, an option to take guest orders only during those hours, and the minutes after which kitchen tickets turn amber and red. Each branch has its own; only the owner changes VAT and service charge. | `settings`, `settingsSave`, `withinHours` |
 | O-12 | Ordering network: guests can order only on the restaurant's Wi-Fi. One tap allows the current network; ranges can be typed. | `internal/server/network.go`, `owner_networks` template |
-| O-13 | Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour. | `internal/server/reports.go` (`reports`) |
-| O-14 | Download orders, payments (with invoice number and discount) and reviews as CSV for any dates (opens in Excel with Bangla intact). | `reports.go` (`export`) |
-| O-15 | Closing report for any day: money by payment method, bills paid, discounts given (who, why, how much), items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. The cashier can open it too. | `reports.go` (`closing`) |
-| O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, gave or removed discounts, took payments, closed bills without payment, rejected orders, or changed staff, passwords or charges. | `internal/server/audit.go` |
+| O-13 | Reports for the last 7, 30 or 90 days: sales and bills per day, average bill, sales per dish, orders per hour. In "All branches" mode they cover every branch, with sales by branch and dishes counted across branches. | `internal/server/reports.go` (`reports`, `scope`, `salesByBranch`) |
+| O-14 | Download orders, payments (with invoice number and discount) and reviews as CSV for any dates (opens in Excel with Bangla intact). Every file has a branch column; in "All branches" mode it holds every branch. | `reports.go` (`export`) |
+| O-15 | Closing report for any day: money by payment method, bills paid, discounts given (who, why, how much), items removed by staff, rejected orders, groups closed without payment, bills still open. Printable. The cashier and the manager can open it for their branch; in "All branches" mode the owner sees every branch, a line per branch and the total. | `reports.go` (`closing`) |
+| O-16 | Activity log: who changed prices, deleted dishes, removed items from bills, gave or removed discounts, took payments, closed bills without payment, rejected orders, changed staff, passwords or charges, or added, closed or archived branches. A manager sees their own branch; the owner in "All branches" mode sees every branch with a branch column. | `internal/server/audit.go` |
+| O-17 | Branches page: add a branch (name, invoice code, address, phone), copying from another branch, as ticked, its menu (categories, dishes, prices, photos, options), its settings (charges, hours, ticket colours, accept rule) and its logo, colour and tagline; tables and staff are never copied, and after the copy each branch's menu is its own. Edit a branch, close it for now (guests see "Temporarily closed", staff still log in), archive it (hidden, its QR codes and staff logins stop working, sales stay in reports; refused while it has open bills) and bring it back. Shows today's sales, tables and staff of each branch and how many branches the plan allows. | `internal/server/owner_branches.go`, `owner_branches` template |
+| O-18 | Branch switcher at the top of the owner's sidebar: "All branches" or any branch, remembered for that login. A new login starts in "All branches"; pages that work on one branch (kitchen, counter, menu, tables, staff, settings, profile) first ask to pick a branch. | `branchSwitch`, `pickBranch` in `owner_branches.go`, `authFor` in `auth.go`, `allBranchPerms` in `perm.go` |
 
 ## Accounts and access
 
 | ID | Feature | Where in code |
 | --- | --- | --- |
-| A-01 | Sign up creates a restaurant and its owner account, with the owner's email. | `internal/server/auth.go` (`signup`) |
+| A-01 | Sign up creates a business, its first branch and the owner account, with the owner's email. | `internal/server/auth.go` (`signup`) |
 | A-02 | Staff log in with phone and password (bcrypt). Already logged in skips the login page; after login, staff return to the page they asked for. Five wrong passwords lock that number for 15 minutes. | `login`, `?next=` |
-| A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment and gives discounts. Removing an item from a bill and closing without payment are owner only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
+| A-03 | Each role does only its own tasks, checked by the server on every request, not just hidden on the page. Kitchen accepts, rejects and marks ready; waiter takes orders, marks served and answers calls; cashier takes payment. Discounts, removing an item from a bill and closing without payment are owner and manager only. Refused attempts are logged. | `internal/server/perm.go` (`rolePerms`, `need`), `perm_test.go` |
 | A-04 | Forgot password for owners: a link by email that works once for 1 hour and logs out every device. The page never says whether an account exists. Staff ask their owner instead. | `internal/server/email.go` (`forgot`, `resetSave`), `internal/mail` |
 | A-05 | Email confirmation: the owner gets a link at signup (valid 24 hours; send again once a minute, 5 a day). Off by default, and while off no link is sent and nothing waits on it (the per-restaurant override is ignored too); when switched on, an unconfirmed owner can set up but guests see "Not taking orders yet". Emails go through Brevo, Gmail (SMTP) or Resend, or into the log when none is set. | `email.go` (`verifyEmail`, `awaitingEmail`), `EMAIL_VERIFY` |
+| A-06 | Manager role: runs one branch like the owner (menu, tables, staff, bills, discounts, settings, reports, closing report, its own activity log), but can't change VAT or service charge, the branding, other branches, or managers and the owner. | `rolePerms` in `perm.go` |
+| A-07 | Platform admin panel at `/admin`, with its own login: email, password and a 6-digit code emailed each time (5 wrong codes end the try, sessions last 12 hours). Lists every business with its owner, branches and orders, searchable; per business the admin sets the number of branches allowed and whether the owner must confirm their email, and every change is logged with the value before and after. Admins are added from the command line (`make create-admin`). | `internal/server/admin.go`, `web/templates/admin.html`, `cmd/bosho` (`create-admin`) |
 
 ## Platform and rules
 
 | ID | Feature | Where in code |
 | --- | --- | --- |
 | P-01 | Web app: Go server, HTML templates and htmx. Works on any phone browser. | `cmd/bosho`, `web/` |
-| P-02 | Multi-tenant: every query is filtered by restaurant, so one installation serves many restaurants. | all handlers |
+| P-02 | Multi-tenant: a business groups its branches, and every query is filtered by branch (or, in the owner's "All branches" views, by business), so one installation serves many restaurants. | all handlers, `scope` in `reports.go` |
 | P-03 | Money in poisha; prices, VAT and service charge always computed on the server. Name and price are copied onto each order line so old bills never change. | `internal/money`, `order_items` table |
 | P-04 | The bill belongs to a group, not a table. | `table_sessions` table |
 | P-05 | Redis change counter: self-refreshing screens get an empty 204 reply when nothing changed, without touching PostgreSQL. Works without Redis too. | `internal/cache`, `internal/server/poll.go` |
 | P-06 | Runs on free online services: Supabase PostgreSQL, Backblaze B2 photos (any S3 store), Upstash Redis. | `internal/config`, `internal/storage` |
 | P-07 | Docker and Fly.io deploy (Singapore region) with one machine always running and a health check every 30 seconds; schema migrations run at startup. | `Dockerfile`, `fly.toml`, `internal/database/migrations` |
-| P-08 | Demo mode seeds a sample restaurant; local runs put the laptop's Wi-Fi IP into the QR codes so phones can scan them. | `internal/server/demo.go`, `Makefile` |
+| P-08 | Demo mode seeds a sample restaurant with two branches (Dhanmondi and Gulshan); local runs put the laptop's Wi-Fi IP into the QR codes so phones can scan them. | `internal/server/demo.go` (`seedDemoBranches`), `Makefile` |
 | P-09 | Made for weak internet and busy hands: a "No internet, reconnecting" banner, buttons that show they are working and cannot send twice, short messages at the bottom of the screen, and questions asked in the page's language instead of browser pop-ups. | `web/static/app.js`, `ui` template |
 | P-10 | Fast on slow phones: fonts served by the app itself, static files cached and versioned, dish photos in two sizes. | `web/static/fonts`, `asset` in `helpers.go`, `internal/storage/resize.go` |
 | P-11 | Safe writes: every database write is checked, money changes (paying, closing, removing items) save in one transaction, a second tap changes nothing, and a background job tidies idle groups, old carts and calls every 10 minutes. The app keeps working when photo storage or Redis is down. | `helpers.go` (`inTx`), `maintenance.go`, `internal/storage` |
@@ -106,7 +111,7 @@ Keep the IDs: a removed feature moves to "Removed" with its ID, and a new featur
 
 ## Not built yet
 
-Online payment (bKash, Nagad, card gateway), split bill, tips, kitchen ticket printing, subscription billing, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, multiple branches. Full list with status: `docs/missing-features.md`.
+Online payment (bKash, Nagad, card gateway), split bill, tips, kitchen ticket printing, subscription billing, live push (screens poll every 3 to 4 seconds), allergen information, dark mode, kiosk mode for table tablets, one person working at several branches, a shared menu across branches, and the rest of the admin panel (other limits, feature switches, log in as owner). Full list with status: `docs/missing-features.md`.
 
 ## Removed
 

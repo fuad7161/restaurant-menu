@@ -50,9 +50,9 @@ The README's "Screens", "Rules built in" and "Not built yet" sections say the sa
    - Use the "Feature → slide map" to find every slide that cites a changed, new or removed ID, and rewrite those bullets.
    - A new feature goes on the slide whose topic fits it; add its ID to the bullet and to the map. If no slide fits and the feature is a selling point, add a slide in the right place and renumber the following slides and the map.
    - A removed feature: take it off every slide and out of the map.
-   - Slide 13 ("What comes next") mirrors "Not built yet".
+   - Slide 14 ("What comes next") mirrors "Not built yet".
    - When a screen's look changed, add `(screenshot needs retaking)` after the slide's "Picture:" line.
-   - Keep the deck at about 15 slides and each slide at 4 bullets or fewer. Update the marker.
+   - Keep the deck at about 16 slides and each slide at 4 bullets or fewer. Update the marker.
 
 6. **Update `docs/feature-guide.md`.**
    - Put each new or changed feature under every role that can use it (section 1 to 6), and change or add the workflow steps in section 7 that it touches. A new kind of task gets its own lettered workflow.
