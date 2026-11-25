@@ -3,15 +3,8 @@ data/
 bin/
 old-sqlite-data/
 backups/
-.noneedingit/
 
-# Promotion stays on this laptop, not on GitHub: the repo is for the code.
-# Posters, videos, outreach emails and contact lists, Gmail password.
-marketing/
-outreach/
-docs/marketing/
-docs/outreach/
-# Pitch and business material, also kept on this laptop only.
-docs/presentation/DECK.md
-qr-table-ordering-plan.md
-global-qr-ordering-research.md
+# Everything that isn't code stays on this laptop, not on GitHub: the repo is for the code.
+# Posters, videos, the Facebook page kit, outreach emails, contact lists, the Gmail password,
+# the pitch deck, business plan and market research, and the tools that make the promo files.
+business/

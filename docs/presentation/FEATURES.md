@@ -2,7 +2,7 @@
 
 <!-- presentation-sync: last synced at commit 474ad5d (plus uncommitted multi-branch steps 2 to 7) on 2026-11-24 -->
 
-This list is the source of truth for the presentation (`docs/presentation/DECK.md`).
+This list is the source of truth for the presentation (`business/pitch/DECK.md`, kept on the laptop, not on GitHub).
 Each feature has a stable ID (`G-03`, `K-01`, ...). Slides refer to features by ID, so a change here shows which slides to update.
 Keep the IDs: a removed feature moves to "Removed" with its ID, and a new feature gets the next free number in its group.
 

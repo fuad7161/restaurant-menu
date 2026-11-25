@@ -1,6 +1,6 @@
 ---
 name: presentation-sync
-description: Keep Bosho's presentation context (docs/presentation/FEATURES.md and DECK.md), the feature guide (docs/feature-guide.md) and the README feature sections in step with the code. Use after any change that adds, removes or changes what a guest, staff member or owner can do, or changes the stack, deploy or rules (routes, handlers in internal/server, templates in web/templates, migrations, config, i18n texts, Makefile, Dockerfile, fly.toml). Also use when the user asks to update, check or refresh the feature list, the feature guide, the workflows, the deck, the presentation or the pitch, or asks "is the presentation up to date".
+description: Keep Bosho's presentation context (docs/presentation/FEATURES.md and business/pitch/DECK.md), the feature guide (docs/feature-guide.md) and the README feature sections in step with the code. Use after any change that adds, removes or changes what a guest, staff member or owner can do, or changes the stack, deploy or rules (routes, handlers in internal/server, templates in web/templates, migrations, config, i18n texts, Makefile, Dockerfile, fly.toml). Also use when the user asks to update, check or refresh the feature list, the feature guide, the workflows, the deck, the presentation or the pitch, or asks "is the presentation up to date".
 ---
 
 # Presentation sync
@@ -8,7 +8,7 @@ description: Keep Bosho's presentation context (docs/presentation/FEATURES.md an
 Bosho's presentation material lives in two files that must always describe the code as it is:
 
 - `docs/presentation/FEATURES.md`: the feature list. Source of truth. Every feature has a stable ID (`G-` guest, `K-` kitchen and floor staff, `O-` owner, `A-` accounts, `P-` platform) and a "Where in code" column.
-- `docs/presentation/DECK.md`: the slide-by-slide outline. Slides cite feature IDs in brackets, and the "Feature → slide map" at the bottom says which slides each ID appears on.
+- `business/pitch/DECK.md`: the slide-by-slide outline. Slides cite feature IDs in brackets, and the "Feature → slide map" at the bottom says which slides each ID appears on.
 
 - `docs/feature-guide.md`: the long, plain-language guide for owners and sales: every role's features, the workflows from start to end, what is built in and what is not built yet. It has no IDs; it follows `FEATURES.md`.
 
@@ -65,7 +65,7 @@ The README's "Screens", "Rules built in" and "Not built yet" sections say the sa
 8. **Check.**
    - Every ID cited in `DECK.md` exists in `FEATURES.md`, and every ID in the map exists:
      ```sh
-     comm -23 <(grep -o '[GKOAP]-[0-9][0-9]' docs/presentation/DECK.md | sort -u) \
+     comm -23 <(grep -o '[GKOAP]-[0-9][0-9]' business/pitch/DECK.md | sort -u) \
               <(grep -o '^| [GKOAP]-[0-9][0-9]' docs/presentation/FEATURES.md | cut -c3- | sort -u)
      ```
      This must print nothing (the map's ranges such as "G-01 to G-07" are fine as long as both ends exist).
@@ -78,5 +78,5 @@ The README's "Screens", "Rules built in" and "Not built yet" sections say the sa
 
 - Plain words for a restaurant owner. Name the screen and what the person can do, not the function. Code names belong only in the "Where in code" column and on slide 11.
 - State only what the code does today. Things that are recorded but not processed (for example bKash or Nagad marked as the payment method) must say so.
-- Business, pricing and market facts come only from `qr-table-ordering-plan.md` and `global-qr-ordering-research.md`, and the slide must name which one.
+- Business, pricing and market facts come only from `business/pitch/qr-table-ordering-plan.md` and `business/pitch/global-qr-ordering-research.md`, and the slide must name which one.
 - Do not commit unless the user asks; when they do, a separate commit such as "Update presentation for <change>" is clearest.
